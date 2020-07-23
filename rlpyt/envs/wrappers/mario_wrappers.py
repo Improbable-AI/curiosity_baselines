@@ -1,3 +1,5 @@
+import itertools
+from copy import copy
 import gym
 import numpy as np
 from PIL import Image
@@ -15,6 +17,8 @@ class ProcessFrame84(gym.ObservationWrapper):
     def process(frame, crop=True):
         if frame.size == 256 * 240 * 3: # gym-super-mario resolution
             img = np.reshape(frame, [256, 240, 3]).astype(np.float32)
+        elif frame.size == 224 * 240 * 3: # gym-retro resolution
+            img = np.reshape(frame, [224, 240, 3]).astype(np.float32)
         else:
             assert False, "Unknown resolution." + str(img.size)
         img = img[:, :, 0] * 0.299 + img[:, :, 1] * 0.587 + img[:, :, 2] * 0.114 # convert to YUV
@@ -63,6 +67,35 @@ class MarioXReward(gym.Wrapper):
             info["retro_episode"] = dict(levels=copy(self.visited_levels))
         return ob, reward, done, info
 
+class LimitedDiscreteActions(gym.ActionWrapper):
+    KNOWN_BUTTONS = {"A", "B"}
+    KNOWN_SHOULDERS = {"L", "R"}
+
+    '''
+    Reproduces the action space from curiosity paper.
+    '''
+
+    def __init__(self, env, all_buttons, whitelist=KNOWN_BUTTONS | KNOWN_SHOULDERS):
+        gym.ActionWrapper.__init__(self, env)
+
+        self._num_buttons = len(all_buttons)
+        button_keys = {i for i in range(len(all_buttons)) if all_buttons[i] in whitelist & self.KNOWN_BUTTONS}
+        buttons = [(), *zip(button_keys), *itertools.combinations(button_keys, 2)]
+        shoulder_keys = {i for i in range(len(all_buttons)) if all_buttons[i] in whitelist & self.KNOWN_SHOULDERS}
+        shoulders = [(), *zip(shoulder_keys), *itertools.permutations(shoulder_keys, 2)]
+        arrows = [(), (4,), (5,), (6,), (7,)]  # (), up, down, left, right
+        acts = []
+        acts += arrows
+        acts += buttons[1:]
+        acts += [a + b for a in arrows[-2:] for b in buttons[1:]]
+        self._actions = acts
+        self.action_space = gym.spaces.Discrete(len(self._actions))
+
+    def action(self, a):
+        mask = np.zeros(self._num_buttons)
+        for i in self._actions[a]:
+            mask[i] = 1
+        return mask
 
 
-        
+

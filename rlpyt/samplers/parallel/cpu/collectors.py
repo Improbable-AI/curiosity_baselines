@@ -101,6 +101,9 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
         b = np.where(self.done)[0]
         observation[b] = self.temp_observation[b]
         self.done[:] = False  # Did resets between batches.
+        # This next operation syncs components of agent_inputs (observation, action, reward)
+        # with obs_pyt, act_pyt, etc. Updates to observation will update obs_pyt, but one is
+        # numpy and the other is torch tensors.
         obs_pyt, act_pyt, rew_pyt = torchify_buffer(agent_inputs)
         agent_buf.prev_action[0] = action  # Leading prev_action.
         env_buf.prev_reward[0] = reward

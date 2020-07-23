@@ -11,7 +11,7 @@ from rlpyt.utils.buffer import buffer_to, buffer_func, buffer_method
 class CategoricalPgAgent(BaseAgent):
     """
     Agent for policy gradient algorithm using categorical action distribution.
-    Same as ``GausssianPgAgent`` and related classes, except uses
+    Same as ``GaussianPgAgent`` and related classes, except uses
     ``Categorical`` distribution, and has a different interface to the model
     (model here outputs discrete probabilities in place of means and log_stds,
     while both output the value estimate).
@@ -33,8 +33,7 @@ class CategoricalPgAgent(BaseAgent):
     @torch.no_grad()
     def step(self, observation, prev_action, prev_reward):
         prev_action = self.distribution.to_onehot(prev_action)
-        model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        model_inputs = buffer_to((observation, prev_action, prev_reward), device=self.device)
         pi, value = self.model(*model_inputs)
         dist_info = DistInfo(prob=pi)
         action = self.distribution.sample(dist_info)

@@ -150,10 +150,10 @@ class MinibatchRlBase(BaseRunner):
         Calls the logger to save training checkpoint/snapshot (logger itself
         may or may not save, depending on mode selected).
         """
-        logger.log("saving pytorch checkpoint...")
+        logger.log("Saving pytorch checkpoint.")
         params = self.get_itr_snapshot(itr)
         logger.save_itr_params(itr, params)
-        logger.log("model saved")
+        logger.log("Pytorch checkpoint saved.")
 
     def store_diagnostics(self, itr, traj_infos, opt_info):
         """

@@ -62,6 +62,8 @@ class AtariEnv(Env):
         max_start_noops (int): upper limit for random number of noop actions after reset
         repeat_action_probability (0-1): probability for sticky actions
         horizon (int): max number of steps before timeout / ``traj_done=True``
+        no_extrinsic (bool): if ``True``, then all rewards are zeroed out.
+        no_negative_reward (bool): if ``True``, then all negative rewards are zeroed out.
     """
 
     def __init__(self,
@@ -74,8 +76,11 @@ class AtariEnv(Env):
                  max_start_noops=30,
                  repeat_action_probability=0.,
                  horizon=27000,
+                 no_extrinsic=False,
+                 no_negative_reward=False
                  ):
         save__init__args(locals(), underscore=True)
+
         # ALE
         game_path = atari_py.get_game_path(game)
         if not os.path.exists(game_path):
@@ -132,6 +137,8 @@ class AtariEnv(Env):
         done = game_over or (self._episodic_lives and lost_life)
         info = EnvInfo(game_score=game_score, traj_done=game_over)
         self._step_counter += 1
+        if self._no_negative_reward and reward < 0.0 or self._no_extrinsic:
+            reward = 0.0
         return EnvStep(self.get_obs(), reward, done, info)
 
     def render(self, wait=10, show_full_obs=False):

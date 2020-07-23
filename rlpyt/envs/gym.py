@@ -9,6 +9,7 @@ from rlpyt.envs.base import EnvSpaces, EnvStep
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import is_namedtuple_class
 
+import retro
 import gym_super_mario_bros
 from nes_py.wrappers import JoypadSpace
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
@@ -169,35 +170,49 @@ def make(*args, info_example=None, **kwargs):
     rlpyt's ``GymEnvWrapper``, using ``gym.make(*args, **kwargs)``.  If
     ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
     """
+    env = gym.make(kwargs['id'])
     if info_example is None:
-        return GymEnvWrapper(gym.make(*args, **kwargs))
+        return GymEnvWrapper(env)
     else:
-        return GymEnvWrapper(EnvInfoWrapper(gym.make(*args, **kwargs), info_example))    
+        return GymEnvWrapper(EnvInfoWrapper(env, info_example))    
 
 def mario_make(*args, info_example=None, **kwargs):
     """Use as factory function for making instances of SuperMario environments with
     rlpyt's ``GymEnvWrapper``, using ``gym_super_mario_bros.make(*args, **kwargs)``. If
     ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
     """
-    env = gym_super_mario_bros.make('SuperMarioBros-v0')
+    env = gym_super_mario_bros.make(kwargs['game'])
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
-    
     if kwargs['no_extrinsic']:
         env = NoExtrinsicReward(env)
-
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
-    # env = MarioXReward(env)
-
+    env = FrameSkip(env, 4)
     env = ProcessFrame84(env, crop=False)
     env = FrameStack(env, 4)
-    env = FrameSkip(env, 4)
     env = PytorchImage(env) # (h,w,c) -> (c,h,w)
-
     if info_example is None:
         env = GymEnvWrapper(env)
     else:
         env = GymEnvWrapper(EnvInfoWrapper(env))
     return env
+
+    # env = retro.make('SuperMarioBros-Nes', 'Level1-1')
+    # buttons = env.buttons
+    # env = MarioXReward(env)
+    # if kwargs['no_extrinsic']:
+    #     env = NoExtrinsicReward(env)
+    # if kwargs['no_negative_reward']:
+    #     env = NoNegativeReward(env)
+    # env = FrameSkip(env, 4)
+    # env = ProcessFrame84(env, crop=False)
+    # env = FrameStack(env, 4)
+    # env = LimitedDiscreteActions(env, buttons)
+    # env = PytorchImage(env) # (h,w,c) -> (c,h,w)
+    # if info_example is None:
+    #     env = GymEnvWrapper(env)
+    # else:
+    #     env = GymEnvWrapper(EnvInfoWrapper(env))
+    # return env
 
 

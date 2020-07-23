@@ -52,12 +52,12 @@ class AtariLstmModel(torch.nn.Module):
         storage and transfer).  Recurrent layers processed as [T,B,H]. Used in
         both sampler and in algorithm (both via the agent).  Also returns the
         next RNN state.
-        """        
+        """       
         img = image.type(torch.float)  # Expect torch.uint8 inputs
         img = img.mul_(1. / 255)  # From [0-255] to [0-1], in place.
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
-        lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
+        lead_dim, T, B, img_shape = infer_leading_dims(img, 3) 
 
         fc_out = self.conv(img.view(T * B, *img_shape))
         lstm_input = torch.cat([

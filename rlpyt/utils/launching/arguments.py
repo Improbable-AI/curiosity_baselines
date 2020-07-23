@@ -6,10 +6,10 @@ def get_args(args_in=sys.argv[1:]):
 
     # required args
     parser.add_argument('-alg', type=str, choices=['ppo', 'sac', 'a2c'], required=True, help='Which learning algorithm to run.')
+    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm'], required=True, help='Which intrinsic reward algorithm to use.')
     parser.add_argument('-env', type=str, required=True, help='Which environment to run on.')
     
     # general args
-    parser.add_argument('-curiosity_alg', default='none', type=str, choices=['none', 'icm'], help='Which intrinsic reward algorithm to use.')
     parser.add_argument('-iterations', default=int(1e6), type=int, help='Number of optimization iterations to run (global timesteps).')
     parser.add_argument('-lstm', action='store_true', help='Whether or not to run an LSTM or FF policy.')
     parser.add_argument('-no_extrinsic', action='store_true', help='Whether or not to use no extrinsic reward.')
@@ -19,7 +19,7 @@ def get_args(args_in=sys.argv[1:]):
     parser.add_argument('-eval_envs', default=1, type=int, help='Number of evaluation environments per worker process.')
     parser.add_argument('-eval_max_steps', default=int(51e3), type=int, help='Max number of timesteps run during an evaluation cycle (from one evaluation process).')
     parser.add_argument('-eval_max_traj', default=50, type=int, help='Max number of trajectories collected during an evaluation cycle (from all evaluation processes).')
-    parser.add_argument('-timestep_limit', default=2048, type=int, help='Max number of timesteps per trajectory')
+    parser.add_argument('-timestep_limit', default=20, type=int, help='Max number of timesteps per trajectory')
     
     # logging args
     parser.add_argument('-log_interval', default=int(1e4), type=int, help='Number of optimization iteration between logging events.')
@@ -52,6 +52,14 @@ def get_args(args_in=sys.argv[1:]):
     # environment specific args
     if 'SuperMarioBros-Nes' in args_in:
         parser.add_argument('-mario_level', default='Level1-1', type=str, help='World and level to start at for super mario bros.')
+
+    # curiosity specific args
+    if 'icm' in args_in:
+        parser.add_argument('-feature_encoding', default='idf', type=str, choices=['none', 'idf', 'vaesph', 'vaenonsph', 'pix2pix'], help='Which feature encoding method to use with ICM.')
+        parser.add_argument('-forward_loss_wt', default=0.2, type=float, help='Forward loss coefficient. Inverse weight is (1 - this).')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
+        parser.add_argument('-prediction_beta', default=0.01, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
+        parser.add_argument('-prediction_lr_scale', default=10.0, type=float, help='Scale the learning rate of predictor w/ respect to policy network.')
 
     # switch argument (only used in launch.py in __main__)
     parser.add_argument('-launch_tmux', default='yes', type=str, help='')

@@ -70,3 +70,7 @@ RUN pip3 install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 COPY ./rlpyt/envs/gym-super-mario-bros /gym-super-mario-bros
 WORKDIR /gym-super-mario-bros
 RUN pip3 install -e .
+
+COPY ./rlpyt/envs/retro_roms /tmp/retro_roms
+RUN python3 -m retro.import /tmp/retro_roms
+RUN rm -r /tmp/retro_roms

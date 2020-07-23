@@ -6,13 +6,14 @@ from six.moves import shlex_quote
 import torch
 
 # Runners
-from rlpyt.runners.minibatch_rl import MinibatchRlEval
+from rlpyt.runners.minibatch_rl import MinibatchRl, MinibatchRlEval
 
 # Policies
 from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent
 from rlpyt.agents.pg.mujoco import MujocoFfAgent, MujocoLstmAgent
 
 # Samplers
+from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector, CpuWaitResetCollector, CpuEvalCollector
 from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 
@@ -166,8 +167,7 @@ def start_experiment(args):
     if 'mario' in args.env.lower():
         env_cl = mario_make
         env_args = dict(
-            game=args.env, 
-            state=args.mario_level, 
+            game=args.env,  
             no_extrinsic=args.no_extrinsic,
             no_negative_reward=args.no_negative_reward
             )
@@ -186,6 +186,10 @@ def start_experiment(args):
             no_negative_reward=args.no_negative_reward
             )
 
+    if args.lstm:
+        collector_class = CpuWaitResetCollector
+    else:
+        collector_class = CpuResetCollector
     sampler = CpuSampler(
         EnvCls=env_cl,
         env_kwargs=env_args,
@@ -197,19 +201,31 @@ def start_experiment(args):
         eval_max_steps=args.eval_max_steps,
         eval_max_trajectories=args.eval_max_traj,
         record_freq=args.record_freq,
-        log_dir=args.log_dir
+        log_dir=args.log_dir,
+        CollectorCls=collector_class
         )
 
     # ----------------------------------------------------- RUNNER ----------------------------------------------------- #
-    runner = MinibatchRlEval(
-        algo=algo,
-        agent=agent,
-        sampler=sampler,
-        n_steps=args.iterations,
-        affinity=affinity,
-        log_interval_steps=args.log_interval,
-        log_dir=args.log_dir
-        )
+    if args.eval_envs > 0:
+        runner = MinibatchRlEval(
+            algo=algo,
+            agent=agent,
+            sampler=sampler,
+            n_steps=args.iterations,
+            affinity=affinity,
+            log_interval_steps=args.log_interval,
+            log_dir=args.log_dir
+            )
+    else:
+        runner = MinibatchRl(
+            algo=algo,
+            agent=agent,
+            sampler=sampler,
+            n_steps=args.iterations,
+            affinity=affinity,
+            log_interval_steps=args.log_interval,
+            log_dir=args.log_dir
+            )
 
     with logger_context(args.log_dir, config, snapshot_mode="last", use_summary_writer=True):
         runner.train()
