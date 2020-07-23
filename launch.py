@@ -150,6 +150,11 @@ def start_experiment(args):
                 )
 
     # ----------------------------------------------------- POLICY ----------------------------------------------------- #
+    model_args = dict(curiosity_kwargs=dict(curiosity_alg=args.curiosity_alg))
+    if args.curiosity_alg =='icm':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
+
     if args.env in _MUJOCO_ENVS:
         if args.lstm:
             agent = MujocoLstmAgent(initial_model_state_dict=initial_model_state_dict)
@@ -157,7 +162,10 @@ def start_experiment(args):
             agent = MujocoFfAgent(initial_model_state_dict=initial_model_state_dict)
     else:
         if args.lstm:
-            agent = AtariLstmAgent(initial_model_state_dict=initial_model_state_dict)
+            agent = AtariLstmAgent(
+                        initial_model_state_dict=initial_model_state_dict,
+                        model_kwargs=model_args
+                        )
         else:
             agent = AtariFfAgent(initial_model_state_dict=initial_model_state_dict)
 

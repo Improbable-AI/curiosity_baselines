@@ -21,7 +21,7 @@ class UniverseHead(nn.Module):
                 conv = nn.Conv2d(in_channels=c, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
             else:
                 conv = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
-            block = [conv, nn.elu()]
+            block = [conv, nn.ELU()]
             if batch_norm:
                 block.append(nn.BatchNorm2d(32))
             sequence.extend(block)
@@ -80,15 +80,15 @@ class ICM(nn.Module):
 
         return phi1, phi2, predicted_phi2, predicted_action
 
-    def bonus(self, eta, states, next_states, actions, action_probs):
-        action_pred, phi2_pred, phi1, phi2 =  self.icm(states, next_states, action_probs)
-        forward_loss = 0.5 * F.mse_loss(phi2_pred, phi2, reduce=False).sum(-1).unsqueeze(-1)
+    def bonus(self, eta, obs, action, next_obs):
+        phi1, phi2, predicted_phi2, predicted_action =  self.forward(obs, next_obs, action)
+        forward_loss = 0.5 * F.mse_loss(predicted_phi2, phi2, reduce=False).sum(-1).unsqueeze(-1)
         return eta * forward_loss
 
-    def loss(self, states, next_states, actions, action_probs):
-        action_pred, phi2_pred, phi1, phi2 =  self.icm(states, next_states, action_probs)
-        inverse_loss = F.cross_entropy(action_pred, actions.view(-1))
-        forward_loss = 0.5 * F.mse_loss(phi2_pred, phi2.detach(), reduce=False).sum(-1).mean()
+    def loss(self, obs, action, next_obs):
+        phi1, phi2, predicted_phi2, predicted_action =  self.forward(obs, next_obs, action)
+        inverse_loss = F.cross_entropy(predicted_action, action.view(-1))
+        forward_loss = 0.5 * F.mse_loss(predicted_phi2, phi2.detach(), reduce=False).sum(-1).mean()
         return inverse_loss, forward_loss
 
 

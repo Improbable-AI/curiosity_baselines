@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.conv2d import Conv2dHeadModel
-
+from rlpyt.models.curiosity.icm import ICM
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -26,6 +26,7 @@ class AtariLstmModel(torch.nn.Module):
             kernel_sizes=None,
             strides=None,
             paddings=None,
+            curiosity_kwargs=dict(curiosity_alg='none')
             ):
         """Instantiate neural net module according to inputs."""
         super().__init__()
@@ -41,6 +42,14 @@ class AtariLstmModel(torch.nn.Module):
         self.lstm = torch.nn.LSTM(self.conv.output_size + output_size + 1, lstm_size)
         self.pi = torch.nn.Linear(lstm_size, output_size)
         self.value = torch.nn.Linear(lstm_size, 1)
+
+        if curiosity_kwargs['curiosity_alg'] == 'icm':
+            self.curiosity_model = ICM(
+                                    image_shape=image_shape,
+                                    action_size=output_size,
+                                    feature_encoding=curiosity_kwargs['feature_encoding'],
+                                    batch_norm=curiosity_kwargs['batch_norm']
+                                    )
 
     def forward(self, image, prev_action, prev_reward, init_rnn_state):
         """

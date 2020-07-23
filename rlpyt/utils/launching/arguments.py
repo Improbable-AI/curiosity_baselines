@@ -22,7 +22,7 @@ def get_args(args_in=sys.argv[1:]):
     parser.add_argument('-timestep_limit', default=20, type=int, help='Max number of timesteps per trajectory')
     
     # logging args
-    parser.add_argument('-log_interval', default=int(1e4), type=int, help='Number of optimization iteration between logging events.')
+    parser.add_argument('-log_interval', default=int(1e4), type=int, help='Number of environment steps between logging events.')
     parser.add_argument('-record_freq', default=0, type=int, help='Interval between video recorded episodes (in episodes). 0 means dont record.')
     parser.add_argument('-pretrain', default=None, help='The directory to draw model parameters from if restarting an experiment. If None start a new experiment.')
     parser.add_argument('-log_dir', default=None, type=str, help='Directory where videos/models/etc are logged. If none, this will be generated at launch time.')
