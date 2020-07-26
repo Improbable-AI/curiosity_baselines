@@ -57,7 +57,7 @@ def infer_leading_dims(tensor, dim):
     B: int --size of first leading dim if one, second leading dim if two, o/w 1.
     shape: tensor shape after leading dims.
     """
-    lead_dim = tensor.dim() - dim
+    lead_dim = tensor.dim() - dim # number of dimensions that aren't directly data (the leading dimensions)
     assert lead_dim in (0, 1, 2)
     if lead_dim == 2:
         T, B = tensor.shape[:2]

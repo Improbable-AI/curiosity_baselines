@@ -1,7 +1,6 @@
 
 
-from rlpyt.agents.pg.categorical import (CategoricalPgAgent,
-    RecurrentCategoricalPgAgent, AlternatingRecurrentCategoricalPgAgent)
+from rlpyt.agents.pg.categorical import CategoricalPgAgent, RecurrentCategoricalPgAgent, AlternatingRecurrentCategoricalPgAgent
 from rlpyt.models.pg.atari_ff_model import AtariFfModel
 from rlpyt.models.pg.atari_lstm_model import AtariLstmModel
 

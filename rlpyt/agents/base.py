@@ -9,9 +9,10 @@ from rlpyt.utils.synchronize import RWLock
 from rlpyt.utils.logging import logger
 from rlpyt.models.utils import strip_ddp_state_dict
 
-AgentInputs = namedarraytuple("AgentInputs",
-    ["observation", "prev_action", "prev_reward"])
+AgentInputs = namedarraytuple("AgentInputs", ["observation", "prev_action", "prev_reward"])
+AgentCuriosityInputs = namedarraytuple("AgentCuriosityInputs", ["observation", "action", "next_observation"])
 AgentStep = namedarraytuple("AgentStep", ["action", "agent_info"])
+AgentCuriosityStep = namedarraytuple("AgentCuriosityStep", ["r_int", "curiosity_info"])
 
 
 class BaseAgent:
@@ -166,6 +167,11 @@ class BaseAgent:
     def step(self, observation, prev_action, prev_reward):
         """Returns selected actions for environment instances in sampler."""
         raise NotImplementedError  # return type: AgentStep
+
+    @torch.no_grad()
+    def curiosity_step(self, observation, action, next_observation):
+        """Returns intrinsiv motivation for environment instances in sampler."""
+        raise NotImplementedError  # return type: AgentCuriosityStep
 
     def reset(self):
         pass

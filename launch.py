@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import json
 import argparse
 from six.moves import shlex_quote
@@ -99,6 +100,9 @@ def launch_tmux(args):
             if i != 0:
                 os.system(f'tmux new-window -t experiment:{i+1} -n {cmd[0]} bash')
             os.system(f'tmux send-keys -t experiment:{cmd[0]} {shlex_quote(cmd[1])} Enter')
+        time.sleep(4) # wait for logdir to be created
+        with open(log_dir + '/cmd.txt', 'w') as cmd_file:
+            cmd_file.writelines([c[1] + '\n' for c in commands])
     else:
         print('Not running commands, exiting.')
 
@@ -117,6 +121,29 @@ def start_experiment(args):
         initial_optim_state_dict = checkpoint['optimizer_state_dict']
         initial_model_state_dict = checkpoint['agent_state_dict']
 
+
+    # ----------------------------------------------------- POLICY ----------------------------------------------------- #
+    model_args = dict(curiosity_kwargs=dict(curiosity_alg=args.curiosity_alg))
+    if args.curiosity_alg =='icm':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
+        model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
+        model_args['curiosity_kwargs']['forward_loss_wt'] = args.forward_loss_wt
+
+    if args.env in _MUJOCO_ENVS:
+        if args.lstm:
+            agent = MujocoLstmAgent(initial_model_state_dict=initial_model_state_dict)
+        else:
+            agent = MujocoFfAgent(initial_model_state_dict=initial_model_state_dict)
+    else:
+        if args.lstm:
+            agent = AtariLstmAgent(
+                        initial_model_state_dict=initial_model_state_dict,
+                        model_kwargs=model_args
+                        )
+        else:
+            agent = AtariFfAgent(initial_model_state_dict=initial_model_state_dict)
+
     # ----------------------------------------------------- LEARNING ALG ----------------------------------------------------- #
     if args.alg == 'ppo':
         algo = PPO(
@@ -133,7 +160,8 @@ def start_experiment(args):
                 epochs=args.epochs,
                 ratio_clip=args.ratio_clip,
                 linear_lr_schedule=args.linear_lr,
-                normalize_advantage=args.normalize_advantage
+                normalize_advantage=args.normalize_advantage,
+                curiosity_kwargs=model_args['curiosity_kwargs']
                 )
     elif args.alg == 'a2c':
         algo = A2C(
@@ -148,26 +176,6 @@ def start_experiment(args):
                 gae_lambda=args.gae_lambda,
                 normalize_advantage=args.normalize_advantage
                 )
-
-    # ----------------------------------------------------- POLICY ----------------------------------------------------- #
-    model_args = dict(curiosity_kwargs=dict(curiosity_alg=args.curiosity_alg))
-    if args.curiosity_alg =='icm':
-        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
-        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
-
-    if args.env in _MUJOCO_ENVS:
-        if args.lstm:
-            agent = MujocoLstmAgent(initial_model_state_dict=initial_model_state_dict)
-        else:
-            agent = MujocoFfAgent(initial_model_state_dict=initial_model_state_dict)
-    else:
-        if args.lstm:
-            agent = AtariLstmAgent(
-                        initial_model_state_dict=initial_model_state_dict,
-                        model_kwargs=model_args
-                        )
-        else:
-            agent = AtariFfAgent(initial_model_state_dict=initial_model_state_dict)
 
     # ----------------------------------------------------- SAMPLER ----------------------------------------------------- #
 

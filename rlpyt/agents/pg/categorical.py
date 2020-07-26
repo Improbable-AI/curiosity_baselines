@@ -1,8 +1,7 @@
 
 import torch
 
-from rlpyt.agents.base import (AgentStep, BaseAgent, RecurrentAgentMixin,
-    AlternatingRecurrentAgentMixin)
+from rlpyt.agents.base import AgentStep, AgentCuriosityStep, BaseAgent, RecurrentAgentMixin, AlternatingRecurrentAgentMixin
 from rlpyt.agents.pg.base import AgentInfo, AgentInfoRnn
 from rlpyt.distributions.categorical import Categorical, DistInfo
 from rlpyt.utils.buffer import buffer_to, buffer_func, buffer_method
@@ -70,8 +69,7 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
     @torch.no_grad()
     def step(self, observation, prev_action, prev_reward):
         prev_action = self.distribution.to_onehot(prev_action)
-        agent_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        agent_inputs = buffer_to((observation, prev_action, prev_reward), device=self.device)
         pi, value, rnn_state = self.model(*agent_inputs, self.prev_rnn_state)
         dist_info = DistInfo(prob=pi)
         action = self.distribution.sample(dist_info)
@@ -85,6 +83,26 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
         action, agent_info = buffer_to((action, agent_info), device="cpu")
         self.advance_rnn_state(rnn_state)  # Keep on device.
         return AgentStep(action=action, agent_info=agent_info)
+
+    @torch.no_grad()
+    def curiosity_step(self, observation, action, next_observation):
+        info = dict()
+        action = self.distribution.to_onehot(action)
+        if action.dim() == 1: # hacky way to fix action passed in as ([x]) instead of ([1, x]) in examples_output when building buffer
+            action = action.unsqueeze(0)
+        curiosity_agent_inputs = buffer_to((observation, action, next_observation), device=self.device)
+        r_int = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs)
+        return AgentCuriosityStep(r_int, info)
+
+    def curiosity_loss(self, observation, action, next_observation):
+        info = dict()
+        action = self.distribution.to_onehot(action)
+        action = action.squeeze() # hacky way to fix action passed in as ([batch, 1, size]) instead of ([batch, size])
+        curiosity_agent_inputs = buffer_to((observation, action, next_observation), device=self.device)
+        inv_loss, forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
+        inv_loss, forward_loss = buffer_to((inv_loss, forward_loss), device="cpu")
+        return inv_loss, forward_loss
+
 
     @torch.no_grad()
     def value(self, observation, prev_action, prev_reward):

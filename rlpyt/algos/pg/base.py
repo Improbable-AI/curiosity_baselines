@@ -7,7 +7,7 @@ from rlpyt.algos.utils import (discount_return, generalized_advantage_estimation
     valid_from_done)
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
-OptInfo = namedtuple("OptInfo", ["loss", "gradNorm", "entropy", "perplexity"])
+OptInfo = namedtuple("OptInfo", ["loss", "inv_loss", "forward_loss", "curiosity_loss", "gradNorm", "entropy", "perplexity"])
 AgentTrain = namedtuple("AgentTrain", ["dist_info", "value"])
 
 
@@ -44,16 +44,15 @@ class PolicyGradientAlgo(RlAlgorithm):
         according to ``mid_batch_reset`` or for recurrent agent.  Optionally,
         normalize advantages.
         """
-        reward, done, value, bv = (samples.env.reward, samples.env.done,
-            samples.agent.agent_info.value, samples.agent.bootstrap_value)
-        done = done.type(reward.dtype)
+        reward_ext, reward_int, done, value, bv = (samples.env.reward, samples.agent.reward_int, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
+        reward_total = reward_ext + reward_int
+        done = done.type(reward_ext.dtype)
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
-            return_ = discount_return(reward, done, bv, self.discount)
+            return_ = discount_return(reward_total, done, bv, self.discount)
             advantage = return_ - value
         else:
-            advantage, return_ = generalized_advantage_estimation(
-                reward, value, done, bv, self.discount, self.gae_lambda)
+            advantage, return_ = generalized_advantage_estimation(reward_total, value, done, bv, self.discount, self.gae_lambda)
 
         if not self.mid_batch_reset or self.agent.recurrent:
             valid = valid_from_done(done)  # Recurrent: no reset during training.

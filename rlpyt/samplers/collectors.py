@@ -1,7 +1,7 @@
-
+from copy import deepcopy
 import numpy as np
 
-from rlpyt.agents.base import AgentInputs
+from rlpyt.agents.base import AgentInputs, AgentCuriosityInputs
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer, numpify_buffer
 from rlpyt.utils.logging import logger
 from rlpyt.utils.quick_args import save__init__args
@@ -83,15 +83,21 @@ class DecorrelatingStartCollector(BaseCollector):
         resulting agent_inputs buffer (`observation`, `prev_action`,
         `prev_reward`)."""
         traj_infos = [self.TrajInfoCls() for _ in range(len(self.envs))]
+        prev_observations = list()
         observations = list()
         for env in self.envs:
-            observations.append(env.reset())
+            o_reset = env.reset()
+            prev_observations.append(o_reset)
+            observations.append(deepcopy(o_reset)) # emulates stepping with noop
+        prev_observation = buffer_from_example(prev_observations[0], len(self.envs))
         observation = buffer_from_example(observations[0], len(self.envs))
+        
         for b, obs in enumerate(observations):
-            observation[b] = obs  # numpy array or namedarraytuple
-        prev_action = np.stack([env.action_space.null_value()
-            for env in self.envs])
-        prev_reward = np.zeros(len(self.envs), dtype="float32")
+            prev_observation[b] = prev_observations[b] # numpy array or namedarraytuple
+            observation[b] = obs
+        prev_action = np.stack([env.action_space.null_value() for env in self.envs]) # noop
+        prev_reward_ext = np.zeros(len(self.envs), dtype="float32")
+        prev_reward_int = np.zeros(len(self.envs), dtype="float32")
         if self.rank == 0:
             logger.log("Sampler decorrelating envs, max steps: "
                 f"{max_decorrelation_steps}")
@@ -100,20 +106,31 @@ class DecorrelatingStartCollector(BaseCollector):
                 n_steps = 1 + int(np.random.rand() * max_decorrelation_steps)
                 for _ in range(n_steps):
                     a = env.action_space.sample()
-                    o, r, d, info = env.step(a)
-                    traj_infos[b].step(o, a, r, d, None, info)
+                    o, r_ext, d, info = env.step(a)
+                    r_int = 0
+
+                    traj_infos[b].step(o, a, r_ext, r_int, r, d, None, info)
                     if getattr(info, "traj_done", d):
                         o = env.reset()
                         traj_infos[b] = self.TrajInfoCls()
                     if d:
                         a = env.action_space.null_value()
-                        r = 0
+                        r_ext = 0
+                        r_int = 0
+                prev_observation[b] = deepcopy(observation[b])
                 observation[b] = o
                 prev_action[b] = a
-                prev_reward[b] = r
+                prev_reward_ext[b] = r_ext
+                prev_reward_int[b] = r_int
         # For action-server samplers.
         if hasattr(self, "step_buffer_np") and self.step_buffer_np is not None:
+            self.step_buffer_np.prev_observation = prev_observation
+            self.step_buffer_np.prev_action[:] = prev_action
+            self.step_buffer_np.prev_reward_ext[:] = prev_reward_ext
             self.step_buffer_np.observation[:] = observation
-            self.step_buffer_np.action[:] = prev_action
-            self.step_buffer_np.reward[:] = prev_reward
-        return AgentInputs(observation, prev_action, prev_reward), traj_infos
+            self.step_buffer_np.reward_int[:] = prev_reward_int
+
+        # AgentInputs = ['observation', 'prev_action', 'prev_reward']
+        # AgentCuriosityInputs = ['observation', 'action', 'next_observation']
+        return AgentInputs(observation, prev_action, prev_reward_ext), AgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
+

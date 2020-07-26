@@ -171,6 +171,10 @@ def make(*args, info_example=None, **kwargs):
     ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
     """
     env = gym.make(kwargs['id'])
+    if kwargs['no_extrinsic']:
+        env = NoExtrinsicReward(env)
+    if kwargs['no_negative_reward']:
+        env = NoNegativeReward(env)
     if info_example is None:
         return GymEnvWrapper(env)
     else:

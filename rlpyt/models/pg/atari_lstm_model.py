@@ -48,7 +48,8 @@ class AtariLstmModel(torch.nn.Module):
                                     image_shape=image_shape,
                                     action_size=output_size,
                                     feature_encoding=curiosity_kwargs['feature_encoding'],
-                                    batch_norm=curiosity_kwargs['batch_norm']
+                                    batch_norm=curiosity_kwargs['batch_norm'],
+                                    prediction_beta=curiosity_kwargs['prediction_beta']
                                     )
 
     def forward(self, image, prev_action, prev_reward, init_rnn_state):
@@ -76,6 +77,7 @@ class AtariLstmModel(torch.nn.Module):
             ], dim=2)
         init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
         lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state)
+
         pi = F.softmax(self.pi(lstm_out.view(T * B, -1)), dim=-1)
         v = self.value(lstm_out.view(T * B, -1)).squeeze(-1)
 

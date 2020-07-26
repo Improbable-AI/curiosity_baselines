@@ -16,7 +16,7 @@ class UniverseHead(nn.Module):
         super(UniverseHead, self).__init__()
         c, h, w = image_shape
         sequence = list()
-        for l in range(4):
+        for l in range(5):
             if l == 0:
                 conv = nn.Conv2d(in_channels=c, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
             else:
@@ -31,7 +31,7 @@ class UniverseHead(nn.Module):
         """Compute the feature encoding convolution + head on the input;
         assumes correct input shape: [B,C,H,W]."""
         encoded_state = self.model(state)
-        return encoded_state.view(-1, 288)
+        return encoded_state.view(encoded_state.shape[0], -1)
 
 class ICM(nn.Module):
 
@@ -40,10 +40,12 @@ class ICM(nn.Module):
             image_shape, 
             action_size, 
             feature_encoding='idf', 
-            batch_norm=False
+            batch_norm=False,
+            prediction_beta=0.01
             ):
         super(ICM, self).__init__()
 
+        self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
@@ -68,6 +70,7 @@ class ICM(nn.Module):
         img2 = img2.mul_(1. / 255) # From [0-255] to [0-1], in place.
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
+        # lead_dim is just number of leading dimensions: e.g. [T, B] = 2 or [] = 0.
         lead_dim, T, B, img_shape = infer_leading_dims(obs1, 3) 
 
         phi1 = img1
@@ -75,21 +78,30 @@ class ICM(nn.Module):
         if self.feature_encoding != 'none':
             phi1 = self.encoder(img1.view(T * B, *img_shape))
             phi2 = self.encoder(img2.view(T * B, *img_shape))
-        predicted_action = nn.softmax(self.inverse_model(torch.cat([phi1, phi2], 1)), dim=-1)
-        predicted_phi2 = self.forward_model(torch.cat([phi1, action], 1))
+            phi1 = phi1.view(T, B, -1)
+            phi2 = phi2.view(T, B, -1)
+
+        predicted_action = nn.functional.softmax(self.inverse_model(torch.cat([phi1.view(T, B, -1), phi2.view(T, B, -1)], 2)), dim=-1)
+        predicted_phi2 = self.forward_model(torch.cat([phi1.view(T, B, -1), action.view(T, B, -1)], 2))
 
         return phi1, phi2, predicted_phi2, predicted_action
 
-    def bonus(self, eta, obs, action, next_obs):
+    def compute_bonus(self, obs, action, next_obs):
         phi1, phi2, predicted_phi2, predicted_action =  self.forward(obs, next_obs, action)
-        forward_loss = 0.5 * F.mse_loss(predicted_phi2, phi2, reduce=False).sum(-1).unsqueeze(-1)
-        return eta * forward_loss
+        forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2, reduce=None).sum(-1).unsqueeze(-1)
+        return self.prediction_beta * forward_loss.squeeze()
 
-    def loss(self, obs, action, next_obs):
+    def compute_loss(self, obs, action, next_obs):
+        #------------------------------------------------------------#
+        # hacky dimension add for when you have only one environment
+        if action.dim() == 2: 
+            action = action.unsqueeze(1)
+        #------------------------------------------------------------#
         phi1, phi2, predicted_phi2, predicted_action =  self.forward(obs, next_obs, action)
-        inverse_loss = F.cross_entropy(predicted_action, action.view(-1))
-        forward_loss = 0.5 * F.mse_loss(predicted_phi2, phi2.detach(), reduce=False).sum(-1).mean()
-        return inverse_loss, forward_loss
+        action = torch.max(action, 1)[1] # convert from onehot to index target
+        inverse_loss = nn.functional.cross_entropy(predicted_action, action)
+        forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2.detach(), reduce=None).sum(-1).mean()
+        return inverse_loss.squeeze(), forward_loss.squeeze()
 
 
 
