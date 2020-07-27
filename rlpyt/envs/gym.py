@@ -187,7 +187,7 @@ def make(*args, info_example=None, **kwargs):
         obs_mean = 0
         obs_std = 1
 
-    return env, obs_mean, obs_std # obs_mean, obs_std   
+    return env, obs_mean, obs_std
 
 def mario_make(*args, info_example=None, **kwargs):
     """Use as factory function for making instances of SuperMario environments with

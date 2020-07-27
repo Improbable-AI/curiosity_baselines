@@ -29,7 +29,7 @@ from rlpyt.algos.pg.a2c import A2C
 
 # Utils
 from rlpyt.utils.logging.context import logger_context
-from rlpyt.utils.launching.affinity import encode_affinity, affinity_from_code
+from rlpyt.utils.launching.affinity import make_affinity, encode_affinity, affinity_from_code
 from rlpyt.utils.launching.arguments import get_args
 from rlpyt.utils.misc import wrap_print
 
@@ -110,9 +110,8 @@ def launch_tmux(args):
 def start_experiment(args):
 
     config = dict(env_id=args.env)
-    affinity = {'master_cpus': [0], 'workers_cpus': list(range(1, args.num_cpus)), 'master_torch_threads': 1, 'worker_torch_threads': 1, 'alternating': False, 'set_affinity': False}
-    # setting affinity to True somehow restricts each process to affinity 1
-    
+    affinity = dict('worker_cpus'=list(range(args.num_cpus)))
+
     # potentially reload models
     initial_optim_state_dict = None
     initial_model_state_dict = None
