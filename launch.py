@@ -110,7 +110,7 @@ def launch_tmux(args):
 def start_experiment(args):
 
     config = dict(env_id=args.env)
-    affinity = dict('worker_cpus'=list(range(args.num_cpus)))
+    affinity = dict(worker_cpus=list(range(args.num_cpus)))
 
     # potentially reload models
     initial_optim_state_dict = None
