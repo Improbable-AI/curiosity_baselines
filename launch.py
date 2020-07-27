@@ -100,9 +100,9 @@ def launch_tmux(args):
             if i != 0:
                 os.system(f'tmux new-window -t experiment:{i+1} -n {cmd[0]} bash')
             os.system(f'tmux send-keys -t experiment:{cmd[0]} {shlex_quote(cmd[1])} Enter')
-        time.sleep(4) # wait for logdir to be created
-        with open(log_dir + '/cmd.txt', 'w') as cmd_file:
-            cmd_file.writelines([c[1] + '\n' for c in commands])
+        # time.sleep(4) # wait for logdir to be created
+        # with open(log_dir + '/cmd.txt', 'w') as cmd_file:
+        #     cmd_file.writelines([c[1] + '\n' for c in commands])
     else:
         print('Not running commands, exiting.')
 
@@ -139,7 +139,8 @@ def start_experiment(args):
         if args.lstm:
             agent = AtariLstmAgent(
                         initial_model_state_dict=initial_model_state_dict,
-                        model_kwargs=model_args
+                        model_kwargs=model_args,
+                        no_extrinsic=args.no_extrinsic
                         )
         else:
             agent = AtariFfAgent(initial_model_state_dict=initial_model_state_dict)
@@ -161,6 +162,7 @@ def start_experiment(args):
                 ratio_clip=args.ratio_clip,
                 linear_lr_schedule=args.linear_lr,
                 normalize_advantage=args.normalize_advantage,
+                normalize_reward=args.normalize_reward,
                 curiosity_kwargs=model_args['curiosity_kwargs']
                 )
     elif args.alg == 'a2c':
@@ -185,7 +187,9 @@ def start_experiment(args):
         env_args = dict(
             game=args.env,  
             no_extrinsic=args.no_extrinsic,
-            no_negative_reward=args.no_negative_reward
+            no_negative_reward=args.no_negative_reward,
+            normalize_obs=args.normalize_obs,
+            normalize_steps=10000
             )
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make

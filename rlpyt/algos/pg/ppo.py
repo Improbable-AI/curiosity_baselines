@@ -8,6 +8,7 @@ from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.misc import iterate_mb_idxs
+from rlpyt.utils.averages import RunningMeanStd
 
 LossInputs = namedarraytuple("LossInputs", ["agent_inputs", "agent_curiosity_inputs", "action", "return_", "advantage", "valid", "old_dist_info"])
 
@@ -36,12 +37,15 @@ class PPO(PolicyGradientAlgo):
             ratio_clip=0.1,
             linear_lr_schedule=True,
             normalize_advantage=False,
+            normalize_reward=False,
             curiosity_kwargs={'curiosity_alg':'none'}
             ):
         """Saves input settings."""
         if optim_kwargs is None:
             optim_kwargs = dict()
         save__init__args(locals())
+        if self.normalize_reward:
+            self.reward_avg = RunningMeanStd()
 
     def initialize(self, *args, **kwargs):
         """
@@ -105,8 +109,7 @@ class PPO(PolicyGradientAlgo):
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
                 loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
                 loss.backward()
-                grad_norm = torch.nn.utils.clip_grad_norm_(
-                    self.agent.parameters(), self.clip_grad_norm)
+                grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
                 self.optimizer.step()
 
                 # Tensorboard summaries stored here
@@ -114,6 +117,7 @@ class PPO(PolicyGradientAlgo):
                 opt_info.inv_loss.append(inv_loss.item())
                 opt_info.forward_loss.append(forward_loss.item())
                 opt_info.curiosity_loss.append(curiosity_loss.item())
+                opt_info.reward_total_std.append(self.reward_avg.var**0.5)
                 opt_info.gradNorm.append(grad_norm)
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())

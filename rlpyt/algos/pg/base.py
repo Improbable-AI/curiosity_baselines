@@ -1,13 +1,12 @@
 
-# import torch
+import torch
 from collections import namedtuple
 
 from rlpyt.algos.base import RlAlgorithm
-from rlpyt.algos.utils import (discount_return, generalized_advantage_estimation,
-    valid_from_done)
+from rlpyt.algos.utils import discount_return, generalized_advantage_estimation, valid_from_done
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
-OptInfo = namedtuple("OptInfo", ["loss", "inv_loss", "forward_loss", "curiosity_loss", "gradNorm", "entropy", "perplexity"])
+OptInfo = namedtuple("OptInfo", ["loss", "inv_loss", "reward_total_std", "forward_loss", "curiosity_loss", "gradNorm", "entropy", "perplexity"])
 AgentTrain = namedtuple("AgentTrain", ["dist_info", "value"])
 
 
@@ -47,6 +46,10 @@ class PolicyGradientAlgo(RlAlgorithm):
         reward_ext, reward_int, done, value, bv = (samples.env.reward, samples.agent.reward_int, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
         reward_total = reward_ext + reward_int
         done = done.type(reward_ext.dtype)
+
+        if self.normalize_reward:
+            self.reward_avg.update(torch.flatten(reward_total).numpy())
+            reward_total = reward_total / (self.reward_avg.var)**0.5
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward_total, done, bv, self.discount)

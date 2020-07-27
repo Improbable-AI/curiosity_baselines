@@ -40,6 +40,7 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-ratio_clip', default=0.1, type=float, help='The policy ratio (new vs old) clipping bound.')
         parser.add_argument('-linear_lr', action='store_true', help='Whether or not to change learning rate linearly as a function of iteration.')
         parser.add_argument('-normalize_advantage', action='store_true', help='Whether or not to normalize advantages.')
+        parser.add_argument('-normalize_reward', action='store_true', help='Whether or not to normalize rewards before computing advantages')
     elif 'a2c' in args_in:
         parser.add_argument('-discount', default=0.99, type=float, help='Reward discount factor applied.')
         parser.add_argument('-lr', default=0.001, type=float, help='Learning rate.')
@@ -50,8 +51,9 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-normalize_advantage', action='store_true', help='Whether or not to normalize advantages.')
 
     # environment specific args
-    if 'SuperMarioBros-Nes' in args_in:
+    if 'SuperMarioBros-v0' in args_in:
         parser.add_argument('-mario_level', default='Level1-1', type=str, help='World and level to start at for super mario bros.')
+        parser.add_argument('-normalize_obs', action='store_true', help='Whether or not to normalize the observation each step.')
 
     # curiosity specific args
     if 'icm' in args_in:

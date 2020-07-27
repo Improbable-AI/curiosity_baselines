@@ -8,6 +8,7 @@ from collections import namedtuple
 from rlpyt.envs.base import EnvSpaces, EnvStep
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import is_namedtuple_class
+from rlpyt.utils.averages import generate_observation_stats
 
 import retro
 import gym_super_mario_bros
@@ -176,9 +177,17 @@ def make(*args, info_example=None, **kwargs):
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
     if info_example is None:
-        return GymEnvWrapper(env)
+        env = GymEnvWrapper(env)
     else:
-        return GymEnvWrapper(EnvInfoWrapper(env, info_example))    
+        env = GymEnvWrapper(EnvInfoWrapper(env, info_example)) 
+
+    if kwargs['normalize_obs']:
+        obs_mean, obs_std = generate_observation_stats(env, kwargs['normalize_steps'])
+    else:
+        obs_mean = 0
+        obs_std = 1
+
+    return env, obs_mean, obs_std # obs_mean, obs_std   
 
 def mario_make(*args, info_example=None, **kwargs):
     """Use as factory function for making instances of SuperMario environments with
@@ -187,8 +196,8 @@ def mario_make(*args, info_example=None, **kwargs):
     """
     env = gym_super_mario_bros.make(kwargs['game'])
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
-    if kwargs['no_extrinsic']:
-        env = NoExtrinsicReward(env)
+    # if kwargs['no_extrinsic']:
+    #     env = NoExtrinsicReward(env)
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
     env = FrameSkip(env, 4)
@@ -199,7 +208,14 @@ def mario_make(*args, info_example=None, **kwargs):
         env = GymEnvWrapper(env)
     else:
         env = GymEnvWrapper(EnvInfoWrapper(env))
-    return env
+
+    if kwargs['normalize_obs']:
+        obs_mean, obs_std = generate_observation_stats(env, kwargs['normalize_steps'])
+    else:
+        obs_mean = np.zeros(env.observation_space.shape)
+        obs_std = 1
+
+    return env, obs_mean, obs_std
 
     # env = retro.make('SuperMarioBros-Nes', 'Level1-1')
     # buttons = env.buttons

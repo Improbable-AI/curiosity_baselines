@@ -1,0 +1,62 @@
+
+from mpi4py import MPI
+import multiprocessing
+import gym
+import numpy as np
+
+from rlpyt.utils.misc import wrap_print
+
+class RunningMeanStd(object):
+    # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
+    def __init__(self, epsilon=1e-4, shape=()):
+        self.mean = np.zeros(shape, 'float64')
+        self.var = np.ones(shape, 'float64')
+        self.count = epsilon
+
+    def update(self, x):
+        batch_mean = np.mean(x, axis=0)
+        batch_var = np.var(x, axis=0)
+        batch_count = x.shape[0]
+        self.update_from_moments(batch_mean, batch_var, batch_count)
+
+    def update_from_moments(self, batch_mean, batch_var, batch_count):
+        self.mean, self.var, self.count = update_mean_var_count_from_moments(self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
+
+def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
+    delta = batch_mean - mean
+    tot_count = count + batch_count
+
+    new_mean = mean + delta * batch_count / tot_count
+    m_a = var * count
+    m_b = batch_var * batch_count
+    M2 = m_a + m_b + np.square(delta) * count * batch_count / tot_count
+    new_var = M2 / tot_count
+    new_count = tot_count
+
+    return new_mean, new_var, new_count
+
+def generate_observation_stats(env, nsteps=10000):
+    '''
+    Steps through the environment randomly and produces an observation mean and standard deviation. 
+    From https://github.com/openai/large-scale-curiosity/blob/master/utils.py
+    '''
+    wrap_print('Generating observation mean/std... ({} random steps)'.format(nsteps))
+    ob = np.asarray(env.reset())
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        obs = [ob]
+        for _ in range(nsteps):
+            ac = env.action_space.sample()
+            ob, _, done, _ = env.step(ac.item(0)) # mainly used for mario with discrete action space (hacky .item() call to make it work)
+            if done:
+                ob = env.reset()
+            obs.append(np.asarray(ob))
+        mean = np.mean(obs, 0).astype(np.float32)
+        std = np.std(obs, 0).mean().astype(np.float32)
+    else:
+        mean = np.empty(shape=ob.shape, dtype=np.float32)
+        std = np.empty(shape=(), dtype=np.float32)
+    MPI.COMM_WORLD.Bcast(mean, root=0)
+    MPI.COMM_WORLD.Bcast(std, root=0)
+    return mean, std
+
+

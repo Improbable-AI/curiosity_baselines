@@ -34,7 +34,7 @@ class BaseAgent:
     recurrent = False
     alternating = False
 
-    def __init__(self, ModelCls=None, model_kwargs=None, initial_model_state_dict=None):
+    def __init__(self, ModelCls=None, model_kwargs=None, initial_model_state_dict=None, no_extrinsic=False):
         """
         Arguments are saved but no model initialization occurs.
 

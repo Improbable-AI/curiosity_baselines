@@ -128,7 +128,16 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                     continue
                 # Environment inputs and outputs are numpy arrays.
                 o, r_ext, d, env_info = env.step(action[b])
+
+                if np.all(self.env_stats[0] != np.zeros(env.observation_space.shape)):
+                    obs_mean, obs_std = self.env_stats
+                    o = (o - obs_mean) / obs_std
                 
+                if self.agent.no_extrinsic: # to ensure r_ext gets recorded regardless
+                    r_ext_buffer = 0.0
+                else:
+                    r_ext_buffer = r_ext 
+
                 #------------------------------------------------------------------------#
                 # DEBUGGING: records observations to curiosity_baselines/images/___.jpg
                 # Stops and sleeps long enough to quit out at the end of an episode.
@@ -138,7 +147,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                 # o = np.expand_dims(o, 0)
                 # if d:
                 #     import time
-                #     print("DONE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                #     print("DONE!")
                 #     time.sleep(100)
                 #------------------------------------------------------------------------#
 
@@ -157,7 +166,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                     o = 0  # Record blank.
                 prev_observation[b] = observation[b]
                 observation[b] = o
-                reward_ext[b] = r_ext
+                reward_ext[b] = r_ext_buffer
                 self.done[b] = d
                 if env_info:
                     env_buf.env_info[t, b] = env_info

@@ -72,9 +72,10 @@ class ParallelSamplerBase(BaseSampler):
             logger.log(f"Total parallel evaluation envs: {eval_n_envs}.")
             self.eval_max_T = eval_max_T = int(self.eval_max_steps // eval_n_envs)
 
-        env = self.EnvCls(**self.env_kwargs)
-        self._agent_init(agent, env, global_B=global_B,
-            env_ranks=env_ranks)
+        env, obs_mean, obs_std = self.EnvCls(**self.env_kwargs)
+        self.env_stats = (obs_mean, obs_std)
+        self.env_kwargs['normalize_obs'] = False # turn off for future make calls
+        self._agent_init(agent, env, global_B=global_B, env_ranks=env_ranks)
         examples = self._build_buffers(env, bootstrap_value)
         env.close()
         del env
@@ -199,6 +200,7 @@ class ParallelSamplerBase(BaseSampler):
         common_kwargs = dict(
             EnvCls=self.EnvCls,
             env_kwargs=self.env_kwargs,
+            env_stats=self.env_stats,
             agent=self.agent,
             batch_T=self.batch_spec.T,
             CollectorCls=self.CollectorCls,
