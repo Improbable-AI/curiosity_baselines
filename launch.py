@@ -110,8 +110,9 @@ def launch_tmux(args):
 def start_experiment(args):
 
     config = dict(env_id=args.env)
-    affinity = {'master_cpus': [0], 'workers_cpus': list(range(1, args.num_cpus)), 'master_torch_threads': 1, 'worker_torch_threads': 1, 'alternating': False, 'set_affinity': True}
-
+    affinity = {'master_cpus': [0], 'workers_cpus': list(range(1, args.num_cpus)), 'master_torch_threads': 1, 'worker_torch_threads': 1, 'alternating': False, 'set_affinity': False}
+    # setting affinity to True somehow restricts each process to affinity 1
+    
     # potentially reload models
     initial_optim_state_dict = None
     initial_model_state_dict = None

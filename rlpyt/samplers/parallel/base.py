@@ -236,8 +236,7 @@ class ParallelSamplerBase(BaseSampler):
                 rank=rank,
                 env_ranks=env_ranks,
                 seed=seed + rank,
-                cpus=(affinity["workers_cpus"][rank]
-                    if affinity.get("set_affinity", True) else None),
+                cpus=(affinity["workers_cpus"][rank] if affinity.get("set_affinity", True) else None),
                 n_envs=n_envs,
                 samples_np=self.samples_np[:, slice_B],
                 sync=self.sync,  # Only for eval, on CPU.

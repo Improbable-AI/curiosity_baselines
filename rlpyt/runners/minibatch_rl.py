@@ -55,8 +55,7 @@ class MinibatchRlBase(BaseRunner):
         """
         p = psutil.Process()
         try:
-            if (self.affinity.get("master_cpus", None) is not None and
-                    self.affinity.get("set_affinity", True)):
+            if (self.affinity.get("master_cpus", None) is not None and self.affinity.get("set_affinity", True)):
                 p.cpu_affinity(self.affinity["master_cpus"])
             cpu_affin = p.cpu_affinity()
         except AttributeError:
