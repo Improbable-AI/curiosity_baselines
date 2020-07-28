@@ -26,6 +26,7 @@ class MinibatchRlBase(BaseRunner):
         seed (int): Random seed to use, if ``None`` will generate randomly.
         affinity (dict): Hardware component assignments for sampler and algorithm.
         log_interval_steps (int): Number of environment steps between logging to csv.
+        starting_itr (int): The iteration you're starting at (if restarting training).
     """
 
     _eval = False
@@ -39,7 +40,8 @@ class MinibatchRlBase(BaseRunner):
             seed=None,
             affinity=None,
             log_interval_steps=1e5,
-            log_dir=None
+            log_dir=None,
+            pretrain=None
             ):
         n_steps = int(n_steps)
         log_interval_steps = int(log_interval_steps)
@@ -241,6 +243,7 @@ class MinibatchRl(MinibatchRlBase):
         Args: 
             log_traj_window (int): How many trajectories to hold in deque for computing performance statistics.
         """
+        print(kwargs)
         super().__init__(**kwargs)
         self.log_traj_window = int(log_traj_window)
 
@@ -251,16 +254,23 @@ class MinibatchRl(MinibatchRlBase):
         diagnostics at the specified interval.
         """
         n_itr = self.startup()
-        for itr in range(n_itr):
-            logger.set_iteration(itr)
-            with logger.prefix(f"itr #{itr} "):
-                self.agent.sample_mode(itr)  # Might not be this agent sampling.
-                samples, traj_infos = self.sampler.obtain_samples(itr)
-                self.agent.train_mode(itr)
-                opt_info = self.algo.optimize_agent(itr, samples)
-                self.store_diagnostics(itr, traj_infos, opt_info)
-                if (itr + 1) % self.log_interval_itrs == 0:
-                    self.log_diagnostics(itr)
+        if self.pretrain != 'None':
+            status_file_read = open(self.log_dir + '/last_itr.txt', 'r')
+            starting_itr = int(status_file_read.read().split('\n')[-2])
+        else:
+            starting_itr = 0
+        with open(self.log_dir + '/last_itr.txt', 'a') as status_file: # for restart purposes
+            for itr in range(starting_itr, n_itr):
+                logger.set_iteration(itr)
+                with logger.prefix(f"itr #{itr} "):
+                    self.agent.sample_mode(itr)  # Might not be this agent sampling.
+                    samples, traj_infos = self.sampler.obtain_samples(itr)
+                    self.agent.train_mode(itr)
+                    opt_info = self.algo.optimize_agent(itr, samples)
+                    self.store_diagnostics(itr, traj_infos, opt_info)
+                    if (itr + 1) % self.log_interval_itrs == 0:
+                        status_file.write(str(itr) + '\n')
+                        self.log_diagnostics(itr)
         self.shutdown()
 
     def initialize_logging(self):
@@ -303,17 +313,27 @@ class MinibatchRlEval(MinibatchRlBase):
         with logger.prefix(f"itr #0 "):
             eval_traj_infos, eval_time = self.evaluate_agent(0)
             self.log_diagnostics(0, eval_traj_infos, eval_time)
-        for itr in range(n_itr):
-            logger.set_iteration(itr)
-            with logger.prefix(f"itr #{itr} "):
-                self.agent.sample_mode(itr)
-                samples, traj_infos = self.sampler.obtain_samples(itr)
-                self.agent.train_mode(itr)
-                opt_info = self.algo.optimize_agent(itr, samples)
-                self.store_diagnostics(itr, traj_infos, opt_info)
-                if (itr + 1) % self.log_interval_itrs == 0:
-                    eval_traj_infos, eval_time = self.evaluate_agent(itr)
-                    self.log_diagnostics(itr, eval_traj_infos, eval_time)
+        if self.pretrain != 'None':
+            status_file_read = open(self.log_dir + '/last_itr.txt', 'r')
+            starting_itr = int(status_file_read.read().split('\n')[-2])
+        else:
+            starting_itr = 0
+        with open(self.log_dir + '/last_itr.txt', 'a') as status_file: # for restart purposes
+            if self.pretrain != 'None':
+                starting_itr = int(status_file.read().split('\n')[-2])
+            else:
+                starting_itr = 0
+            for itr in range(starting_itr, n_itr):
+                logger.set_iteration(itr)
+                with logger.prefix(f"itr #{itr} "):
+                    self.agent.sample_mode(itr)
+                    samples, traj_infos = self.sampler.obtain_samples(itr)
+                    self.agent.train_mode(itr)
+                    opt_info = self.algo.optimize_agent(itr, samples)
+                    self.store_diagnostics(itr, traj_infos, opt_info)
+                    if (itr + 1) % self.log_interval_itrs == 0:
+                        eval_traj_infos, eval_time = self.evaluate_agent(itr)
+                        self.log_diagnostics(itr, eval_traj_infos, eval_time)
         self.shutdown()
 
     def evaluate_agent(self, itr):

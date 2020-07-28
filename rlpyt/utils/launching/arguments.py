@@ -4,10 +4,10 @@ import argparse
 def get_args(args_in=sys.argv[1:]):
     parser = argparse.ArgumentParser()
 
-    # required args
-    parser.add_argument('-alg', type=str, choices=['ppo', 'sac', 'a2c'], required=True, help='Which learning algorithm to run.')
-    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm'], required=True, help='Which intrinsic reward algorithm to use.')
-    parser.add_argument('-env', type=str, required=True, help='Which environment to run on.')
+    # main args
+    parser.add_argument('-alg', type=str, choices=['ppo', 'sac', 'a2c'], help='Which learning algorithm to run.')
+    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm'], help='Which intrinsic reward algorithm to use.')
+    parser.add_argument('-env', type=str, help='Which environment to run on.')
     
     # general args
     parser.add_argument('-iterations', default=int(1e6), type=int, help='Number of optimization iterations to run (global timesteps).')

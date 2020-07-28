@@ -45,15 +45,21 @@ with open('./global.json') as global_params:
 
 def launch_tmux(args):
 
-    name = '_'.join([args.alg, args.env])
-
+    # determine log directory and argument string
     if args.pretrain is not None:
         log_dir = os.path.join(_RESULTS_DIR, args.pretrain)
+        cmd_file = open(log_dir + '/cmd.txt')
+        args_string = cmd_file.read().split(' ')
+        args_string[args_string.index('-pretrain') + 1] = args.pretrain
+        args_string = args_string[2:] # take out python3 launch.py
+        args_string = ' '.join(args_string)
     else:
+        name = '_'.join([args.alg, args.env])
         if os.path.isdir(f'{_RESULTS_DIR}/{name}/run_0'):
             runs = os.listdir(f'{_RESULTS_DIR}/{name}')
             try:
                 runs.remove('.DS_Store')
+                runs.remove('tmp')
             except ValueError:
                 pass
             sorted_runs = sorted(runs, key=lambda run: int(run.split('_')[-1]))
@@ -62,19 +68,18 @@ def launch_tmux(args):
             run_id = 0
         log_dir = os.path.join(_RESULTS_DIR, name, f'run_{run_id}')
 
-    # fill in arguments for launch
-    args_string = ''
-    for arg, value in vars(args).items():
-        if arg == 'launch_tmux':
-            args_string += '-launch_tmux no '
-        elif value is None and arg == 'log_dir':
-            args_string += f'-log_dir {log_dir} '
-        elif value is True:
-            args_string += f'-{arg} '
-        elif value is False:
-            pass
-        else:
-            args_string += f'-{arg} {value} '
+        args_string = ''
+        for arg, value in vars(args).items():
+            if arg == 'launch_tmux':
+                args_string += '-launch_tmux no '
+            elif value is None and arg == 'log_dir':
+                args_string += f'-log_dir {log_dir} '
+            elif value is True:
+                args_string += f'-{arg} '
+            elif value is False:
+                pass
+            else:
+                args_string += f'-{arg} {value} '
 
     # check whether to run
     print('\n')
@@ -90,19 +95,27 @@ def launch_tmux(args):
 
     # run commands if decided
     if answer == 'y':
-        commands = [['htop', 'htop'],
-                    ['runner', f'python3 launch.py {args_string}'],
-                    ['tb', f'tensorboard --logdir {log_dir} --port {_TB_PORT} --bind_all']]
+        commands = {'htop' : 'htop',
+                    'runner' : f'python3 launch.py {args_string}',
+                    'tb' : f'tensorboard --logdir {log_dir} --port {_TB_PORT} --bind_all'}
         os.system(f'kill -9 $( lsof -i:{_TB_PORT} -t ) > /dev/null 2>&1')
         os.system('tmux kill-session -t experiment')
         os.system('tmux new-session -s experiment -n htop -d bash')
-        for i, cmd in enumerate(commands):
-            if i != 0:
-                os.system(f'tmux new-window -t experiment:{i+1} -n {cmd[0]} bash')
-            os.system(f'tmux send-keys -t experiment:{cmd[0]} {shlex_quote(cmd[1])} Enter')
-        # time.sleep(4) # wait for logdir to be created
-        # with open(log_dir + '/cmd.txt', 'w') as cmd_file:
-        #     cmd_file.writelines([c[1] + '\n' for c in commands])
+        i = 0
+        for name, cmd in commands.items():
+            if name != 'htop':
+                os.system(f'tmux new-window -t experiment:{i+1} -n {name} bash')
+            os.system(f'tmux send-keys -t experiment:{name} {shlex_quote(cmd)} Enter')
+            i += 1
+
+        # save arguments, and command if needed
+        if args.pretrain is None:
+            time.sleep(4) # wait for logdir to be created
+            args_json = json.dumps(vars(args), indent=4)
+            with open(log_dir + '/arguments.json', 'w') as jsonfile:
+                jsonfile.write(args_json)
+            with open(log_dir + '/cmd.txt', 'w') as cmd_file:
+                cmd_file.writelines(commands['runner'])
     else:
         print('Not running commands, exiting.')
 
@@ -234,7 +247,8 @@ def start_experiment(args):
             n_steps=args.iterations,
             affinity=affinity,
             log_interval_steps=args.log_interval,
-            log_dir=args.log_dir
+            log_dir=args.log_dir,
+            pretrain=args.pretrain
             )
     else:
         runner = MinibatchRl(
@@ -244,7 +258,8 @@ def start_experiment(args):
             n_steps=args.iterations,
             affinity=affinity,
             log_interval_steps=args.log_interval,
-            log_dir=args.log_dir
+            log_dir=args.log_dir,
+            pretrain=args.pretrain
             )
 
     with logger_context(args.log_dir, config, snapshot_mode="last", use_summary_writer=True):
