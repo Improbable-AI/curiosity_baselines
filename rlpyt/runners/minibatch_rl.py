@@ -179,23 +179,17 @@ class MinibatchRlBase(BaseRunner):
         self._cum_time = new_time - self._start_time
         train_time_elapsed = new_time - self._last_time - eval_time
         new_updates = self.algo.update_counter - self._last_update_counter
-        new_samples = (self.sampler.batch_size * self.world_size *
-            self.log_interval_itrs)
-        updates_per_second = (float('nan') if itr == 0 else
-            new_updates / train_time_elapsed)
-        samples_per_second = (float('nan') if itr == 0 else
-            new_samples / train_time_elapsed)
-        replay_ratio = (new_updates * self.algo.batch_size * self.world_size /
-            new_samples)
-        cum_replay_ratio = (self.algo.batch_size * self.algo.update_counter /
-            ((itr + 1) * self.sampler.batch_size))  # world_size cancels.
+        new_samples = (self.sampler.batch_size * self.world_size * self.log_interval_itrs)
+        updates_per_second = (float('nan') if itr == 0 else new_updates / train_time_elapsed)
+        samples_per_second = (float('nan') if itr == 0 else new_samples / train_time_elapsed)
+        replay_ratio = (new_updates * self.algo.batch_size * self.world_size / new_samples)
+        cum_replay_ratio = (self.algo.batch_size * self.algo.update_counter / ((itr + 1) * self.sampler.batch_size))  # world_size cancels.
         cum_steps = (itr + 1) * self.sampler.batch_size * self.world_size
 
         # Add summaries etc
         with logger.tabular_prefix(prefix):
             if self._eval:
-                logger.record_tabular('CumTrainTime',
-                    self._cum_time - self._cum_eval_time)  # Already added new eval_time.
+                logger.record_tabular('CumTrainTime', self._cum_time - self._cum_eval_time)  # Already added new eval_time.
             logger.record_tabular('Iteration', itr)
             logger.record_tabular('CumTime (s)', self._cum_time)
             logger.record_tabular('CumSteps', cum_steps)
@@ -266,11 +260,12 @@ class MinibatchRl(MinibatchRlBase):
                     self.agent.sample_mode(itr)  # Might not be this agent sampling.
                     samples, traj_infos = self.sampler.obtain_samples(itr)
                     self.agent.train_mode(itr)
-                    opt_info = self.algo.optimize_agent(itr, samples)
+                    opt_info, layer_info = self.algo.optimize_agent(itr, samples)
                     self.store_diagnostics(itr, traj_infos, opt_info)
                     if (itr + 1) % self.log_interval_itrs == 0:
                         status_file.write(str(itr) + '\n')
                         self.log_diagnostics(itr)
+                        self.log_weights(layer_info)
         self.shutdown()
 
     def initialize_logging(self):
@@ -292,6 +287,13 @@ class MinibatchRl(MinibatchRlBase):
                 sum(info["Length"] for info in self._traj_infos))
         super().log_diagnostics(itr, prefix=prefix)
         self._new_completed_trajs = 0
+
+    def log_weights(self, layer_info):
+        """
+        Writes layer weight info to tensorboard.
+        """
+        for k, v in layer_info.items():
+            logger.record_histogram(k, v)
 
 
 class MinibatchRlEval(MinibatchRlBase):

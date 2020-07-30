@@ -58,8 +58,11 @@ def launch_tmux(args):
         if os.path.isdir(f'{_RESULTS_DIR}/{name}/run_0'):
             runs = os.listdir(f'{_RESULTS_DIR}/{name}')
             try:
-                runs.remove('.DS_Store')
                 runs.remove('tmp')
+            except ValueError:
+                pass
+            try:
+                runs.remove('.DS_Store')
             except ValueError:
                 pass
             sorted_runs = sorted(runs, key=lambda run: int(run.split('_')[-1]))
@@ -110,7 +113,7 @@ def launch_tmux(args):
 
         # save arguments, and command if needed
         if args.pretrain is None:
-            time.sleep(4) # wait for logdir to be created
+            time.sleep(6) # wait for logdir to be created
             args_json = json.dumps(vars(args), indent=4)
             with open(log_dir + '/arguments.json', 'w') as jsonfile:
                 jsonfile.write(args_json)

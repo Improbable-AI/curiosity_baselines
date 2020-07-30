@@ -13,6 +13,8 @@ trainer_1 := i-051d019a04d16e0be
 trainer_2 := i-0b0e52f926dae48e7
 trainer_3 := i-03ac0ecb80701b20c
 trainer_4 := i-0fefcba4a5c464eb1
+trainer_5 := i-043bcb928e14bef1a
+trainer_6 := i-0f6bf5087225511ed
 
 start_docker:
 	@docker run -it \

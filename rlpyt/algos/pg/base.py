@@ -6,7 +6,14 @@ from rlpyt.algos.base import RlAlgorithm
 from rlpyt.algos.utils import discount_return, generalized_advantage_estimation, valid_from_done
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
-OptInfo = namedtuple("OptInfo", ["loss", "inv_loss", "reward_total_std", "forward_loss", "curiosity_loss", "gradNorm", "entropy", "perplexity"])
+OptInfo = namedtuple("OptInfo", ["loss", 
+                                 "inv_loss", 
+                                 "reward_total_std", 
+                                 "forward_loss", 
+                                 "curiosity_loss", 
+                                 "gradNorm", 
+                                 "entropy", 
+                                 "perplexity"])
 AgentTrain = namedtuple("AgentTrain", ["dist_info", "value"])
 
 

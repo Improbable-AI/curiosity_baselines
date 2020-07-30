@@ -96,6 +96,22 @@ class PPO(PolicyGradientAlgo):
             init_rnn_state = samples.agent.agent_info.prev_rnn_state[0]  # T=0.
         T, B = samples.env.reward.shape[:2]
         opt_info = OptInfo(*([] for _ in range(len(OptInfo._fields))))
+
+        layer_info = {'forward/lin1.w':None,
+                      'forward/lin1.b':None,
+                      'forward/lin2.w':None,
+                      'forward/lin2.b':None,
+                      'inverse/lin1.w':None, 
+                      'inverse/lin1.b':None,
+                      'inverse/lin2.w':None,
+                      'inverse/lin2.b':None,
+                      'encoder/conv1.w':None,
+                      'encoder/conv1.b':None,
+                      'encoder/conv2.w':None,
+                      'encoder/conv2.b':None,
+                      'encoder/conv3.w':None,
+                      'encoder/conv3.b':None}
+
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
         batch_size = B if self.agent.recurrent else T * B
         mb_size = batch_size // self.minibatches
@@ -112,7 +128,7 @@ class PPO(PolicyGradientAlgo):
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
                 self.optimizer.step()
 
-                # Tensorboard summaries stored here
+                # Tensorboard summaries
                 opt_info.loss.append(loss.item())
                 opt_info.inv_loss.append(inv_loss.item())
                 opt_info.forward_loss.append(forward_loss.item())
@@ -122,11 +138,27 @@ class PPO(PolicyGradientAlgo):
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
+
+        layer_info['forward/lin1.w'] = self.agent.model.curiosity_model.forward_model[0].weight
+        layer_info['forward/lin1.b'] = self.agent.model.curiosity_model.forward_model[0].bias
+        layer_info['forward/lin2.w'] = self.agent.model.curiosity_model.forward_model[2].weight
+        layer_info['forward/lin2.b'] = self.agent.model.curiosity_model.forward_model[2].bias
+        layer_info['inverse/lin1.w'] = self.agent.model.curiosity_model.inverse_model[0].weight
+        layer_info['inverse/lin1.b'] = self.agent.model.curiosity_model.inverse_model[0].bias
+        layer_info['inverse/lin2.w'] = self.agent.model.curiosity_model.inverse_model[2].weight
+        layer_info['inverse/lin2.b'] = self.agent.model.curiosity_model.inverse_model[2].bias
+        layer_info['encoder/conv1.w'] = self.agent.model.curiosity_model.encoder.model[0].weight
+        layer_info['encoder/conv1.b'] = self.agent.model.curiosity_model.encoder.model[0].bias
+        layer_info['encoder/conv2.w'] = self.agent.model.curiosity_model.encoder.model[2].weight
+        layer_info['encoder/conv2.b'] = self.agent.model.curiosity_model.encoder.model[2].bias
+        layer_info['encoder/conv3.w'] = self.agent.model.curiosity_model.encoder.model[4].weight
+        layer_info['encoder/conv3.b'] = self.agent.model.curiosity_model.encoder.model[4].bias
+
         if self.linear_lr_schedule:
             self.lr_scheduler.step()
             self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
 
-        return opt_info
+        return opt_info, layer_info
 
     def loss(self, agent_inputs, agent_curiosity_inputs, action, return_, advantage, valid, old_dist_info,
             init_rnn_state=None):

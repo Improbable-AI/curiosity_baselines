@@ -33,6 +33,42 @@ class UniverseHead(nn.Module):
         encoded_state = self.model(state)
         return encoded_state.view(encoded_state.shape[0], -1)
 
+class BurdaHead(nn.Module):
+    '''
+    Large scale curiosity paper
+    '''
+    def __init__(
+            self, 
+            image_shape,
+            output_size=512,
+            conv_output_size=3136,
+            batch_norm=False
+            ):
+        super(BurdaHead, self).__init__()
+        c, h, w = image_shape
+        self.output_size = output_size
+        self.conv_output_size = conv_output_size
+        self.model = nn.Sequential(
+                                nn.Conv2d(in_channels=c, out_channels=32, kernel_size=(8, 8), stride=(4, 4)),
+                                nn.LeakyReLU(),
+                                nn.BatchNorm2d(32),
+                                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(4, 4), stride=(2, 2)),
+                                nn.LeakyReLU(),
+                                nn.BatchNorm2d(64),
+                                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1)),
+                                nn.LeakyReLU(),
+                                nn.BatchNorm2d(64),
+                                Flatten(),
+                                nn.Linear(in_features=self.conv_output_size, out_features=self.output_size),
+                                nn.BatchNorm1d(self.output_size)
+                                )
+
+    def forward(self, state):
+        """Compute the feature encoding convolution + head on the input;
+        assumes correct input shape: [B,C,H,W]."""
+        encoded_state = self.model(state)
+        return encoded_state
+
 class ICM(nn.Module):
 
     def __init__(
@@ -47,9 +83,20 @@ class ICM(nn.Module):
 
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
+        # if self.feature_encoding != 'none':
+        #     if self.feature_encoding == 'idf':
+        #         self.encoder = UniverseHead(image_shape=image_shape, batch_norm=batch_norm) # universe head from original paper (ICM 2017)
+
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
-                self.encoder = UniverseHead(image_shape=image_shape, batch_norm=batch_norm) # universe head from original paper (ICM 2017)
+                self.feature_size = 288
+                self.feature_hidden_size = 256
+                self.encoder = UniverseHead(image_shape=image_shape, batch_norm=batch_norm)
+            elif self.feature_encoding == 'idf_burda':
+                self.feature_size = 3136
+                self.feature_hidden_size = 512
+                self.encoder = BurdaHead(image_shape=image_shape, output_size=self.feature_hidden_size, conv_output_size=self.feature_size, batch_norm=batch_norm)
+
 
         self.forward_model = nn.Sequential(
             nn.Linear(288 + action_size, 256),
@@ -60,7 +107,7 @@ class ICM(nn.Module):
             nn.Linear(288 * 2, 256),
             nn.ReLU(),
             nn.Linear(256, action_size),
-            nn.ReLU()
+            # nn.ReLU()
             )
 
     def forward(self, obs1, obs2, action):
