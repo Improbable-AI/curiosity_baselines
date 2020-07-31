@@ -140,7 +140,8 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
 
                 #------------------------------------------------------------------------#
                 # DEBUGGING: records observations to curiosity_baselines/images/___.jpg
-                # Stops and sleeps long enough to quit out at the end of an episode.
+                # Stops and sleeps long enough to quit out at the end of an episode. Make sure
+                # frame stacking is turned off.
                 # from PIL import Image
                 # img = Image.fromarray(np.squeeze(o), 'L')
                 # img.save('images/{}.jpg'.format(t))
@@ -153,7 +154,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
 
                 r_int = torch.tensor(0.0)
                 if self.agent.model_kwargs['curiosity_kwargs']['curiosity_alg'] != 'none':
-                    r_int, curiosity_info = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory
+                    r_int, curiosity_info = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory 
 
                 traj_infos[b].step(observation[b], action[b], r_ext, r_int, d, agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):

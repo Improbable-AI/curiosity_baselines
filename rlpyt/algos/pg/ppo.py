@@ -110,7 +110,10 @@ class PPO(PolicyGradientAlgo):
                       'encoder/conv2.w':None,
                       'encoder/conv2.b':None,
                       'encoder/conv3.w':None,
-                      'encoder/conv3.b':None}
+                      'encoder/conv3.b':None,
+                      'encoder/conv4.w':None,
+                      'encoder/conv4.b':None
+                      }
 
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
         batch_size = B if self.agent.recurrent else T * B
@@ -149,10 +152,12 @@ class PPO(PolicyGradientAlgo):
         layer_info['inverse/lin2.b'] = self.agent.model.curiosity_model.inverse_model[2].bias
         layer_info['encoder/conv1.w'] = self.agent.model.curiosity_model.encoder.model[0].weight
         layer_info['encoder/conv1.b'] = self.agent.model.curiosity_model.encoder.model[0].bias
-        layer_info['encoder/conv2.w'] = self.agent.model.curiosity_model.encoder.model[2].weight
-        layer_info['encoder/conv2.b'] = self.agent.model.curiosity_model.encoder.model[2].bias
-        layer_info['encoder/conv3.w'] = self.agent.model.curiosity_model.encoder.model[4].weight
-        layer_info['encoder/conv3.b'] = self.agent.model.curiosity_model.encoder.model[4].bias
+        layer_info['encoder/conv2.w'] = self.agent.model.curiosity_model.encoder.model[3].weight
+        layer_info['encoder/conv2.b'] = self.agent.model.curiosity_model.encoder.model[3].bias
+        layer_info['encoder/conv3.w'] = self.agent.model.curiosity_model.encoder.model[6].weight
+        layer_info['encoder/conv3.b'] = self.agent.model.curiosity_model.encoder.model[6].bias
+        layer_info['encoder/conv4.w'] = self.agent.model.curiosity_model.encoder.model[9].weight
+        layer_info['encoder/conv4.b'] = self.agent.model.curiosity_model.encoder.model[9].bias
 
         if self.linear_lr_schedule:
             self.lr_scheduler.step()

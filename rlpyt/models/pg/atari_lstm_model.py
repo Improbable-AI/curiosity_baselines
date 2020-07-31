@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.conv2d import Conv2dHeadModel
-from rlpyt.models.curiosity.icm import ICM
+from rlpyt.models.curiosity.icm import ICM, UniverseHead
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -30,18 +30,6 @@ class AtariLstmModel(torch.nn.Module):
             ):
         """Instantiate neural net module according to inputs."""
         super().__init__()
-        self.conv = Conv2dHeadModel(
-            image_shape=image_shape,
-            channels=channels or [16, 32],
-            kernel_sizes=kernel_sizes or [8, 4],
-            strides=strides or [4, 2],
-            paddings=paddings or [0, 1],
-            use_maxpool=use_maxpool,
-            hidden_sizes=fc_sizes,  # Applies nonlinearity at end.
-        )
-        self.lstm = torch.nn.LSTM(self.conv.output_size + output_size + 1, lstm_size)
-        self.pi = torch.nn.Linear(lstm_size, output_size)
-        self.value = torch.nn.Linear(lstm_size, 1)
 
         if curiosity_kwargs['curiosity_alg'] == 'icm':
             self.curiosity_model = ICM(
@@ -51,6 +39,23 @@ class AtariLstmModel(torch.nn.Module):
                                     batch_norm=curiosity_kwargs['batch_norm'],
                                     prediction_beta=curiosity_kwargs['prediction_beta']
                                     )
+            self.conv = self.curiosity_model.encoder
+            self.conv.output_size = self.curiosity_model.feature_size
+        else:
+            self.conv = Conv2dHeadModel(
+                image_shape=image_shape,
+                channels=channels or [16, 32],
+                kernel_sizes=kernel_sizes or [8, 4],
+                strides=strides or [4, 2],
+                paddings=paddings or [0, 1],
+                use_maxpool=use_maxpool,
+                hidden_sizes=fc_sizes,  # Applies nonlinearity at end.
+            )
+
+        self.lstm = torch.nn.LSTM(self.conv.output_size + output_size + 1, lstm_size)
+        self.pi = torch.nn.Linear(lstm_size, output_size)
+        self.value = torch.nn.Linear(lstm_size, 1)
+
 
     def forward(self, image, prev_action, prev_reward, init_rnn_state):
         """

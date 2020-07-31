@@ -15,8 +15,8 @@ class ProcessFrame84(gym.ObservationWrapper):
 
     @staticmethod
     def process(frame, crop=True):
-        if frame.size == 256 * 240 * 3: # gym-super-mario resolution
-            img = np.reshape(frame, [256, 240, 3]).astype(np.float32)
+        if frame.size == 240 * 256 * 3: # gym-super-mario resolution
+            img = np.reshape(frame, [240, 256, 3]).astype(np.float32)
         elif frame.size == 224 * 240 * 3: # gym-retro resolution
             img = np.reshape(frame, [224, 240, 3]).astype(np.float32)
         else:
@@ -24,7 +24,7 @@ class ProcessFrame84(gym.ObservationWrapper):
         img = img[:, :, 0] * 0.299 + img[:, :, 1] * 0.587 + img[:, :, 2] * 0.114 # convert to YUV
         size = (84, 110 if crop else 84)
         resized_screen = np.array(Image.fromarray(img).resize(size, resample=Image.BILINEAR), dtype=np.uint8)
-        x_t = resized_screen[18:102, :] if crop else resized_screen
+        x_t = resized_screen[18:102, :] if crop else resized_screen # crop takes away top metrics (lives, etc.)
         x_t = np.reshape(x_t, [84, 84, 1])
         return x_t.astype(np.uint8)
 

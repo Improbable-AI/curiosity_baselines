@@ -201,7 +201,7 @@ def mario_make(*args, info_example=None, **kwargs):
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
     env = FrameSkip(env, 4)
-    env = ProcessFrame84(env, crop=False)
+    env = ProcessFrame84(env, crop=True)
     env = FrameStack(env, 4)
     env = PytorchImage(env) # (h,w,c) -> (c,h,w)
     if info_example is None:

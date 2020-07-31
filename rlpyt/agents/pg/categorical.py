@@ -103,7 +103,6 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
         inv_loss, forward_loss = buffer_to((inv_loss, forward_loss), device="cpu")
         return inv_loss, forward_loss
 
-
     @torch.no_grad()
     def value(self, observation, prev_action, prev_reward):
         prev_action = self.distribution.to_onehot(prev_action)
