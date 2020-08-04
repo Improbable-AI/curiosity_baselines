@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.conv2d import Conv2dHeadModel
-from rlpyt.models.curiosity.icm import ICM, UniverseHead
+from rlpyt.models.curiosity.icm import ICM, UniverseHead, BurdaHead
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -32,15 +32,20 @@ class AtariLstmModel(torch.nn.Module):
         super().__init__()
 
         if curiosity_kwargs['curiosity_alg'] == 'icm':
-            self.curiosity_model = ICM(
-                                    image_shape=image_shape,
-                                    action_size=output_size,
-                                    feature_encoding=curiosity_kwargs['feature_encoding'],
-                                    batch_norm=curiosity_kwargs['batch_norm'],
-                                    prediction_beta=curiosity_kwargs['prediction_beta']
-                                    )
-            self.conv = self.curiosity_model.encoder
+            self.curiosity_model = ICM(image_shape=image_shape,
+                                       action_size=output_size,
+                                       feature_encoding=curiosity_kwargs['feature_encoding'],
+                                       batch_norm=curiosity_kwargs['batch_norm'],
+                                       prediction_beta=curiosity_kwargs['prediction_beta'])
+            if curiosity_kwargs['feature_encoding'] == 'idf':
+                self.conv = UniverseHead(image_shape=image_shape,
+                                         batch_norm=curiosity_kwargs['batch_norm'])
+            elif curiosity_kwargs['feature_encoding'] == 'idf_burda':
+                self.conv = BurdaHead(image_shape=image_shape,
+                                      output_size=self.curiosity_model.feature_size,
+                                      batch_norm=curiosity_kwargs['batch_norm'])
             self.conv.output_size = self.curiosity_model.feature_size
+
         else:
             self.conv = Conv2dHeadModel(
                 image_shape=image_shape,
@@ -49,7 +54,7 @@ class AtariLstmModel(torch.nn.Module):
                 strides=strides or [4, 2],
                 paddings=paddings or [0, 1],
                 use_maxpool=use_maxpool,
-                hidden_sizes=fc_sizes,  # Applies nonlinearity at end.
+                hidden_sizes=fc_sizes, # Applies nonlinearity at end.
             )
 
         self.lstm = torch.nn.LSTM(self.conv.output_size + output_size + 1, lstm_size)

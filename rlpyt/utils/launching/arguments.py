@@ -32,7 +32,7 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-discount', default=0.99, type=float, help='Reward discount factor applied.')
         parser.add_argument('-lr', default=0.0001, type=float, help='Learning rate.')
         parser.add_argument('-v_loss_coeff', default=1.0, type=float, help='Value function coefficient in the loss function.')
-        parser.add_argument('-entropy_loss_coeff', default=0.01, type=float, help='Entropy coefficient in the loss function.')
+        parser.add_argument('-entropy_loss_coeff', default=0.001, type=float, help='Entropy coefficient in the loss function.')
         parser.add_argument('-grad_norm_bound', default=1.0, type=float, help='Gradient norm clipping bound.')
         parser.add_argument('-gae_lambda', default=0.95, type=float, help='Bias/variance tradeoff for GAE.')
         parser.add_argument('-minibatches', default=4, type=int, help='Number of minibatches per iteration.')

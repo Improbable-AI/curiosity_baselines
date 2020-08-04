@@ -237,7 +237,6 @@ class MinibatchRl(MinibatchRlBase):
         Args: 
             log_traj_window (int): How many trajectories to hold in deque for computing performance statistics.
         """
-        print(kwargs)
         super().__init__(**kwargs)
         self.log_traj_window = int(log_traj_window)
 
