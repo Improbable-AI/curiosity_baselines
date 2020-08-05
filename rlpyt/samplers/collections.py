@@ -1,4 +1,4 @@
-
+import numpy as np
 from collections import namedtuple
 
 from rlpyt.utils.collections import namedarraytuple, AttrDict
@@ -39,22 +39,46 @@ class TrajInfo(AttrDict):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)  # (for AttrDict behavior)
+        # self.Length = 0
+        # self.ExtrinsicReward = 0
+        # self.NonzeroExtrinsicRewards = 0
+        # self.DiscountedExtrinsicReward = 0
+        # self.IntrinsicReward = 0
+        # self.NonzeroIntrinsicRewards = 0
+        # self._cur_discount = 1
+
         self.Length = 0
-        self.ExtrinsicReward = 0
-        self.NonzeroExtrinsicRewards = 0
-        self.DiscountedExtrinsicReward = 0
-        self.IntrinsicReward = 0
-        self.NonzeroIntrinsicRewards = 0
+        self.EpExtrinsicReward = 0
+        self.EpNonzeroExtrinsicRewards = 0
+        self.EpDiscountedExtrinsicReward = 0
+        self.EpIntrinsicReward = 0
+        self.EpNonzeroIntrinsicRewards = 0
         self._cur_discount = 1
 
+        self.EpAveExtrinsicReward = []
+        self.EpAveIntrinsicReward = []
+
     def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info):
+        # self.Length += 1
+        # self.ExtrinsicReward += reward_ext
+        # self.NonzeroExtrinsicRewards += reward_ext != 0
+        # self.DiscountedExtrinsicReward += self._cur_discount * reward_ext
+        # self.IntrinsicReward += reward_int
+        # self.NonzeroIntrinsicRewards += reward_int != 0
+        # self._cur_discount *= self._discount
+
         self.Length += 1
-        self.ExtrinsicReward += reward_ext
-        self.NonzeroExtrinsicRewards += reward_ext != 0
-        self.DiscountedExtrinsicReward += self._cur_discount * reward_ext
-        self.IntrinsicReward += reward_int
-        self.NonzeroIntrinsicRewards += reward_int != 0
+        self.EpExtrinsicReward += reward_ext
+        self.EpNonzeroExtrinsicRewards += reward_ext != 0
+        self.EpDiscountedExtrinsicReward += self._cur_discount * reward_ext
+        self.EpIntrinsicReward += reward_int
+        self.EpNonzeroIntrinsicRewards += reward_int != 0
         self._cur_discount *= self._discount
 
+        self.EpAveExtrinsicReward.append(reward_ext)
+        self.EpAveIntrinsicReward.append(reward_int)
+
     def terminate(self, observation):
+        self.EpAveExtrinsicReward = np.mean(self.EpAveExtrinsicReward)
+        self.EpAveIntrinsicReward = np.mean(self.EpAveIntrinsicReward)
         return self

@@ -458,6 +458,7 @@ def record_tabular_misc_stat(key, values, placement='back'):
         suffix = ""
         if _tf_summary_writer is not None:
             prefix += "/"  # Group stats together in Tensorboard.
+
     if len(values) > 0:
         record_tabular(prefix + "Average" + suffix, np.average(values))
         record_tabular(prefix + "Std" + suffix, np.std(values))

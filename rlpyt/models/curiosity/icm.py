@@ -190,8 +190,6 @@ class ICM(nn.Module):
         action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
         forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2.detach())
-        print('INVLOSS: ', inverse_loss.squeeze())
-        print('FORLOSS: ', forward_loss.squeeze())
         return inverse_loss.squeeze(), forward_loss.squeeze()
 
 

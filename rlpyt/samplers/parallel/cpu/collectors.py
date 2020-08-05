@@ -156,7 +156,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                 if self.agent.model_kwargs['curiosity_kwargs']['curiosity_alg'] != 'none':
                     r_int, curiosity_info = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory 
 
-                traj_infos[b].step(observation[b], action[b], r_ext, r_int, d, agent_info[b], env_info)
+                traj_infos[b].step(observation[b], action[b], r_ext, r_int.item(), d, agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()

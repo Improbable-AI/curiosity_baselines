@@ -26,11 +26,12 @@ def generalized_advantage_estimation(reward, value, done, bootstrap_value,
     """Time-major inputs, optional other dimensions: [T], [T,B], etc.  Similar
     to `discount_return()` but using Generalized Advantage Estimation to
     compute advantages and returns."""
+
     advantage = advantage_dest if advantage_dest is not None else zeros(
         reward.shape, dtype=reward.dtype)
     return_ = return_dest if return_dest is not None else zeros(
         reward.shape, dtype=reward.dtype)
-    nd = 1 - done
+    nd = 1 - done # array of whether or not an episode is not done
     nd = nd.type(reward.dtype) if isinstance(nd, torch.Tensor) else nd
     advantage[-1] = reward[-1] + discount * bootstrap_value * nd[-1] - value[-1]
     for t in reversed(range(len(reward) - 1)):

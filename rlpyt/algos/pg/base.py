@@ -6,7 +6,13 @@ from rlpyt.algos.base import RlAlgorithm
 from rlpyt.algos.utils import discount_return, generalized_advantage_estimation, valid_from_done
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
-OptInfo = namedtuple("OptInfo", ["loss", 
+OptInfo = namedtuple("OptInfo", ["return_",
+                                 "valpred",
+                                 "advantage",
+                                 "loss", 
+                                 "pi_loss",
+                                 "value_loss",
+                                 "entropy_loss",
                                  "inv_loss", 
                                  "reward_total_std", 
                                  "forward_loss", 
@@ -52,6 +58,7 @@ class PolicyGradientAlgo(RlAlgorithm):
         """
         reward_ext, reward_int, done, value, bv = (samples.env.reward, samples.agent.reward_int, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
         reward_total = reward_ext + reward_int
+
         done = done.type(reward_ext.dtype)
 
         if self.normalize_reward:

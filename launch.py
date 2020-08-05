@@ -112,13 +112,13 @@ def launch_tmux(args):
             i += 1
 
         # save arguments, and command if needed
-        if args.pretrain is None:
-            time.sleep(6) # wait for logdir to be created
-            args_json = json.dumps(vars(args), indent=4)
-            with open(log_dir + '/arguments.json', 'w') as jsonfile:
-                jsonfile.write(args_json)
-            with open(log_dir + '/cmd.txt', 'w') as cmd_file:
-                cmd_file.writelines(commands['runner'])
+        # if args.pretrain is None:
+        #     time.sleep(6) # wait for logdir to be created
+        #     args_json = json.dumps(vars(args), indent=4)
+        #     with open(log_dir + '/arguments.json', 'w') as jsonfile:
+        #         jsonfile.write(args_json)
+        #     with open(log_dir + '/cmd.txt', 'w') as cmd_file:
+        #         cmd_file.writelines(commands['runner'])
     else:
         print('Not running commands, exiting.')
 

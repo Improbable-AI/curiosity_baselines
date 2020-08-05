@@ -117,7 +117,7 @@ class PPO(PolicyGradientAlgo):
                       'forward/res4/lin2.b':None,
                       'forward/lin_last.w':None,
                       'forward/lin_last.b':None,
-                      
+
                       'inverse/lin1.w':None, 
                       'inverse/lin1.b':None,
                       'inverse/lin2.w':None,
@@ -144,13 +144,16 @@ class PPO(PolicyGradientAlgo):
                 self.optimizer.zero_grad()
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
+                loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
                 self.optimizer.step()
 
                 # Tensorboard summaries
                 opt_info.loss.append(loss.item())
+                opt_info.pi_loss.append(pi_loss.item())
+                opt_info.value_loss.append(value_loss.item())
+                opt_info.entropy_loss.append(entropy_loss.item())
                 opt_info.inv_loss.append(inv_loss.item())
                 opt_info.forward_loss.append(forward_loss.item())
                 opt_info.curiosity_loss.append(curiosity_loss.item())
@@ -159,6 +162,10 @@ class PPO(PolicyGradientAlgo):
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
+
+        opt_info.return_.append(torch.mean(return_).detach().clone().item())
+        opt_info.valpred.append(torch.mean(advantage).detach().clone().item())
+        opt_info.advantage.append(torch.mean(samples.agent.agent_info.value).detach().clone().item())
 
         layer_info['forward/lin1.w'] = self.agent.model.curiosity_model.forward_model.lin_1.weight
         layer_info['forward/lin1.b'] = self.agent.model.curiosity_model.forward_model.lin_1.bias
@@ -222,12 +229,10 @@ class PPO(PolicyGradientAlgo):
 
         ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info, new_dist_info=dist_info)
         surr_1 = ratio * advantage
-        clipped_ratio = torch.clamp(ratio, 1. - self.ratio_clip,
-            1. + self.ratio_clip)
+        clipped_ratio = torch.clamp(ratio, 1. - self.ratio_clip, 1. + self.ratio_clip)
         surr_2 = clipped_ratio * advantage
         surrogate = torch.min(surr_1, surr_2)
         pi_loss = - valid_mean(surrogate, valid)
-
         value_error = 0.5 * (value - return_) ** 2
         value_loss = self.value_loss_coeff * valid_mean(value_error, valid)
 
@@ -250,4 +255,4 @@ class PPO(PolicyGradientAlgo):
         # loss += forward_loss # burda seems to use no scaling of forward vs inv losses
 
         perplexity = dist.mean_perplexity(dist_info, valid)
-        return loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity
+        return loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity
