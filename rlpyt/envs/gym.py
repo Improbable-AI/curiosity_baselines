@@ -196,8 +196,6 @@ def mario_make(*args, info_example=None, **kwargs):
     """
     env = gym_super_mario_bros.make(kwargs['game'])
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
-    # if kwargs['no_extrinsic']:
-    #     env = NoExtrinsicReward(env)
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
     env = FrameSkip(env, 4)

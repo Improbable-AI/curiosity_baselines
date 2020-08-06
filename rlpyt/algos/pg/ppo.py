@@ -157,15 +157,18 @@ class PPO(PolicyGradientAlgo):
                 opt_info.inv_loss.append(inv_loss.item())
                 opt_info.forward_loss.append(forward_loss.item())
                 opt_info.curiosity_loss.append(curiosity_loss.item())
-                opt_info.reward_total_std.append(self.reward_avg.var**0.5)
+
+                if self.normalize_reward:
+                    opt_info.reward_total_std.append(self.reward_avg.var**0.5)
+
                 opt_info.gradNorm.append(grad_norm)
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
 
         opt_info.return_.append(torch.mean(return_).detach().clone().item())
-        opt_info.valpred.append(torch.mean(advantage).detach().clone().item())
-        opt_info.advantage.append(torch.mean(samples.agent.agent_info.value).detach().clone().item())
+        opt_info.advantage.append(torch.mean(advantage).detach().clone().item())
+        opt_info.valpred.append(torch.mean(samples.agent.agent_info.value).detach().clone().item())
 
         layer_info['forward/lin1.w'] = self.agent.model.curiosity_model.forward_model.lin_1.weight
         layer_info['forward/lin1.b'] = self.agent.model.curiosity_model.forward_model.lin_1.bias

@@ -84,21 +84,23 @@ class DecorrelatingStartCollector(BaseCollector):
         resulting agent_inputs buffer (`observation`, `prev_action`,
         `prev_reward`)."""
         traj_infos = [self.TrajInfoCls() for _ in range(len(self.envs))]
+
+        prev_action = np.stack([env.action_space.null_value() for env in self.envs]) # noop
+        prev_reward_ext = np.zeros(len(self.envs), dtype="float32") # no ext reward
+        prev_reward_int = np.zeros(len(self.envs), dtype="float32") # no int reward
+        prev_reward_tot = np.zeros(len(self.envs), dtype="float32") # no total reward
         prev_observations = list()
         observations = list()
         for env in self.envs:
-            o_reset = env.reset()
-            prev_observations.append(o_reset)
-            observations.append(deepcopy(o_reset)) # emulates stepping with noop
+            o = env.reset()
+            prev_observations.append(o) # observation doesn't change
+            observations.append(deepcopy(o)) # emulates stepping with noop
         prev_observation = buffer_from_example(prev_observations[0], len(self.envs))
         observation = buffer_from_example(observations[0], len(self.envs))
-        
         for b, obs in enumerate(observations):
             prev_observation[b] = prev_observations[b] # numpy array or namedarraytuple
             observation[b] = obs
-        prev_action = np.stack([env.action_space.null_value() for env in self.envs]) # noop
-        prev_reward_ext = np.zeros(len(self.envs), dtype="float32")
-        prev_reward_int = np.zeros(len(self.envs), dtype="float32")
+
         if self.rank == 0:
             logger.log("Sampler decorrelating envs, max steps: "
                 f"{max_decorrelation_steps}")
@@ -123,6 +125,7 @@ class DecorrelatingStartCollector(BaseCollector):
                 prev_action[b] = a
                 prev_reward_ext[b] = r_ext
                 prev_reward_int[b] = r_int
+                prev_reward_tot[b] = r_ext + r_int
         # For action-server samplers.
         if hasattr(self, "step_buffer_np") and self.step_buffer_np is not None:
             self.step_buffer_np.prev_observation = prev_observation
@@ -131,7 +134,7 @@ class DecorrelatingStartCollector(BaseCollector):
             self.step_buffer_np.observation[:] = observation
             self.step_buffer_np.reward_int[:] = prev_reward_int
 
-        # AgentInputs = ['observation', 'prev_action', 'prev_reward']
-        # AgentCuriosityInputs = ['observation', 'action', 'next_observation']
-        return AgentInputs(observation, prev_action, prev_reward_ext), AgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
+        # AgentInputs -> ['observation', 'prev_action', 'prev_reward']
+        # AgentCuriosityInputs -> ['observation', 'action', 'next_observation']
+        return AgentInputs(observation, prev_action, prev_reward_tot), AgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
 

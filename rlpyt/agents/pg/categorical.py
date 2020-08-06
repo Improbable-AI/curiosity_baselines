@@ -1,7 +1,7 @@
 
 import torch
 
-from rlpyt.agents.base import AgentStep, AgentCuriosityStep, BaseAgent, RecurrentAgentMixin, AlternatingRecurrentAgentMixin
+from rlpyt.agents.base import AgentStep, BaseAgent, RecurrentAgentMixin, AlternatingRecurrentAgentMixin
 from rlpyt.agents.pg.base import AgentInfo, AgentInfoRnn
 from rlpyt.distributions.categorical import Categorical, DistInfo
 from rlpyt.utils.buffer import buffer_to, buffer_func, buffer_method
@@ -78,21 +78,19 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
         # Transpose the rnn_state from [N,B,H] --> [B,N,H] for storage.
         # (Special case: model should always leave B dimension in.)
         prev_rnn_state = buffer_method(prev_rnn_state, "transpose", 0, 1)
-        agent_info = AgentInfoRnn(dist_info=dist_info, value=value,
-            prev_rnn_state=prev_rnn_state)
+        agent_info = AgentInfoRnn(dist_info=dist_info, value=value, prev_rnn_state=prev_rnn_state)
         action, agent_info = buffer_to((action, agent_info), device="cpu")
         self.advance_rnn_state(rnn_state)  # Keep on device.
         return AgentStep(action=action, agent_info=agent_info)
 
     @torch.no_grad()
     def curiosity_step(self, observation, action, next_observation):
-        info = dict()
         action = self.distribution.to_onehot(action)
         if action.dim() == 1: # hacky way to fix action passed in as ([x]) instead of ([1, x]) in examples_output when building buffer
             action = action.unsqueeze(0)
         curiosity_agent_inputs = buffer_to((observation, action, next_observation), device=self.device)
         r_int = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs)
-        return AgentCuriosityStep(r_int, info)
+        return r_int
 
     def curiosity_loss(self, observation, action, next_observation):
         info = dict()

@@ -70,7 +70,7 @@ class BurdaHead(nn.Module):
                                 )
 
         # if hook:
-        #     self.model[-1].weight.register_hook(lambda grad: print(grad))
+        #     self.model[0].weight.register_hook(lambda grad: print(grad))
 
     def forward(self, state):
         """Compute the feature encoding convolution + head on the input;
@@ -135,7 +135,7 @@ class ICM(nn.Module):
                 self.encoder = UniverseHead(image_shape=image_shape, batch_norm=batch_norm)
             elif self.feature_encoding == 'idf_burda':
                 self.feature_size = 512
-                self.encoder = BurdaHead(image_shape=image_shape, output_size=self.feature_size, batch_norm=batch_norm, hook=True)
+                self.encoder = BurdaHead(image_shape=image_shape, output_size=self.feature_size, batch_norm=batch_norm, hook=False)
 
         # self.forward_model = nn.Sequential(
         #     nn.Linear(self.feature_size + action_size, 256),

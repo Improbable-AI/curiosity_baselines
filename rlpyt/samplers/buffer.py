@@ -41,16 +41,18 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         bv = buffer_from_example(examples["agent_info"].value, (1, B), agent_shared)
         agent_buffer = AgentSamplesBsv(*agent_buffer, bootstrap_value=bv)
 
-    prev_observation = buffer_from_example(examples["prev_observation"], (T, B), env_shared)
-    observation = buffer_from_example(examples["observation"], (T, B), env_shared)
-    all_reward = buffer_from_example(examples["reward"], (T + 1, B), env_shared)
+    all_observation = buffer_from_example(examples["observation"], (T + 1, B), env_shared) # all zero arrays, EXCEPT FOR INDEX 0 (see below)
+    all_observation[0] = examples["observation"] # prev_observation at the very start is the same as the reset observation
+    observation = all_observation[1:]
+    prev_observation = all_observation[:-1]  # Writing to observation will populate prev_observation.
+    all_reward = buffer_from_example(examples["reward"], (T + 1, B), env_shared) # all zero values
     reward = all_reward[1:]
     prev_reward = all_reward[:-1]  # Writing to reward will populate prev_reward.
     done = buffer_from_example(examples["done"], (T, B), env_shared)
     env_info = buffer_from_example(examples["env_info"], (T, B), env_shared)
     env_buffer = EnvSamples(
-        prev_observation=prev_observation,
         observation=observation,
+        prev_observation=prev_observation,
         reward=reward,
         prev_reward=prev_reward,
         done=done,
@@ -84,14 +86,13 @@ def get_example_outputs(agent, env, examples, subprocess=False):
     r_int = 0.0
     curiosity_info = dict()
     if agent.model_kwargs['curiosity_kwargs']['curiosity_alg'] != 'none':
-        r_int, curiosity_info = agent.curiosity_step(*agent_curiosity_inputs)
+        r_int = agent.curiosity_step(*agent_curiosity_inputs)
 
     if "prev_rnn_state" in agent_info:
         # Agent leaves B dimension in, strip it: [B,N,H] --> [N,H]
         agent_info = agent_info._replace(prev_rnn_state=agent_info.prev_rnn_state[0])
 
-    examples["prev_observation"] = o_reset
-    examples["observation"] = o
+    examples["observation"] = o_reset
     examples["reward"] = r
     examples["reward_int"] = r_int
     examples["done"] = d

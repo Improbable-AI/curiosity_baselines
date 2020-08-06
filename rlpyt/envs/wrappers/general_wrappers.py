@@ -147,7 +147,7 @@ class PytorchImage(gym.ObservationWrapper):
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(current_shape[-1], current_shape[0], current_shape[1]))
 
     def observation(self, observation):
-        return np.swapaxes(observation, 2, 0)
+        return np.transpose(observation, (2, 0, 1))
 
 class NoExtrinsicReward(gym.RewardWrapper):
     """

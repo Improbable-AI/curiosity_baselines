@@ -106,10 +106,11 @@ class Conv2dHeadModel(torch.nn.Module):
             self.head = lambda x: x
             self._output_size = conv_out_size
 
-    def forward(self, input):
+    def forward(self, inp):
         """Compute the convolution and fully connected head on the input;
         assumes correct input shape: [B,C,H,W]."""
-        return self.head(self.conv(input).view(input.shape[0], -1))
+        conv_out = self.conv(inp).view(inp.shape[0], -1)
+        return self.head(conv_out)
 
     @property
     def output_size(self):

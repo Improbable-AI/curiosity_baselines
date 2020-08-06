@@ -56,20 +56,20 @@ class PolicyGradientAlgo(RlAlgorithm):
         according to ``mid_batch_reset`` or for recurrent agent.  Optionally,
         normalize advantages.
         """
-        reward_ext, reward_int, done, value, bv = (samples.env.reward, samples.agent.reward_int, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
-        reward_total = reward_ext + reward_int
-
-        done = done.type(reward_ext.dtype)
+        reward, done, value, bv = (samples.env.reward, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
+        print(reward)
+        done = done.type(reward.dtype)
 
         if self.normalize_reward:
-            self.reward_avg.update(torch.flatten(reward_total).numpy())
-            reward_total = reward_total / (self.reward_avg.var)**0.5
+            self.reward_avg.update(torch.flatten(reward).numpy())
+            reward = reward / (self.reward_avg.var)**0.5
+
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
-            return_ = discount_return(reward_total, done, bv, self.discount)
+            return_ = discount_return(reward, done, bv, self.discount)
             advantage = return_ - value
         else:
-            advantage, return_ = generalized_advantage_estimation(reward_total, value, done, bv, self.discount, self.gae_lambda)
+            advantage, return_ = generalized_advantage_estimation(reward, value, done, bv, self.discount, self.gae_lambda)
 
         if not self.mid_batch_reset or self.agent.recurrent:
             valid = valid_from_done(done)  # Recurrent: no reset during training.
