@@ -57,7 +57,6 @@ class PolicyGradientAlgo(RlAlgorithm):
         normalize advantages.
         """
         reward, done, value, bv = (samples.env.reward, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
-        print(reward)
         done = done.type(reward.dtype)
 
         if self.normalize_reward:
