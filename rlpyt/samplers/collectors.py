@@ -86,9 +86,7 @@ class DecorrelatingStartCollector(BaseCollector):
         traj_infos = [self.TrajInfoCls() for _ in range(len(self.envs))]
 
         prev_action = np.stack([env.action_space.null_value() for env in self.envs]) # noop
-        prev_reward_ext = np.zeros(len(self.envs), dtype="float32") # no ext reward
-        prev_reward_int = np.zeros(len(self.envs), dtype="float32") # no int reward
-        prev_reward_tot = np.zeros(len(self.envs), dtype="float32") # no total reward
+        prev_reward = np.zeros(len(self.envs), dtype="float32") # total reward (extrinsic + intrinsic)
         prev_observations = list()
         observations = list()
         for env in self.envs:
@@ -109,10 +107,14 @@ class DecorrelatingStartCollector(BaseCollector):
                 n_steps = 1 + int(np.random.rand() * max_decorrelation_steps)
                 for _ in range(n_steps):
                     a = env.action_space.sample()
-                    o, r_ext, d, info = env.step(a)
+                    if a.shape == (): # 'a' gets stored, but if form is array(3) you need to pass int(3) for env
+                        action = int(a)
+                    else:
+                        action = a
+                    o, r_ext, d, info = env.step(action)
                     r_int = 0
 
-                    traj_infos[b].step(o, a, r_ext, r_int, r, d, None, info)
+                    traj_infos[b].step(o, a, r_ext, r_int, d, None, info)
                     if getattr(info, "traj_done", d):
                         o = env.reset()
                         traj_infos[b] = self.TrajInfoCls()
@@ -123,18 +125,15 @@ class DecorrelatingStartCollector(BaseCollector):
                 prev_observation[b] = deepcopy(observation[b])
                 observation[b] = o
                 prev_action[b] = a
-                prev_reward_ext[b] = r_ext
-                prev_reward_int[b] = r_int
-                prev_reward_tot[b] = r_ext + r_int
+                prev_reward[b] = r_ext + r_int
         # For action-server samplers.
         if hasattr(self, "step_buffer_np") and self.step_buffer_np is not None:
-            self.step_buffer_np.prev_observation = prev_observation
+            self.step_buffer_np.prev_observation[:] = prev_observation
             self.step_buffer_np.prev_action[:] = prev_action
-            self.step_buffer_np.prev_reward_ext[:] = prev_reward_ext
+            self.step_buffer_np.prev_reward[:] = prev_reward
             self.step_buffer_np.observation[:] = observation
-            self.step_buffer_np.reward_int[:] = prev_reward_int
 
         # AgentInputs -> ['observation', 'prev_action', 'prev_reward']
         # AgentCuriosityInputs -> ['observation', 'action', 'next_observation']
-        return AgentInputs(observation, prev_action, prev_reward_tot), AgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
+        return AgentInputs(observation, prev_action, prev_reward), AgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
 

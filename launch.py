@@ -15,8 +15,10 @@ from rlpyt.agents.pg.mujoco import MujocoFfAgent, MujocoLstmAgent
 
 # Samplers
 from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector, CpuWaitResetCollector, CpuEvalCollector
+from rlpyt.samplers.parallel.gpu.collectors import GpuResetCollector, GpuWaitResetCollector, GpuEvalCollector
 from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
+from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 
 # Environments
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
@@ -112,13 +114,13 @@ def launch_tmux(args):
             i += 1
 
         # save arguments, and command if needed
-        if args.pretrain is None:
-            time.sleep(6) # wait for logdir to be created
-            args_json = json.dumps(vars(args), indent=4)
-            with open(log_dir + '/arguments.json', 'w') as jsonfile:
-                jsonfile.write(args_json)
-            with open(log_dir + '/cmd.txt', 'w') as cmd_file:
-                cmd_file.writelines(commands['runner'])
+        # if args.pretrain is None:
+        #     time.sleep(6) # wait for logdir to be created
+        #     args_json = json.dumps(vars(args), indent=4)
+        #     with open(log_dir + '/arguments.json', 'w') as jsonfile:
+        #         jsonfile.write(args_json)
+        #     with open(log_dir + '/cmd.txt', 'w') as cmd_file:
+        #         cmd_file.writelines(commands['runner'])
     else:
         print('Not running commands, exiting.')
 
@@ -126,7 +128,13 @@ def launch_tmux(args):
 def start_experiment(args):
 
     config = dict(env_id=args.env)
-    affinity = dict(workers_cpus=list(range(args.num_cpus)))
+    
+    if args.sample_mode == 'gpu':
+        assert args.num_gpus > 0
+        affinity = dict(cuda_idx=0, workers_cpus=list(range(args.num_cpus)))
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(0)
+    else:
+        affinity = dict(workers_cpus=list(range(args.num_cpus)))
 
     # potentially reload models
     initial_optim_state_dict = None
@@ -222,24 +230,44 @@ def start_experiment(args):
             no_negative_reward=args.no_negative_reward
             )
 
-    if args.lstm:
-        collector_class = CpuWaitResetCollector
-    else:
-        collector_class = CpuResetCollector
-    sampler = CpuSampler(
-        EnvCls=env_cl,
-        env_kwargs=env_args,
-        eval_env_kwargs=env_args,
-        batch_T=args.timestep_limit, # timesteps in a trajectory episode
-        batch_B=args.num_envs, # environments distributed across workers
-        max_decorrelation_steps=0,
-        eval_n_envs=args.eval_envs,
-        eval_max_steps=args.eval_max_steps,
-        eval_max_trajectories=args.eval_max_traj,
-        record_freq=args.record_freq,
-        log_dir=args.log_dir,
-        CollectorCls=collector_class
+    if args.sample_mode == 'gpu':
+        if args.lstm:
+            collector_class = GpuWaitResetCollector
+        else:
+            collector_class = GpuResetCollector
+        sampler = GpuSampler(
+            EnvCls=env_cl,
+            env_kwargs=env_args,
+            eval_env_kwargs=env_args,
+            batch_T=args.timestep_limit,
+            batch_B=args.num_envs,
+            max_decorrelation_steps=0,
+            eval_n_envs=args.eval_envs,
+            eval_max_steps=args.eval_max_steps,
+            eval_max_trajectories=args.eval_max_traj,
+            record_freq=args.record_freq,
+            log_dir=args.log_dir,
+            CollectorCls=collector_class
         )
+    else:
+        if args.lstm:
+            collector_class = CpuWaitResetCollector
+        else:
+            collector_class = CpuResetCollector
+        sampler = CpuSampler(
+            EnvCls=env_cl,
+            env_kwargs=env_args,
+            eval_env_kwargs=env_args,
+            batch_T=args.timestep_limit, # timesteps in a trajectory episode
+            batch_B=args.num_envs, # environments distributed across workers
+            max_decorrelation_steps=0,
+            eval_n_envs=args.eval_envs,
+            eval_max_steps=args.eval_max_steps,
+            eval_max_trajectories=args.eval_max_traj,
+            record_freq=args.record_freq,
+            log_dir=args.log_dir,
+            CollectorCls=collector_class
+            )
 
     # ----------------------------------------------------- RUNNER ----------------------------------------------------- #
     if args.eval_envs > 0:

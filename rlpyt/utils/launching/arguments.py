@@ -15,6 +15,8 @@ def get_args(args_in=sys.argv[1:]):
     parser.add_argument('-no_extrinsic', action='store_true', help='Whether or not to use no extrinsic reward.')
     parser.add_argument('-no_negative_reward', action='store_true', help='Whether or not to use negative rewards (living penalty for example).')
     parser.add_argument('-num_envs', default=20, type=int, help='Number of environments to run in parallel.')
+    parser.add_argument('-sample_mode', default='cpu', type=str, help='Whether to use GPU or CPU sampling.')
+    parser.add_argument('-num_gpus', default=0, type=int, help='Number of GPUs available.')
     parser.add_argument('-num_cpus', default=20, type=int, help='Number of CPUs to run worker processes.')
     parser.add_argument('-eval_envs', default=1, type=int, help='Number of evaluation environments per worker process.')
     parser.add_argument('-eval_max_steps', default=int(51e3), type=int, help='Max number of timesteps run during an evaluation cycle (from one evaluation process).')

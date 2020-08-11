@@ -1,4 +1,5 @@
 
+from copy import deepcopy
 import multiprocessing as mp
 import numpy as np
 
@@ -92,6 +93,7 @@ def get_example_outputs(agent, env, examples, subprocess=False):
         # Agent leaves B dimension in, strip it: [B,N,H] --> [N,H]
         agent_info = agent_info._replace(prev_rnn_state=agent_info.prev_rnn_state[0])
 
+    examples["prev_observation"] = deepcopy(o_reset) # used in gpu sampler step_buffer
     examples["observation"] = o_reset
     examples["reward"] = r
     examples["reward_int"] = r_int

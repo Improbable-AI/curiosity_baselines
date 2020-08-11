@@ -10,8 +10,7 @@ from rlpyt.utils.collections import namedarraytuple, AttrDict
 from rlpyt.utils.synchronize import drain_queue
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 
-StepBuffer = namedarraytuple("StepBuffer",
-    ["observation", "action", "reward", "done", "agent_info"])
+StepBuffer = namedarraytuple("StepBuffer", ["prev_observation", "observation", "prev_action", "prev_reward", "done", "agent_info"])
 
 
 class GpuSamplerBase(ParallelSamplerBase):
@@ -81,17 +80,14 @@ class GpuSamplerBase(ParallelSamplerBase):
 
     def _build_buffers(self, *args, **kwargs):
         examples = super()._build_buffers(*args, **kwargs)
-        self.step_buffer_pyt, self.step_buffer_np = build_step_buffer(
-            examples, self.batch_spec.B)
-        self.agent_inputs = AgentInputs(self.step_buffer_pyt.observation,
-            self.step_buffer_pyt.action, self.step_buffer_pyt.reward)
+        self.step_buffer_pyt, self.step_buffer_np = build_step_buffer(examples, self.batch_spec.B)
+        self.agent_inputs = AgentInputs(self.step_buffer_pyt.observation, self.step_buffer_pyt.prev_action, self.step_buffer_pyt.prev_reward)
         if self.eval_n_envs > 0:
-            self.eval_step_buffer_pyt, self.eval_step_buffer_np = \
-                build_step_buffer(examples, self.eval_n_envs)
+            self.eval_step_buffer_pyt, self.eval_step_buffer_np = build_step_buffer(examples, self.eval_n_envs)
             self.eval_agent_inputs = AgentInputs(
                 self.eval_step_buffer_pyt.observation,
-                self.eval_step_buffer_pyt.action,
-                self.eval_step_buffer_pyt.reward,
+                self.eval_step_buffer_pyt.prev_action,
+                self.eval_step_buffer_pyt.prev_reward,
             )
         return examples
 
@@ -132,8 +128,14 @@ class GpuSampler(ActionServer, GpuSamplerBase):
 
 
 def build_step_buffer(examples, B):
-    step_bufs = {k: buffer_from_example(examples[k], B, share_memory=True)
-        for k in ["observation", "action", "reward", "done", "agent_info"]}
+    # step_bufs = {k: buffer_from_example(examples[k], B, share_memory=True) for k in ["prev_observation", "observation", "action", "reward", "done", "agent_info"]}
+    step_bufs = {"prev_observation": buffer_from_example(examples["observation"], B, share_memory=True),
+                 "observation": buffer_from_example(examples["observation"], B, share_memory=True),
+                 "prev_reward": buffer_from_example(examples["reward"], B, share_memory=True),
+                 "prev_action": buffer_from_example(examples["action"], B, share_memory=True),
+                 "done": buffer_from_example(examples["done"], B, share_memory=True),
+                 "agent_info": buffer_from_example(examples["agent_info"], B, share_memory=True)}
+
     step_buffer_np = StepBuffer(**step_bufs)
     step_buffer_pyt = torchify_buffer(step_buffer_np)
     return step_buffer_pyt, step_buffer_np
