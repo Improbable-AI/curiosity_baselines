@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM nvidia/cuda:10.2-base-ubuntu18.04
 LABEL maintainer "Eric Chen - ericrc@mit.edu"
 SHELL ["/bin/bash", "-c"]
 

@@ -48,11 +48,11 @@ class ActionServer:
                 # assert not b.acquire(block=False)  # Debug check.
             if self.mid_batch_reset and np.any(step_np.done):
                 for b_reset in np.where(step_np.done)[0]:
-                    step_np.action[b_reset] = 0  # Null prev_action into agent.
-                    step_np.reward[b_reset] = 0  # Null prev_reward into agent.
+                    step_np.prev_action[b_reset] = 0  # Null prev_action into agent.
+                    step_np.prev_reward[b_reset] = 0  # Null prev_reward into agent.
                     self.agent.reset_one(idx=b_reset)
             action, agent_info = self.agent.step(*agent_inputs)
-            step_np.action[:] = action  # Worker applies to env.
+            step_np.prev_action[:] = action  # Worker applies to env.
             step_np.agent_info[:] = agent_info  # Worker sends to traj_info.
             for w in act_ready:
                 # assert not w.acquire(block=False)  # Debug check.
@@ -62,12 +62,11 @@ class ActionServer:
             b.acquire()
             assert not b.acquire(block=False)  # Debug check.
         if "bootstrap_value" in self.samples_np.agent:
-            self.samples_np.agent.bootstrap_value[:] = self.agent.value(
-                *agent_inputs)
+            self.samples_np.agent.bootstrap_value[:] = self.agent.value(*agent_inputs)
         if np.any(step_np.done):  # Reset at end of batch; ready for next.
             for b_reset in np.where(step_np.done)[0]:
-                step_np.action[b_reset] = 0  # Null prev_action into agent.
-                step_np.reward[b_reset] = 0  # Null prev_reward into agent.
+                step_np.prev_action[b_reset] = 0  # Null prev_action into agent.
+                step_np.prev_reward[b_reset] = 0  # Null prev_reward into agent.
                 self.agent.reset_one(idx=b_reset)
             # step_np.done[:] = False  # Worker resets at start of next.
         for w in act_ready:

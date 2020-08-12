@@ -1,4 +1,5 @@
 
+import torch
 import numpy as np
 
 from rlpyt.samplers.collectors import (DecorrelatingStartCollector,
@@ -75,8 +76,8 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         step.observation[b] = self.temp_observation[b]
         step.done[:] = False  # Did resets in between batches.
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
-        agent_buf.prev_action[0] = step.action
-        env_buf.prev_reward[0] = step.reward
+        agent_buf.prev_action[0] = step.prev_action
+        env_buf.prev_reward[0] = step.prev_reward
         obs_ready.release()  # Previous obs already written, ready for new.
         completed_infos = list()
         for t in range(self.batch_T):
@@ -84,15 +85,19 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
             act_ready.acquire()  # Need sampled actions from server.
             for b, env in enumerate(self.envs):
                 if step.done[b]:
-                    step.action[b] = 0  # Record blank.
-                    step.reward[b] = 0
+                    step.prev_action[b] = 0  # Record blank.
+                    step.prev_reward[b] = 0
                     if step.agent_info:
                         step.agent_info[b] = 0
                     # Leave step.done[b] = True, record that.
                     continue
-                o, r, d, env_info = env.step(step.action[b])
-                traj_infos[b].step(step.observation[b], step.action[b], r, d,
-                    step.agent_info[b], env_info)
+                o, r_ext, d, env_info = env.step(step.prev_action[b])
+                r_ext_log = r_ext
+                # if self.agent.no_extrinsic:
+                    # r_ext = 0.0
+                r_int = torch.tensor(0)
+
+                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, r_int.item(), d, step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
@@ -101,12 +106,12 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     self.temp_observation[b] = o  # Store until start of next batch.
                     o = 0  # Record blank.
                 step.observation[b] = o
-                step.reward[b] = r
+                step.prev_reward[b] = r_ext + r_int
                 step.done[b] = d
                 if env_info:
                     env_buf.env_info[t, b] = env_info
-            agent_buf.action[t] = step.action  # OPTIONAL BY SERVER
-            env_buf.reward[t] = step.reward
+            agent_buf.action[t] = step.prev_action  # OPTIONAL BY SERVER
+            env_buf.reward[t] = step.prev_reward
             env_buf.done[t] = step.done
             if step.agent_info:
                 agent_buf.agent_info[t] = step.agent_info  # OPTIONAL BY SERVER
@@ -114,15 +119,17 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
 
         return None, None, traj_infos, completed_infos
 
-    def reset_if_needed(self, agent_inputs):
+    def reset_if_needed(self, agent_inputs, agent_curiosity_inputs):
         """Param agent_inputs unused, using step_buffer instead."""
         # step.done[:] = 0  # No, turn off in master after it resets agent.
         if np.any(self.need_reset):
             step = self.step_buffer_np
             for b in np.where(self.need_reset)[0]:
-                step.observation[b] = self.envs[b].reset()
-                step.action[b] = 0  # Prev_action to agent.
-                step.reward[b] = 0
+                o_reset = self.envs[b].reset()
+                step.prev_observation[b] = o_reset
+                step.prev_action[b] = 0 
+                step.prev_reward[b] = 0
+                step.observation[b] = o_reset
             self.need_reset[:] = False
 
 

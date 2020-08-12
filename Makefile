@@ -19,10 +19,12 @@ trainer_6 := i-0f6bf5087225511ed
 
 start_docker:
 	@docker run -it \
+		--gpus all \
 		--name trainer \
 		-p $(TB_PORT):$(TB_PORT) \
 		--mount src=`pwd`,target=$(WORK_DIR),type=bind \
 		--mount src=`pwd`/mjkey.txt,target=/root/.mujoco/mjkey.txt,type=bind \
+		--runtime=nvidia \
 		-w $(WORK_DIR) \
 		$(CONTAINER_IMAGE)
 
