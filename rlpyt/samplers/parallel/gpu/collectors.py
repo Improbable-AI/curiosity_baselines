@@ -64,8 +64,6 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         super().__init__(*args, **kwargs)
         self.need_reset = np.zeros(len(self.envs), dtype=np.bool)
         # e.g. For episodic lives, hold the observation output when done, record
-        # blanks for the rest of the batch, but reinstate the observation to start
-        # next batch.
         self.temp_observation = buffer_method(self.step_buffer_np.observation, "copy")
 
     def collect_batch(self, agent_inputs, agent_curiosity_inputs, traj_infos, itr):
@@ -73,7 +71,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
         step = self.step_buffer_np
         b = np.where(step.done)[0]
-        step.observation[b] = self.temp_observation[b]
+        # step.observation[b] = self.temp_observation[b]
         step.done[:] = False  # Did resets in between batches.
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
         agent_buf.prev_action[0] = step.prev_action
@@ -81,6 +79,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         obs_ready.release()  # Previous obs already written, ready for new.
         completed_infos = list()
         for t in range(self.batch_T):
+            
             env_buf.observation[t] = step.observation
             act_ready.acquire()  # Need sampled actions from server.
             for b, env in enumerate(self.envs):
@@ -92,12 +91,14 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     # Leave step.done[b] = True, record that.
                     continue
                 o, r_ext, d, env_info = env.step(step.prev_action[b])
-                r_ext_log = r_ext
-                # if self.agent.no_extrinsic:
-                    # r_ext = 0.0
-                r_int = torch.tensor(0)
+                env_buf.next_observation[t][b] = o # will store the final state for icm
 
-                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, r_int.item(), d, step.agent_info[b], env_info)
+                r_ext_log = r_ext
+                if self.no_extrinsic:
+                    r_ext = 0.0
+                
+                # intrinsic reward is generated post batch for gpu sampling
+                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, 0.0, d, step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
@@ -106,7 +107,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     self.temp_observation[b] = o  # Store until start of next batch.
                     o = 0  # Record blank.
                 step.observation[b] = o
-                step.prev_reward[b] = r_ext + r_int
+                step.prev_reward[b] = r_ext # intrinsic reward is added later
                 step.done[b] = d
                 if env_info:
                     env_buf.env_info[t, b] = env_info

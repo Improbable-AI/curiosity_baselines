@@ -11,7 +11,7 @@ AgentSamples = namedarraytuple("AgentSamples",
 AgentSamplesBsv = namedarraytuple("AgentSamplesBsv",
     ["action", "reward_int", "prev_action", "agent_info", "bootstrap_value"])
 EnvSamples = namedarraytuple("EnvSamples",
-    ["prev_observation", "reward", "prev_reward", "observation", "done", "env_info"])
+    ["prev_observation", "reward", "prev_reward", "observation", "next_observation", "done", "env_info"])
 
 
 class BatchSpec(namedtuple("BatchSpec", "T B")):

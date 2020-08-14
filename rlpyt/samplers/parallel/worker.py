@@ -66,6 +66,8 @@ def sampling_process(common_kwargs, worker_kwargs):
         step_buffer_np=w.get("step_buffer_np", None),
         global_B=c.get("global_B", 1),
         env_ranks=w.get("env_ranks", None),
+        curiosity_alg=c.curiosity_alg,
+        no_extrinsic=c.no_extrinsic
     )
     agent_inputs, agent_curiosity_inputs, traj_infos = collector.start_envs(c.max_decorrelation_steps)
     collector.start_agent()

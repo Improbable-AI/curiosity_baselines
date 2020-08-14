@@ -138,7 +138,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                     o = (o - obs_mean) / obs_std
                 
                 r_ext_log = r_ext # to ensure r_ext gets recorded regardless
-                if self.agent.no_extrinsic:
+                if self.no_extrinsic:
                     r_ext = 0.0
 
                 #------------------------------------------------------------------------#
@@ -169,9 +169,9 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                 #------------------------------------------------------------------------#
 
                 r_int = torch.tensor(0.0)
-                if self.agent.model_kwargs['curiosity_kwargs']['curiosity_alg'] != 'none':
+                if self.curiosity_alg != 'none':
                     r_int = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory 
-
+            
                 traj_infos[b].step(observation[b], action[b], r_ext_log, r_int.item(), d, agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))

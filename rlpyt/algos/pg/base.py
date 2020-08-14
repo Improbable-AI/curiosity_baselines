@@ -58,7 +58,7 @@ class PolicyGradientAlgo(RlAlgorithm):
         """
         reward, done, value, bv = (samples.env.reward, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
         done = done.type(reward.dtype)
-
+        
         if self.normalize_reward:
             self.reward_avg.update(torch.flatten(reward).numpy())
             reward = reward / (self.reward_avg.var)**0.5

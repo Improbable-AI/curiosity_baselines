@@ -161,7 +161,7 @@ class PPO(PolicyGradientAlgo):
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_avg.var**0.5)
 
-                opt_info.gradNorm.append(torch.tensor(grad_norm).item())
+                opt_info.gradNorm.append(torch.tensor(grad_norm).clone().detach().item())
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
@@ -253,9 +253,9 @@ class PPO(PolicyGradientAlgo):
             forward_loss = torch.tensor(0.0)
             curiosity_loss = torch.tensor(0.0)
 
-        loss += curiosity_loss
-        # loss += inv_loss
-        # loss += forward_loss # burda seems to use no scaling of forward vs inv losses
+        # loss += curiosity_loss
+        loss += inv_loss
+        loss += forward_loss # burda seems to use no scaling of forward vs inv losses
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity

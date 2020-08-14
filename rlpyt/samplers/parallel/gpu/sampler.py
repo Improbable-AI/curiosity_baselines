@@ -10,6 +10,8 @@ from rlpyt.utils.collections import namedarraytuple, AttrDict
 from rlpyt.utils.synchronize import drain_queue
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 
+from rlpyt.utils.logging.logger import record_tabular
+
 StepBuffer = namedarraytuple("StepBuffer", ["prev_observation", "observation", "prev_action", "prev_reward", "done", "agent_info"])
 
 
@@ -50,6 +52,13 @@ class GpuSamplerBase(ParallelSamplerBase):
         self.agent.sample_mode(itr)
         self.ctrl.barrier_in.wait()
         self.serve_actions(itr)  # Worker step environments here.
+        
+        r_int = self.agent.curiosity_step(self.samples_pyt.env.observation, self.samples_pyt.agent.action, self.samples_pyt.env.next_observation)
+        r_int = r_int.to("cpu")
+        self.samples_pyt.env.reward[:] = self.samples_pyt.env.reward + r_int
+        
+        record_tabular('EpIntRewAveTrue', r_int.clone().detach().mean().item())
+
         self.ctrl.barrier_out.wait()
         traj_infos = drain_queue(self.traj_infos_queue)
         return self.samples_pyt, traj_infos
