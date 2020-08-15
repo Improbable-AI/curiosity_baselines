@@ -177,7 +177,7 @@ class ICM(nn.Module):
 
     def compute_bonus(self, obs, action, next_obs):
         phi1, phi2, predicted_phi2, predicted_action =  self.forward(obs, next_obs, action)
-        forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)
+        forward_loss = 0.5 * (nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size)
         return self.prediction_beta * forward_loss
 
     def compute_loss(self, obs, action, next_obs):
