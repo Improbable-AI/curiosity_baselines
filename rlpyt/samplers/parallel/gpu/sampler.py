@@ -82,6 +82,7 @@ class GpuSamplerBase(ParallelSamplerBase):
         examples = super()._build_buffers(*args, **kwargs)
         self.step_buffer_pyt, self.step_buffer_np = build_step_buffer(examples, self.batch_spec.B)
         self.agent_inputs = AgentInputs(self.step_buffer_pyt.observation, self.step_buffer_pyt.prev_action, self.step_buffer_pyt.prev_reward)
+        self.agent_curiosity_inputs = AgentInputs(self.step_buffer_pyt.observation, self.step_buffer_pyt.prev_action, self.step_buffer_pyt.next_observation)
         if self.eval_n_envs > 0:
             self.eval_step_buffer_pyt, self.eval_step_buffer_np = build_step_buffer(examples, self.eval_n_envs)
             self.eval_agent_inputs = AgentInputs(
@@ -91,10 +92,12 @@ class GpuSamplerBase(ParallelSamplerBase):
             )
         return examples
 
-    def _build_parallel_ctrl(self, n_worker):
+    def _build_parallel_ctrl(self, n_worker, n_envs):
         super()._build_parallel_ctrl(n_worker)
         self.sync.obs_ready = [mp.Semaphore(0) for _ in range(n_worker)]
         self.sync.act_ready = [mp.Semaphore(0) for _ in range(n_worker)]
+        self.sync.int_rew_ready = [mp.Semaphore(0) for _ in range(n_envs)]
+        self.sync.update_ready = [mp.Semaphore(0) for _ in range(n_envs)]
 
     def _assemble_common_kwargs(self, *args, **kwargs):
         common_kwargs = super()._assemble_common_kwargs(*args, **kwargs)
@@ -102,8 +105,7 @@ class GpuSamplerBase(ParallelSamplerBase):
         return common_kwargs
 
     def _assemble_workers_kwargs(self, affinity, seed, n_envs_list):
-        workers_kwargs = super()._assemble_workers_kwargs(affinity, seed,
-            n_envs_list)
+        workers_kwargs = super()._assemble_workers_kwargs(affinity, seed, n_envs_list)
         i_env = 0
         for rank, w_kwargs in enumerate(workers_kwargs):
             n_envs = n_envs_list[rank]
@@ -112,6 +114,8 @@ class GpuSamplerBase(ParallelSamplerBase):
                 stop_eval=self.sync.stop_eval,
                 obs_ready=self.sync.obs_ready[rank],
                 act_ready=self.sync.act_ready[rank],
+                update_ready=self.sync.update_ready[slice_B],
+                int_rew_ready=self.sync.int_rew_ready[slice_B]
             )
             w_kwargs["step_buffer_np"] = self.step_buffer_np[slice_B]
             if self.eval_n_envs > 0:
@@ -131,7 +135,11 @@ def build_step_buffer(examples, B):
     # step_bufs = {k: buffer_from_example(examples[k], B, share_memory=True) for k in ["prev_observation", "observation", "action", "reward", "done", "agent_info"]}
     step_bufs = {"prev_observation": buffer_from_example(examples["observation"], B, share_memory=True),
                  "observation": buffer_from_example(examples["observation"], B, share_memory=True),
+                 "next_observation": buffer_from_example(examples["next_observation"], B, share_memory=True),
+
                  "prev_reward": buffer_from_example(examples["reward"], B, share_memory=True),
+                 "reward_int": buffer_from_example(examples["reward"], B, share_memory=True)
+
                  "prev_action": buffer_from_example(examples["action"], B, share_memory=True),
                  "done": buffer_from_example(examples["done"], B, share_memory=True),
                  "agent_info": buffer_from_example(examples["agent_info"], B, share_memory=True)}

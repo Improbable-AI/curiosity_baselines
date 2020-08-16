@@ -184,7 +184,7 @@ class ParallelSamplerBase(BaseSampler):
             agent_shared=True, env_shared=True, subprocess=True)
         return examples
 
-    def _build_parallel_ctrl(self, n_worker):
+    def _build_parallel_ctrl(self, n_worker, n_envs=None):
         self.ctrl = AttrDict(
             quit=mp.RawValue(ctypes.c_bool, False),
             barrier_in=mp.Barrier(n_worker + 1),
@@ -211,7 +211,9 @@ class ParallelSamplerBase(BaseSampler):
             torch_threads=affinity.get("worker_torch_threads", 1),
             global_B=global_B,
             record_freq=self.record_freq,
-            log_dir=self.log_dir
+            log_dir=self.log_dir,
+            curiosity_alg=self.agent.model_kwargs['curiosity_kwargs']['curiosity_alg'],
+            no_extrinsic=self.env_kwargs['no_extrinsic']
         )
         if self.eval_n_envs > 0:
             common_kwargs.update(dict(

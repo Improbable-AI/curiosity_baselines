@@ -23,6 +23,8 @@ class BaseCollector:
             step_buffer_np=None,
             global_B=1,
             env_ranks=None,
+            curiosity_alg='none',
+            no_extrinsic=False
             ):
         save__init__args(locals())
 

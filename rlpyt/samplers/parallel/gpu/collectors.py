@@ -71,9 +71,12 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
     def collect_batch(self, agent_inputs, agent_curiosity_inputs, traj_infos, itr):
         """Params agent_inputs and itr unused."""
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
+
+        update_ready, int_rew_ready = self.sync.update_ready, self.sync.int_rew_ready # these are slices of locks generated in assemble_worker_args.
+
         step = self.step_buffer_np
         b = np.where(step.done)[0]
-        step.observation[b] = self.temp_observation[b]
+        # step.observation[b] = self.temp_observation[b]
         step.done[:] = False  # Did resets in between batches.
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
         agent_buf.prev_action[0] = step.prev_action
@@ -93,23 +96,30 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     continue
                 o, r_ext, d, env_info = env.step(step.prev_action[b])
                 r_ext_log = r_ext
-                # if self.agent.no_extrinsic:
-                    # r_ext = 0.0
-                r_int = torch.tensor(0)
 
-                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, r_int.item(), d, step.agent_info[b], env_info)
+                if self.no_extrinsic:
+                    r_ext = 0.0
+
+                step.next_observation[b] = o
+                update_ready[b].release()
+
+                int_rew_ready[b].acquire()
+                r_int = step.reward_int[b]
+
+                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, r_int, d, step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
                     self.need_reset[b] = True
                 if d:
-                    self.temp_observation[b] = o  # Store until start of next batch.
+                    # self.temp_observation[b] = o  # Store until start of next batch.
                     o = 0  # Record blank.
                 step.observation[b] = o
                 step.prev_reward[b] = r_ext + r_int
                 step.done[b] = d
                 if env_info:
                     env_buf.env_info[t, b] = env_info
+
             agent_buf.action[t] = step.prev_action  # OPTIONAL BY SERVER
             env_buf.reward[t] = step.prev_reward
             env_buf.done[t] = step.done

@@ -10,12 +10,17 @@ TB_PORT         := $(call GetFromJson,tb_port)
 
 AWS_CERT := ~/.ssh/eric-key.pem
 gpu_1 := i-0f450034a80158fd1
+gpu_2 := i-0a778731cc6f62b61
 trainer_1 := i-051d019a04d16e0be
 trainer_2 := i-0b0e52f926dae48e7
 trainer_3 := i-03ac0ecb80701b20c
 trainer_4 := i-0fefcba4a5c464eb1
 trainer_5 := i-043bcb928e14bef1a
 trainer_6 := i-0f6bf5087225511ed
+trainer_7 := i-083ab5aabe2238522
+trainer_8 := i-0f9e953bf721a4625
+trainer_9 := i-0843e87d8412ace3b
+trainer_10 := i-002de84200a2fa875
 
 start_docker:
 	@docker run -it \
