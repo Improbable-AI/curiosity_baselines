@@ -70,7 +70,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         """Params agent_inputs and itr unused."""
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
 
-        update_ready, int_rew_ready = self.sync.update_ready, self.sync.int_rew_ready # these are slices of locks generated in assemble_worker_args.
+        update_ready, int_rew_ready = self.sync.update_ready, self.sync.int_rew_ready # these are slices of locks generated in assemble_worker_args. 
 
         step = self.step_buffer_np
         b = np.where(step.done)[0]
@@ -82,26 +82,30 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         obs_ready.release()  # Previous obs already written, ready for new.
         completed_infos = list()
         for t in range(self.batch_T):
-            
+
             env_buf.observation[t] = step.observation
             act_ready.acquire()  # Need sampled actions from server.
             for b, env in enumerate(self.envs):
                 if step.done[b]:
                     step.prev_action[b] = 0  # Record blank.
                     step.prev_reward[b] = 0
+                    step.next_observation[b] = 0
+                    update_ready[b].release()
+                    int_rew_ready[b].acquire()
                     if step.agent_info:
                         step.agent_info[b] = 0
                     # Leave step.done[b] = True, record that.
                     continue
+                
                 o, r_ext, d, env_info = env.step(step.prev_action[b])
                 r_ext_log = r_ext
 
                 if self.no_extrinsic:
                     r_ext = 0.0
-
+                
                 step.next_observation[b] = o
                 update_ready[b].release()
-
+                
                 int_rew_ready[b].acquire()
                 r_int = step.reward_int[b]
 
@@ -114,7 +118,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     # self.temp_observation[b] = o  # Store until start of next batch.
                     o = 0  # Record blank.
                 step.observation[b] = o
-                step.prev_reward[b] = r_ext # intrinsic reward is added later
+                step.prev_reward[b] = r_ext + r_int
                 step.done[b] = d
                 if env_info:
                     env_buf.env_info[t, b] = env_info

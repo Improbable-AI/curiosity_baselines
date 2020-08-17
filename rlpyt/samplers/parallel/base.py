@@ -80,7 +80,7 @@ class ParallelSamplerBase(BaseSampler):
         env.close()
         del env
 
-        self._build_parallel_ctrl(n_worker)
+        self._build_parallel_ctrl(n_worker, B)
 
         if traj_info_kwargs:
             for k, v in traj_info_kwargs.items():

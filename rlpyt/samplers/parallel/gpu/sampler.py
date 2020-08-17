@@ -12,7 +12,7 @@ from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 
 from rlpyt.utils.logging.logger import record_tabular
 
-StepBuffer = namedarraytuple("StepBuffer", ["prev_observation", "observation", "prev_action", "prev_reward", "done", "agent_info"])
+StepBuffer = namedarraytuple("StepBuffer", ["prev_observation", "observation", "next_observation", "prev_action", "reward_int", "prev_reward", "done", "agent_info"])
 
 
 class GpuSamplerBase(ParallelSamplerBase):
@@ -50,18 +50,10 @@ class GpuSamplerBase(ParallelSamplerBase):
         """
         # self.samples_np[:] = 0  # Reset all batch sample values (optional).
         self.agent.sample_mode(itr)
-        
         self.ctrl.barrier_in.wait()
         self.serve_actions(itr)  # Worker step environments here.
         self.ctrl.barrier_out.wait()
-
-        r_int = self.agent.curiosity_step(self.samples_pyt.env.observation, self.samples_pyt.agent.action, self.samples_pyt.env.next_observation)
-        r_int = r_int.to("cpu")
-        self.samples_pyt.env.reward[:] = self.samples_pyt.env.reward + r_int
-
-        record_tabular('EpIntRewAveTrue', r_int.clone().detach().mean().item())
         traj_infos = drain_queue(self.traj_infos_queue)
-
         return self.samples_pyt, traj_infos
 
     def evaluate_agent(self, itr):
@@ -145,10 +137,10 @@ def build_step_buffer(examples, B):
     # step_bufs = {k: buffer_from_example(examples[k], B, share_memory=True) for k in ["prev_observation", "observation", "action", "reward", "done", "agent_info"]}
     step_bufs = {"prev_observation": buffer_from_example(examples["observation"], B, share_memory=True),
                  "observation": buffer_from_example(examples["observation"], B, share_memory=True),
-                 "next_observation": buffer_from_example(examples["next_observation"], B, share_memory=True),
+                 "next_observation": buffer_from_example(examples["observation"], B, share_memory=True),
 
                  "prev_reward": buffer_from_example(examples["reward"], B, share_memory=True),
-                 "reward_int": buffer_from_example(examples["reward"], B, share_memory=True)
+                 "reward_int": buffer_from_example(examples["reward"], B, share_memory=True),
 
                  "prev_action": buffer_from_example(examples["action"], B, share_memory=True),
                  "done": buffer_from_example(examples["done"], B, share_memory=True),
