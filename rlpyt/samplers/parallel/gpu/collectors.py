@@ -69,6 +69,9 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
     def collect_batch(self, agent_inputs, agent_curiosity_inputs, traj_infos, itr):
         """Params agent_inputs and itr unused."""
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
+
+        update_ready, int_rew_ready = self.sync.update_ready, self.sync.int_rew_ready # these are slices of locks generated in assemble_worker_args.
+
         step = self.step_buffer_np
         b = np.where(step.done)[0]
         # step.observation[b] = self.temp_observation[b]
@@ -91,26 +94,31 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     # Leave step.done[b] = True, record that.
                     continue
                 o, r_ext, d, env_info = env.step(step.prev_action[b])
-                env_buf.next_observation[t][b] = o # will store the final state for icm
-
                 r_ext_log = r_ext
+
                 if self.no_extrinsic:
                     r_ext = 0.0
-                
-                # intrinsic reward is generated post batch for gpu sampling
-                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, 0.0, d, step.agent_info[b], env_info)
+
+                step.next_observation[b] = o
+                update_ready[b].release()
+
+                int_rew_ready[b].acquire()
+                r_int = step.reward_int[b]
+
+                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, r_int, d, step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
                     self.need_reset[b] = True
                 if d:
-                    self.temp_observation[b] = o  # Store until start of next batch.
+                    # self.temp_observation[b] = o  # Store until start of next batch.
                     o = 0  # Record blank.
                 step.observation[b] = o
                 step.prev_reward[b] = r_ext # intrinsic reward is added later
                 step.done[b] = d
                 if env_info:
                     env_buf.env_info[t, b] = env_info
+
             agent_buf.action[t] = step.prev_action  # OPTIONAL BY SERVER
             env_buf.reward[t] = step.prev_reward
             env_buf.done[t] = step.done

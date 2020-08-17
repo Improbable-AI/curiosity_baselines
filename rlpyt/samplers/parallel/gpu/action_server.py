@@ -39,8 +39,10 @@ class ActionServer:
             to make sure they drain properly.  If a semaphore ends up with an extra release,
             synchronization can be lost silently, leading to wrong and confusing results.
         """
-        obs_ready, act_ready = self.sync.obs_ready, self.sync.act_ready
-        step_np, agent_inputs = self.step_buffer_np, self.agent_inputs
+        obs_ready, act_ready = self.sync.obs_ready, self.sync.act_ready # policy
+        update_ready, int_rew_ready = self.sync.update_ready, self.sync.int_rew_ready # intrinsic reward
+        step_np = self.step_buffer_np
+        agent_inputs, agent_curiosity_inputs = self.agent_inputs, self.agent_curiosity_inputs
 
         for t in range(self.batch_spec.T):
             for b in obs_ready:
@@ -58,6 +60,23 @@ class ActionServer:
                 # assert not w.acquire(block=False)  # Debug check.
                 w.release()  # Signal to worker.
 
+            # wait for all updates
+            for u in update_ready: # flat list [ env_lock * 128 ]. One semaphore for each environment. 
+                                    # Each worker gets passed a slice of this list based on how many environments they're supervising.
+                u.acquire()
+                # assert not u.acquire(block=False)  # Debug check
+
+            # generate intrinsic rewards
+            if self.agent.model_kwargs['curiosity_kwargs']['curiosity_alg'] != 'none':
+                r_int = self.agent.curiosity_step(*agent_curiosity_inputs)
+                step_np.reward_int[:] = r_int.data.numpy()
+            else:
+                step_np.reward_int[:] = 0.0
+
+            # release all environments
+            for i in int_rew_ready:
+                i.release()
+
         for b in obs_ready:
             b.acquire()
             assert not b.acquire(block=False)  # Debug check.
@@ -71,6 +90,12 @@ class ActionServer:
             # step_np.done[:] = False  # Worker resets at start of next.
         for w in act_ready:
             assert not w.acquire(block=False)  # Debug check.
+
+        for u in update_ready:
+            assert not u.acquire(block=False)  # Debug check.
+
+        for i in int_rew_ready:
+            assert not i.acquire(block=False)  # Debug check.
 
     def serve_actions_evaluation(self, itr):
         """Similar to ``serve_actions()``.  If a maximum number of eval trajectories

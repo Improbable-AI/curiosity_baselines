@@ -184,7 +184,7 @@ class ParallelSamplerBase(BaseSampler):
             agent_shared=True, env_shared=True, subprocess=True)
         return examples
 
-    def _build_parallel_ctrl(self, n_worker):
+    def _build_parallel_ctrl(self, n_worker, n_envs=None):
         self.ctrl = AttrDict(
             quit=mp.RawValue(ctypes.c_bool, False),
             barrier_in=mp.Barrier(n_worker + 1),
