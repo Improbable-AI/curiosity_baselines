@@ -10,6 +10,8 @@ from rlpyt.utils.logging import logger
 from rlpyt.utils.collections import AttrDict
 from rlpyt.utils.synchronize import drain_queue
 
+from rlpyt.utils.averages import generate_observation_stats
+
 
 EVAL_TRAJ_CHECK = 0.1  # seconds.
 
@@ -72,9 +74,14 @@ class ParallelSamplerBase(BaseSampler):
             logger.log(f"Total parallel evaluation envs: {eval_n_envs}.")
             self.eval_max_T = eval_max_T = int(self.eval_max_steps // eval_n_envs)
 
-        env, obs_mean, obs_std = self.EnvCls(**self.env_kwargs)
-        self.env_stats = (obs_mean, obs_std)
-        self.env_kwargs['normalize_obs'] = False # turn off for future make calls
+        env = self.EnvCls(**self.env_kwargs)
+
+        if self.env_kwargs['normalize_obs']:
+            obs_mean, obs_std = generate_observation_stats(env, nsteps=self.env_kwargs['normalize_obs_steps'])
+            self.obs_stats = (obs_mean, obs_std)
+        else:
+            self.obs_stats = None
+
         self._agent_init(agent, env, global_B=global_B, env_ranks=env_ranks)
         examples = self._build_buffers(env, bootstrap_value)
         env.close()
@@ -174,8 +181,7 @@ class ParallelSamplerBase(BaseSampler):
         return n_envs_list
 
     def _agent_init(self, agent, env, global_B=1, env_ranks=None):
-        agent.initialize(env.spaces, share_memory=True,
-            global_B=global_B, env_ranks=env_ranks)
+        agent.initialize(env.spaces, share_memory=True, global_B=global_B, obs_stats=self.obs_stats, env_ranks=env_ranks)
         self.agent = agent
 
     def _build_buffers(self, env, bootstrap_value):
@@ -200,7 +206,6 @@ class ParallelSamplerBase(BaseSampler):
         common_kwargs = dict(
             EnvCls=self.EnvCls,
             env_kwargs=self.env_kwargs,
-            env_stats=self.env_stats,
             agent=self.agent,
             batch_T=self.batch_spec.T,
             CollectorCls=self.CollectorCls,

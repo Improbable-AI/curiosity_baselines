@@ -132,10 +132,6 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                     continue
                 # Environment inputs and outputs are numpy arrays.
                 o, r_ext, d, env_info = env.step(action[b])
-
-                if np.all(self.env_stats[0] != np.zeros(env.observation_space.shape)):
-                    obs_mean, obs_std = self.env_stats
-                    o = (o - obs_mean) / obs_std
                 
                 r_ext_log = r_ext # to ensure r_ext gets recorded regardless
                 if self.no_extrinsic:

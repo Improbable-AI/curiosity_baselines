@@ -9,7 +9,7 @@ RESULTS_DIR     := $(call GetFromJson,container_resultsdir)
 TB_PORT         := $(call GetFromJson,tb_port)
 
 AWS_CERT := ~/.ssh/eric-key.pem
-gpu_1 := i-0c49c2d69f0c781d0
+gpu_1 := i-0065ad6696678f813
 gpu_2 := i-0a778731cc6f62b61
 trainer_1 := i-051d019a04d16e0be
 trainer_2 := i-0b0e52f926dae48e7

@@ -14,7 +14,6 @@ class BaseCollector:
             self,
             rank,
             envs,
-            env_stats,
             samples_np,
             batch_T,
             TrajInfoCls,

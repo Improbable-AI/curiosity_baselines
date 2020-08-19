@@ -8,7 +8,7 @@ from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.misc import iterate_mb_idxs
-from rlpyt.utils.averages import RunningMeanStd
+from rlpyt.utils.averages import RunningMeanStd, RewardForwardFilter
 
 LossInputs = namedarraytuple("LossInputs", ["agent_inputs", "agent_curiosity_inputs", "action", "return_", "advantage", "valid", "old_dist_info"])
 
@@ -45,7 +45,9 @@ class PPO(PolicyGradientAlgo):
             optim_kwargs = dict()
         save__init__args(locals())
         if self.normalize_reward:
-            self.reward_avg = RunningMeanStd()
+            self.reward_ff = RewardForwardFilter(discount)
+            self.reward_rms = RunningMeanStd()
+
 
     def initialize(self, *args, **kwargs):
         """
@@ -159,7 +161,7 @@ class PPO(PolicyGradientAlgo):
                 opt_info.curiosity_loss.append(curiosity_loss.item())
 
                 if self.normalize_reward:
-                    opt_info.reward_total_std.append(self.reward_avg.var**0.5)
+                    opt_info.reward_total_std.append(self.reward_rms.var**0.5)
 
                 opt_info.gradNorm.append(torch.tensor(grad_norm).clone().detach().item())
                 opt_info.entropy.append(entropy.item())

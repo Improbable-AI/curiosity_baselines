@@ -20,7 +20,8 @@ class RunningMeanStd(object):
         self.update_from_moments(batch_mean, batch_var, batch_count)
 
     def update_from_moments(self, batch_mean, batch_var, batch_count):
-        self.mean, self.var, self.count = update_mean_var_count_from_moments(self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
+        self.mean, self.var, self.count = update_mean_var_count_from_moments(
+            self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
 
 def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
     delta = batch_mean - mean
@@ -35,6 +36,18 @@ def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, 
 
     return new_mean, new_var, new_count
 
+class RewardForwardFilter(object):
+    def __init__(self, gamma):
+        self.rewems = None
+        self.gamma = gamma
+
+    def update(self, rews):
+        if self.rewems is None:
+            self.rewems = rews
+        else:
+            self.rewems = self.rewems * self.gamma + rews
+        return self.rewems
+
 def generate_observation_stats(env, nsteps=10000):
     '''
     Steps through the environment randomly and produces an observation mean and standard deviation. 
@@ -42,21 +55,16 @@ def generate_observation_stats(env, nsteps=10000):
     '''
     wrap_print('Generating observation mean/std... ({} random steps)'.format(nsteps))
     ob = np.asarray(env.reset())
-    if MPI.COMM_WORLD.Get_rank() == 0:
-        obs = [ob]
-        for _ in range(nsteps):
-            ac = env.action_space.sample()
-            ob, _, done, _ = env.step(ac.item(0)) # mainly used for mario with discrete action space (hacky .item() call to make it work)
-            if done:
-                ob = env.reset()
-            obs.append(np.asarray(ob))
-        mean = np.mean(obs, 0).astype(np.float32)
-        std = np.std(obs, 0).mean().astype(np.float32)
-    else:
-        mean = np.empty(shape=ob.shape, dtype=np.float32)
-        std = np.empty(shape=(), dtype=np.float32)
-    MPI.COMM_WORLD.Bcast(mean, root=0)
-    MPI.COMM_WORLD.Bcast(std, root=0)
+    obs = [ob]
+    for _ in range(nsteps):
+        ac = env.action_space.sample()
+        ob, _, done, _ = env.step(ac.item(0)) # mainly used for mario with discrete action space (hacky .item() call to make it work)
+        if done:
+            ob = env.reset()
+        obs.append(np.asarray(ob))
+    mean = np.mean(obs, 0).astype(np.float32)
+    std = np.std(obs, 0).mean().astype(np.float32)
     return mean, std
+
 
 

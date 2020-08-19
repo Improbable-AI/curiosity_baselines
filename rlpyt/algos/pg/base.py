@@ -1,4 +1,5 @@
 
+import numpy as np
 import torch
 from collections import namedtuple
 
@@ -60,9 +61,11 @@ class PolicyGradientAlgo(RlAlgorithm):
         done = done.type(reward.dtype)
         
         if self.normalize_reward:
-            self.reward_avg.update(torch.flatten(reward).numpy())
-            reward = reward / (self.reward_avg.var)**0.5
-
+            rews = np.array([])
+            for rew in reward.clone().detach().data.numpy():
+                rews = np.concatenate((rews, self.reward_ff.update(rew)))
+            self.reward_rms.update_from_moments(np.mean(rews), np.var(rews), len(rews))
+            reward = reward / (self.reward_rms.var)**0.5
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)

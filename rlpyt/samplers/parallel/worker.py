@@ -48,7 +48,7 @@ def sampling_process(common_kwargs, worker_kwargs):
     """
     c, w = AttrDict(**common_kwargs), AttrDict(**worker_kwargs)
     initialize_worker(w.rank, w.seed, w.cpus, c.torch_threads)
-    envs = [c.EnvCls(**c.env_kwargs)[0] for _ in range(w.n_envs)]
+    envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
     if c.get("eval_n_envs", 0) == 0 and c.record_freq > 0: # only record workers if no evaluation processes are performed
         envs[0] = Monitor(envs[0], c.log_dir + '/videos', video_callable=lambda episode_id: episode_id%c.record_freq==0)
 
@@ -57,7 +57,6 @@ def sampling_process(common_kwargs, worker_kwargs):
     collector = c.CollectorCls(
         rank=w.rank,
         envs=envs,
-        env_stats=c.env_stats,
         samples_np=w.samples_np,
         batch_T=c.batch_T,
         TrajInfoCls=c.TrajInfoCls,
@@ -73,7 +72,7 @@ def sampling_process(common_kwargs, worker_kwargs):
     collector.start_agent()
 
     if c.get("eval_n_envs", 0) > 0:
-        eval_envs = [c.EnvCls(**c.eval_env_kwargs)[0] for _ in range(c.eval_n_envs)]
+        eval_envs = [c.EnvCls(**c.eval_env_kwargs) for _ in range(c.eval_n_envs)]
         if c.record_freq > 0:
             eval_envs[0] = Monitor(eval_envs[0], c.log_dir + '/videos', video_callable=lambda episode_id: episode_id%c.record_freq==0)
         set_envs_seeds(eval_envs, w.seed)

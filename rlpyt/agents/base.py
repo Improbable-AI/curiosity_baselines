@@ -80,6 +80,7 @@ class BaseAgent:
             share_memory (bool): whether to use shared memory for model parameters.
         """
         self.env_model_kwargs = self.make_env_to_model_kwargs(env_spaces)
+        self.env_model_kwargs['obs_stats'] = kwargs['obs_stats']
         self.model = self.ModelCls(**self.env_model_kwargs, **self.model_kwargs)
         if share_memory:
             self.model.share_memory()
@@ -149,8 +150,7 @@ class BaseAgent:
         if self.device.type != "cpu":
             return
         assert self.shared_model is not None
-        self.model = self.ModelCls(**self.env_model_kwargs,
-            **self.model_kwargs)
+        self.model = self.ModelCls(**self.env_model_kwargs, **self.model_kwargs)
         # TODO: might need strip_ddp_state_dict.
         self.model.load_state_dict(self.shared_model.state_dict())
         if share_memory:  # Not needed in async_serial.

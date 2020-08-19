@@ -122,12 +122,16 @@ class ICM(nn.Module):
             action_size, 
             feature_encoding='idf', 
             batch_norm=False,
-            prediction_beta=0.01
+            prediction_beta=0.01,
+            obs_stats=None
             ):
         super(ICM, self).__init__()
 
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
+        self.obs_stats = obs_stats
+        if self.obs_stats is not None:
+            self.obs_mean, self.obs_std = self.obs_stats
 
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
@@ -153,8 +157,14 @@ class ICM(nn.Module):
 
 
     def forward(self, obs1, obs2, action):
+
+        if self.obs_stats is not None:
+            img1 = (obs1 - self.obs_mean) / self.obs_std
+            img2 = (obs2 - self.obs_mean) / self.obs_std
+
         img1 = obs1.type(torch.float)
         img2 = obs2.type(torch.float) # Expect torch.uint8 inputs
+
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         # lead_dim is just number of leading dimensions: e.g. [T, B] = 2 or [] = 0.
         lead_dim, T, B, img_shape = infer_leading_dims(obs1, 3) 

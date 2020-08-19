@@ -213,7 +213,7 @@ def start_experiment(args):
             no_extrinsic=args.no_extrinsic,
             no_negative_reward=args.no_negative_reward,
             normalize_obs=args.normalize_obs,
-            normalize_steps=10000
+            normalize_obs_steps=10000
             )
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make

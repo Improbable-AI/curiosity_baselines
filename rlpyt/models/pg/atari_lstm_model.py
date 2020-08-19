@@ -1,4 +1,5 @@
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -26,17 +27,23 @@ class AtariLstmModel(torch.nn.Module):
             kernel_sizes=None,
             strides=None,
             paddings=None,
-            curiosity_kwargs=dict(curiosity_alg='none')
+            curiosity_kwargs=dict(curiosity_alg='none'),
+            obs_stats=None
             ):
         """Instantiate neural net module according to inputs."""
         super().__init__()
+
+        self.obs_stats = obs_stats
+        if self.obs_stats is not None:
+            self.obs_mean, self.obs_std = self.obs_stats
 
         if curiosity_kwargs['curiosity_alg'] == 'icm':
             self.curiosity_model = ICM(image_shape=image_shape,
                                        action_size=output_size,
                                        feature_encoding=curiosity_kwargs['feature_encoding'],
                                        batch_norm=curiosity_kwargs['batch_norm'],
-                                       prediction_beta=curiosity_kwargs['prediction_beta'])
+                                       prediction_beta=curiosity_kwargs['prediction_beta'],
+                                       obs_stats=self.obs_stats)
             if curiosity_kwargs['feature_encoding'] == 'idf':
                 self.conv = UniverseHead(image_shape=image_shape,
                                          batch_norm=curiosity_kwargs['batch_norm'])
@@ -73,8 +80,10 @@ class AtariLstmModel(torch.nn.Module):
         both sampler and in algorithm (both via the agent).  Also returns the
         next RNN state.
         """       
+        if self.obs_stats is not None: # don't normalize observation
+            image = (image - self.obs_mean) / self.obs_std
+
         img = image.type(torch.float)  # Expect torch.uint8 inputs
-        img = img.mul_(1. / 255)  # From [0-255] to [0-1], in place.
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3) 

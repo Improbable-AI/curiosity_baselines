@@ -206,14 +206,7 @@ def mario_make(*args, info_example=None, **kwargs):
         env = GymEnvWrapper(env)
     else:
         env = GymEnvWrapper(EnvInfoWrapper(env))
-
-    if kwargs['normalize_obs']:
-        obs_mean, obs_std = generate_observation_stats(env, kwargs['normalize_steps'])
-    else:
-        obs_mean = np.zeros(env.observation_space.shape)
-        obs_std = 1
-
-    return env, obs_mean, obs_std
+    return env
 
     # env = retro.make('SuperMarioBros-Nes', 'Level1-1')
     # buttons = env.buttons
