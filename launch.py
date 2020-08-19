@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 import time
 import json
 import argparse
@@ -121,6 +122,10 @@ def launch_tmux(args):
                 jsonfile.write(args_json)
             with open(log_dir + '/cmd.txt', 'w') as cmd_file:
                 cmd_file.writelines(commands['runner'])
+            with open(log_dir + '/git.txt', 'w') as git_file:
+                branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
+                commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
+                git_file.write('{}/{}'.format(branch, commit))
     else:
         print('Not running commands, exiting.')
 
