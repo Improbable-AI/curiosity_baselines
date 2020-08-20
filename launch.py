@@ -176,6 +176,10 @@ def start_experiment(args):
 
     # ----------------------------------------------------- LEARNING ALG ----------------------------------------------------- #
     if args.alg == 'ppo':
+        if args.kernel_mu == 0.:
+            kernel_params = None
+        else:
+            kernel_params = (args.kernel_mu, args.kernel_sigma)
         algo = PPO(
                 discount=args.discount,
                 learning_rate=args.lr,
@@ -192,6 +196,7 @@ def start_experiment(args):
                 linear_lr_schedule=args.linear_lr,
                 normalize_advantage=args.normalize_advantage,
                 normalize_reward=args.normalize_reward,
+                kernel_params=kernel_params,
                 curiosity_kwargs=model_args['curiosity_kwargs']
                 )
     elif args.alg == 'a2c':

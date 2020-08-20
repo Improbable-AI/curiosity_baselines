@@ -1,5 +1,5 @@
 {
-    "container_image": "echen9898/curiosity_baselines:0.1.0_gpu",
+    "container_image": "echen9898/curiosity_baselines:0.1.5",
     "container_workdir": "/curiosity_baselines",
     "container_resultsdir": "/curiosity_baselines/results",
     "tb_port": "12345",

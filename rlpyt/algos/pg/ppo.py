@@ -1,4 +1,5 @@
 
+import numpy as np
 import torch
 
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
@@ -38,6 +39,7 @@ class PPO(PolicyGradientAlgo):
             linear_lr_schedule=True,
             normalize_advantage=False,
             normalize_reward=False,
+            kernel_params=None,
             curiosity_kwargs={'curiosity_alg':'none'}
             ):
         """Saves input settings."""
@@ -47,7 +49,11 @@ class PPO(PolicyGradientAlgo):
         if self.normalize_reward:
             self.reward_ff = RewardForwardFilter(discount)
             self.reward_rms = RunningMeanStd()
-
+        
+        if kernel_params is not None:
+            self.mu, self.sigma = self.kernel_params
+            self.kernel_line = lambda x: x
+            self.kernel_gauss = lambda x: np.sign(x)*self.mu*np.exp(-(abs(x)-self.mu)**2/(2*self.sigma**2))
 
     def initialize(self, *args, **kwargs):
         """

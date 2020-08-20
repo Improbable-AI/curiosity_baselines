@@ -87,5 +87,11 @@ class PolicyGradientAlgo(RlAlgorithm):
                 adv_mean = advantage.mean()
                 adv_std = advantage.std()
             advantage[:] = (advantage - adv_mean) / max(adv_std, 1e-6)
-
+        
+        print(advantage)
+        print('-'*100)
+        if self.kernel_params is not None: # apply advantage kernel
+            advantage[:] = torch.tensor(np.piecewise(advantage.data.numpy(), [abs(advantage.data.numpy()) < self.mu, abs(advantage.data.numpy()) >= self.mu], [self.kernel_line, self.kernel_gauss]))
+        print(advantage)
+        
         return return_, advantage, valid
