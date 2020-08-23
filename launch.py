@@ -24,7 +24,7 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 # Environments
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.envs.gym import make as gym_make
-from rlpyt.envs.gym import mario_make
+from rlpyt.envs.gym import mario_make, deepmind_make
 
 # Learning Algorithms
 from rlpyt.algos.pg.ppo import PPO
@@ -72,6 +72,7 @@ def launch_tmux(args):
             run_id = int(sorted_runs[-1].split('_')[-1]) + 1
         else:
             run_id = 0
+            os.makedirs(os.path.join(_RESULTS_DIR, name, f'run_{run_id}'))
         log_dir = os.path.join(_RESULTS_DIR, name, f'run_{run_id}')
 
         args_string = ''
@@ -115,17 +116,17 @@ def launch_tmux(args):
             i += 1
 
         # save arguments, and command if needed
-        if args.pretrain is None:
-            time.sleep(6) # wait for logdir to be created
-            args_json = json.dumps(vars(args), indent=4)
-            with open(log_dir + '/arguments.json', 'w') as jsonfile:
-                jsonfile.write(args_json)
-            with open(log_dir + '/cmd.txt', 'w') as cmd_file:
-                cmd_file.writelines(commands['runner'])
-            with open(log_dir + '/git.txt', 'w') as git_file:
-                branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
-                commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
-                git_file.write('{}/{}'.format(branch, commit))
+        # if args.pretrain is None:
+        #     time.sleep(6) # wait for logdir to be created
+        #     args_json = json.dumps(vars(args), indent=4)
+        #     with open(log_dir + '/arguments.json', 'w') as jsonfile:
+        #         jsonfile.write(args_json)
+        #     with open(log_dir + '/cmd.txt', 'w') as cmd_file:
+        #         cmd_file.writelines(commands['runner'])
+        #     with open(log_dir + '/git.txt', 'w') as git_file:
+        #         branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
+        #         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
+        #         git_file.write('{}/{}'.format(branch, commit))
     else:
         print('Not running commands, exiting.')
 
@@ -220,6 +221,15 @@ def start_experiment(args):
         env_cl = mario_make
         env_args = dict(
             game=args.env,  
+            no_extrinsic=args.no_extrinsic,
+            no_negative_reward=args.no_negative_reward,
+            normalize_obs=args.normalize_obs,
+            normalize_obs_steps=10000
+            )
+    elif 'deepmind' in args.env.lower(): # deepmind maze
+        env_cl = deepmind_make
+        env_args = dict(
+            game=args.env,
             no_extrinsic=args.no_extrinsic,
             no_negative_reward=args.no_negative_reward,
             normalize_obs=args.normalize_obs,

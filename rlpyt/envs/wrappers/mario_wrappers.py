@@ -28,6 +28,30 @@ class ProcessFrame84(gym.ObservationWrapper):
         x_t = np.reshape(x_t, [84, 84, 1])
         return x_t.astype(np.uint8)
 
+class ProcessFrame42(gym.ObservationWrapper):
+    def __init__(self, env, crop=True):
+        self.crop = crop
+        super(ProcessFrame42, self).__init__(env)
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(42, 42, 1), dtype=np.uint8)
+
+    def observation(self, obs):
+        return ProcessFrame42.process(obs, crop=self.crop)
+
+    @staticmethod
+    def process(frame, crop=True):
+        if frame.size == 240 * 256 * 3: # gym-super-mario resolution
+            img = np.reshape(frame, [240, 256, 3]).astype(np.float32)
+        elif frame.size == 224 * 240 * 3: # gym-retro resolution
+            img = np.reshape(frame, [224, 240, 3]).astype(np.float32)
+        else:
+            assert False, "Unknown resolution." + str(img.size)
+        img = img[:, :, 0] * 0.299 + img[:, :, 1] * 0.587 + img[:, :, 2] * 0.114 # convert to YUV
+        size = (42, 55 if crop else 42)
+        resized_screen = np.array(Image.fromarray(img).resize(size, resample=Image.BILINEAR), dtype=np.uint8)
+        x_t = resized_screen[9:51, :] if crop else resized_screen # crop takes away top metrics (lives, etc.)
+        x_t = np.reshape(x_t, [42, 42, 1])
+        return x_t.astype(np.uint8)
+
 class MarioXReward(gym.Wrapper):
     def __init__(self, env):
         gym.Wrapper.__init__(self, env)

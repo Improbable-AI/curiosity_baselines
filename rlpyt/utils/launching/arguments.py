@@ -55,13 +55,13 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-normalize_advantage', action='store_true', help='Whether or not to normalize advantages.')
 
     # environment specific args
-    if 'SuperMarioBros-v0' in args_in:
+    if 'SuperMarioBros-v0' or 'SuperMarioBros-v3' in args_in:
         parser.add_argument('-mario_level', default='Level1-1', type=str, help='World and level to start at for super mario bros.')
         parser.add_argument('-normalize_obs', action='store_true', help='Whether or not to normalize the observation each step.')
 
     # curiosity specific args
     if 'icm' in args_in:
-        parser.add_argument('-feature_encoding', default='idf_burda', type=str, choices=['none', 'idf', 'idf_burda'], help='Which feature encoding method to use with ICM.')
+        parser.add_argument('-feature_encoding', default='idf_burda', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
         parser.add_argument('-forward_loss_wt', default=0.2, type=float, help='Forward loss coefficient. Inverse weight is (1 - this).')
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')

@@ -9,11 +9,6 @@ from rlpyt.envs.base import EnvSpaces, EnvStep
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import is_namedtuple_class
 from rlpyt.utils.averages import generate_observation_stats
-
-import retro
-import gym_super_mario_bros
-from nes_py.wrappers import JoypadSpace
-from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 from rlpyt.envs.wrappers.general_wrappers import *
 from rlpyt.envs.wrappers.mario_wrappers import *
 
@@ -194,6 +189,11 @@ def mario_make(*args, info_example=None, **kwargs):
     rlpyt's ``GymEnvWrapper``, using ``gym_super_mario_bros.make(*args, **kwargs)``. If
     ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
     """
+    import retro
+    import gym_super_mario_bros
+    from nes_py.wrappers import JoypadSpace
+    from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
+
     env = gym_super_mario_bros.make(kwargs['game'])
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
     if kwargs['no_negative_reward']:
@@ -225,5 +225,22 @@ def mario_make(*args, info_example=None, **kwargs):
     # else:
     #     env = GymEnvWrapper(EnvInfoWrapper(env))
     # return env
+
+def deepmind_make(*args, info_example=None, **kwargs):
+    """Use as factory function for making instances of Pycolab environments with
+    rlpyt's ``GymEnvWrapper``, using ``gym.make(*args, **kwargs)``. If
+    ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
+    """
+    import mazeworld
+
+    env = gym.make(kwargs['game'])
+
+    if kwargs['no_negative_reward']:
+        env = NoNegativeReward(env)
+    if info_example is None:
+        env = GymEnvWrapper(env)
+    else:
+        env = GymEnvWrapper(EnvInfoWrapper(env))
+    return env
 
 

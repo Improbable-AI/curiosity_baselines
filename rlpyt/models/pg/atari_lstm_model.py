@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.conv2d import Conv2dHeadModel
-from rlpyt.models.curiosity.icm import ICM, UniverseHead, BurdaHead
+from rlpyt.models.curiosity.icm import ICM, UniverseHead, BurdaHead, MazeHead
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -51,6 +51,10 @@ class AtariLstmModel(torch.nn.Module):
                 self.conv = BurdaHead(image_shape=image_shape,
                                       output_size=self.curiosity_model.feature_size,
                                       batch_norm=curiosity_kwargs['batch_norm'])
+            elif curiosity_kwargs['feature_encoding'] == 'idf_maze':
+                self.conv = MazeHead(image_shape=image_shape,
+                                     output_size=self.curiosity_model.feature_size,
+                                     batch_norm=curiosity_kwargs['batch_norm'])
             self.conv.output_size = self.curiosity_model.feature_size
 
         else:

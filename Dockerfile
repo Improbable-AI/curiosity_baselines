@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.2-base-ubuntu18.04
+FROM ubuntu:18.04
 LABEL maintainer "Eric Chen - ericrc@mit.edu"
 SHELL ["/bin/bash", "-c"]
 
@@ -43,7 +43,6 @@ RUN apt-get update && apt-get install -y \
     libwildmidi-dev \
     unzip \
     lsof \
-
     libjpeg-turbo8-dev \
     xorg-dev \
     libx11-dev \
@@ -53,7 +52,6 @@ RUN apt-get update && apt-get install -y \
     libxi-dev \
     libxxf86vm-dev \
     mesa-common-dev
-
 
 RUN mkdir -p /root/.mujoco \
     && wget https://www.roboti.us/download/mujoco200_linux.zip -O mujoco.zip \
@@ -67,10 +65,24 @@ ENV PYTHONPATH /curiosity_baselines
 COPY requirements.txt /tmp/
 RUN pip3 install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
+# -------------------- 
+# Install gym-super-mario-bros locally
 COPY ./rlpyt/envs/gym-super-mario-bros /gym-super-mario-bros
 WORKDIR /gym-super-mario-bros
 RUN pip3 install -e .
 
+# Copy in retro roms
 COPY ./rlpyt/envs/retro_roms /tmp/retro_roms
 RUN python3 -m retro.import /tmp/retro_roms
 RUN rm -r /tmp/retro_roms
+
+# Install pycolab locally
+COPY ./rlpyt/envs/pycolab /pycolab
+WORKDIR /pycolab
+RUN pip3 install -e .
+
+# Install mazeworld locally
+COPY ./rlpyt/envs/mazeworld /mazeworld
+WORKDIR /mazeworld
+RUN pip3 install -e .
+
