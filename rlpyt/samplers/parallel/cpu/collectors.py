@@ -142,12 +142,13 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                 # Stops and sleeps long enough to quit out at the end of an episode. Make sure
                 # frame stacking is turned off.
                 # from PIL import Image
-                # img = Image.fromarray(np.squeeze(o), 'L')
+                # # img = Image.fromarray(np.squeeze(o), 'L')
+                # img = Image.fromarray(env._last_painted, 'RGB')
                 # img.save('images/{}_act_{}.jpg'.format(t, action[b]))
-                # o = np.expand_dims(o, 0)
+                # # o = np.expand_dims(o, 0)
                 # if d:
                 #     import time
-                #     print("DONE!")
+                #     print("DONE! {}".format(t))
                 #     time.sleep(100)
 
                 # FRAME STACKING:

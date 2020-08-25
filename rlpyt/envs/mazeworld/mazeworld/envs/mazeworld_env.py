@@ -21,6 +21,7 @@ class MazeWorld(pycolab_env.PyColabEnv):
                  max_iterations=500,
                  default_reward=0.):
         self.level = level
+        self.state_layer_chars = ['P', '#', 'a', 'b', 'c', 'd', 'e', '@']
         super(MazeWorld, self).__init__(
             max_iterations=max_iterations,
             default_reward=default_reward,
@@ -43,6 +44,7 @@ class DeepmindMazeWorld(pycolab_env.PyColabEnv):
                  max_iterations=500,
                  default_reward=0.):
         self.level = level
+        self.state_layer_chars = ['#', 'a', 'b', 'c', 'd', 'e', '@'] # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld, self).__init__(
             max_iterations=max_iterations,
             default_reward=default_reward,
@@ -54,4 +56,4 @@ class DeepmindMazeWorld(pycolab_env.PyColabEnv):
         return deepmind_maze.make_game(self.level)
 
     def make_croppers(self):
-        return [cropping.ScrollingCropper(rows=5, cols=5, to_track=['P'], scroll_margins=(1, 1), pad_char=' ')]
+        return [cropping.ScrollingCropper(rows=5, cols=5, to_track=['P'], scroll_margins=(None, None), pad_char=' ')]

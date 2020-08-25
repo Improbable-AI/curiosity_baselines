@@ -79,7 +79,7 @@ class PyColabEnv(gym.Env):
         # Create the observation space.
         observation_layers = list(set(layers))
         self._observation_order = sorted(observation_layers)
-        self.observation_space = spaces.Box(0., 1., [len(observation_layers)-1] + crop_window) # don't count empty space layer
+        self.observation_space = spaces.Box(0., 1., [len(self.state_layer_chars)] + crop_window) # don't count empty space layer
         self.action_space = action_space
 
         self.current_game = None
@@ -157,7 +157,7 @@ class PyColabEnv(gym.Env):
         """Update internal state with data from an environment interaction."""
         # disentangled one hot state
         self._state = []
-        for char in observations.layers:
+        for char in self.state_layer_chars:
             if char != ' ':
                 mask = observations.layers[char].astype(float)
                 self._state.append(mask)
