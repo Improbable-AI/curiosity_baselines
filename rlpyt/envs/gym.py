@@ -241,7 +241,8 @@ def deepmind_make(*args, info_example=None, **kwargs):
 
     stack_size=3
     env = FrameStack(env, stack_size)
-    env.observation_space = spaces.Box(0., 1., [stack_size * len(env.state_layer_chars), 5, 5])
+    env = PytorchImage(env)
+    env.observation_space = spaces.Box(0., 255., [stack_size * 3, 5, 5])
 
     if info_example is None:
         env = GymEnvWrapper(env)

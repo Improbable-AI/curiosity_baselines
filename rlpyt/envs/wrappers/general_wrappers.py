@@ -34,8 +34,8 @@ class LazyFrames(object):
 
     def _force(self):
         if self._out is None:
-            # self._out = np.concatenate(self._frames, axis=2) # observation format: (h, w, c)
-            self._out = np.concatenate(self._frames, axis=0) # observation format: (c, h, w)
+            self._out = np.concatenate(self._frames, axis=2) # observation format: (h, w, c)
+            # self._out = np.concatenate(self._frames, axis=0) # observation format: (c, h, w)
             self._frames = None
         return self._out
 

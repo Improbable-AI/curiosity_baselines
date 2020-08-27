@@ -79,7 +79,7 @@ class PyColabEnv(gym.Env):
         # Create the observation space.
         observation_layers = list(set(layers))
         self._observation_order = sorted(observation_layers)
-        self.observation_space = spaces.Box(0., 1., [len(self.state_layer_chars)] + crop_window) # could change depending on frame stacking
+        self.observation_space = spaces.Box(0., 255., [3] + crop_window) # could change depending on frame stacking
         self.action_space = action_space
 
         self.current_game = None
@@ -190,7 +190,7 @@ class PyColabEnv(gym.Env):
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
         self._update_for_game_step(observations, reward)
-        return self._state
+        return self._last_painted
 
     def step(self, action):
         """Apply action, step the world forward, and return observations.
@@ -223,8 +223,7 @@ class PyColabEnv(gym.Env):
 
         if self._game_over:
             self.current_game = None
-        
-        return self._state, reward, done, info
+        return self._last_painted, reward, done, info
 
     def render(self, mode='rgb_array', close=False):
         """Render the board to an image viewer or an np.array.
