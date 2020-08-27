@@ -79,7 +79,7 @@ class PyColabEnv(gym.Env):
         # Create the observation space.
         observation_layers = list(set(layers))
         self._observation_order = sorted(observation_layers)
-        self.observation_space = spaces.Box(0., 1., [len(self.state_layer_chars)] + crop_window) # don't count empty space layer
+        self.observation_space = spaces.Box(0., 1., [len(self.state_layer_chars)] + crop_window) # could change depending on frame stacking
         self.action_space = action_space
 
         self.current_game = None
