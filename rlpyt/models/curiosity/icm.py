@@ -56,7 +56,6 @@ class MazeHead(nn.Module):
         self.model = nn.Sequential(
                                 nn.Conv2d(in_channels=c, out_channels=16, kernel_size=(3, 3), stride=(1, 1)),
                                 nn.ReLU(),
-                                nn.BatchNorm2d(16),
                                 nn.Conv2d(in_channels=16, out_channels=256, kernel_size=(3, 3), stride=(2, 2)),
                                 nn.ReLU(),
                                 Flatten(),
