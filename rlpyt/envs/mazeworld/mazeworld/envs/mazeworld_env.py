@@ -57,3 +57,14 @@ class DeepmindMazeWorld(pycolab_env.PyColabEnv):
 
     def make_croppers(self):
         return [cropping.ScrollingCropper(rows=5, cols=5, to_track=['P'], scroll_margins=(None, None), pad_char=' ')]
+
+
+
+
+
+
+
+
+
+
+        
