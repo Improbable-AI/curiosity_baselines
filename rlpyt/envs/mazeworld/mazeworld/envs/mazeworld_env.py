@@ -33,7 +33,7 @@ class MazeWorld(pycolab_env.PyColabEnv):
         return better_scrolly_maze.make_game(self.level)
 
     def make_croppers(self):
-        return [cropping.ScrollingCropper(rows=35, cols=35, to_track=['P'], scroll_margins=(1, 1), pad_char=' ')]
+        return [cropping.ScrollingCropper(rows=5, cols=5, to_track=['P'], scroll_margins=(None, None), pad_char=' ')]
 
 class DeepmindMazeWorld(pycolab_env.PyColabEnv):
     """Deepmind World Discovery Models game.

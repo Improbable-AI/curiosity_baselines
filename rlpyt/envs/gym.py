@@ -241,6 +241,7 @@ def deepmind_make(*args, info_example=None, **kwargs):
         env = GymEnvWrapper(env)
     else:
         env = GymEnvWrapper(EnvInfoWrapper(env))
+
     return env
 
 
