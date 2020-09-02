@@ -4,7 +4,6 @@
 mjkey.txt
 log.numbers
 Makefile
-Makefile_gpu
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
