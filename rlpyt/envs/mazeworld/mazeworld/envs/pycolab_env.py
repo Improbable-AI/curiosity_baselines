@@ -95,6 +95,11 @@ class PyColabEnv(gym.Env):
         self.resize_scale = resize_scale
         self.delay = delay
 
+        # Metrics
+        self.visitation_frequency = {char:0 for char in self.objects}
+        self.first_visit_time = {char:400 for char in self.objects}
+
+
     @abc.abstractmethod
     def make_game(self):
         """Function that creates a new pycolab game.
@@ -160,6 +165,8 @@ class PyColabEnv(gym.Env):
         for char in self.state_layer_chars:
             if char != ' ':
                 mask = observations.layers[char].astype(float)
+                if char in self.objects and 1. in mask:
+                    self.visitation_frequency[char] += 1
                 self._state.append(mask)
         self._state = np.array(self._state)
 
@@ -190,6 +197,7 @@ class PyColabEnv(gym.Env):
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
         self._update_for_game_step(observations, reward)
+        self.visitation_frequency = {char:0 for char in self.objects} # reset trackers
         return self._state
 
     def step(self, action):
@@ -223,7 +231,7 @@ class PyColabEnv(gym.Env):
 
         if self._game_over:
             self.current_game = None
-        
+
         return self._state, reward, done, info
 
     def render(self, mode='rgb_array', close=False):
