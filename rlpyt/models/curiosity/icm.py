@@ -3,10 +3,7 @@ import torch
 from torch import nn
 
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
-
-class Flatten(nn.Module):
-    def forward(self, x):
-        return x.view(x.size(0), -1)
+from rlpyt.models.utils import Flatten
 
 class UniverseHead(nn.Module):
     '''
@@ -53,15 +50,25 @@ class MazeHead(nn.Module):
         c, h, w = image_shape
         self.output_size = output_size
         self.conv_output_size = conv_output_size
-        self.model = nn.Sequential(
-                                nn.Conv2d(in_channels=c, out_channels=16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-                                nn.ReLU(),
-                                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(2, 2)),
-                                nn.ReLU(),
-                                Flatten(),
-                                nn.Linear(in_features=self.conv_output_size, out_features=self.output_size),
-                                nn.ReLU()
-                                )
+        sequence = [nn.Conv2d(in_channels=c, out_channels=16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)), 
+                 nn.ReLU()]
+        nn.init.kaiming_uniform(sequence[0].weight)
+        sequence += [nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(2, 2)),
+                     nn.ReLU()]
+        nn.init.kaiming_uniform(sequence[2].weight)
+        sequence += [Flatten(),
+                     nn.Linear(in_features=self.conv_output_size, out_features=self.output_size),
+                     nn.ReLU()]
+        self.model = nn.Sequential(*sequence)
+        # self.model = nn.Sequential(
+        #                         nn.Conv2d(in_channels=c, out_channels=16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+        #                         nn.ReLU(),
+        #                         nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(2, 2)),
+        #                         nn.ReLU(),
+        #                         Flatten(),
+        #                         nn.Linear(in_features=self.conv_output_size, out_features=self.output_size),
+        #                         nn.ReLU()
+        #                         )
 
     def forward(self, state):
         """Compute the feature encoding convolution + head on the input;
@@ -99,6 +106,10 @@ class BurdaHead(nn.Module):
             sequence.append(nn.BatchNorm2d(64))
         sequence.append(Flatten())
         sequence.append(nn.Linear(in_features=self.conv_output_size, out_features=self.output_size))
+
+        nn.init.xavier_uniform(sequence[0].weight) # xavier uniform conv layers
+        nn.init.xavier_uniform(sequence[3].weight)
+        nn.init.xavier_uniform(sequence[6].weight)
 
         self.model = nn.Sequential(*sequence)
         # self.model = nn.Sequential(
