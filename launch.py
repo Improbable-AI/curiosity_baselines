@@ -160,6 +160,12 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
         model_args['curiosity_kwargs']['forward_loss_wt'] = args.forward_loss_wt
+    elif args.curiosity_alg == 'disagreement':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['ensemble_size'] = args.ensemble_size
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
+        model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
+        model_args['curiosity_kwargs']['forward_loss_wt'] = args.forward_loss_wt
 
     if args.env in _MUJOCO_ENVS:
         if args.lstm:

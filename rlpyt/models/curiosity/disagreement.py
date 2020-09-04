@@ -41,22 +41,25 @@ class ResForward(nn.Module):
         x = self.lin_last(torch.cat([x, action], 2))
         return x
 
-class ICM(nn.Module):
+class Disagreement(nn.Module):
 
     def __init__(
             self, 
             image_shape, 
             action_size,
+            ensemble_size=5,
             feature_encoding='idf', 
             batch_norm=False,
             prediction_beta=1.0,
             obs_stats=None
             ):
-        super(ICM, self).__init__()
+        super(Disagreement, self).__init__()
 
+        self.ensemble_size = ensemble_size
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
+
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
 
@@ -76,17 +79,10 @@ class ICM(nn.Module):
             nn.ReLU(),
             nn.Linear(self.feature_size, action_size)
             )
-
-        # Original 2017 ICM paper
-        # self.forward_model = nn.Sequential(
-        #     nn.Linear(self.feature_size + action_size, 256),
-        #     nn.ReLU(),
-        #     nn.Linear(256, self.feature_size)
-        #     )
-
-        # Modified 2019 ICM paper
-        self.forward_model = ResForward(feature_size=self.feature_size, action_size=action_size)
-
+        
+        self.forward_model = []
+        for _ in range(self.ensemble_size):
+            self.forward_model.append(ResForward(feature_size=self.feature_size, action_size=action_size))
 
     def forward(self, obs1, obs2, action):
 
@@ -110,26 +106,39 @@ class ICM(nn.Module):
             phi2 = phi2.view(T, B, -1)
 
         predicted_action = self.inverse_model(torch.cat([phi1, phi2], 2))
-        predicted_phi2 = self.forward_model(phi1.detach(), action.view(T, B, -1))
+
+        predicted_phi2 = []
+        for forw_model in self.forward_model:
+            predicted_phi2.append(forw_model(phi1.detach(), action.view(T, B, -1)))
+        predicted_phi2 = torch.stack(predicted_phi2)
 
         return phi1, phi2, predicted_phi2, predicted_action
 
     def compute_bonus(self, obs, action, next_obs):
         phi1, phi2, predicted_phi2, predicted_action = self.forward(obs, next_obs, action)
-        forward_loss = 0.5 * (nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size)
-        return self.prediction_beta * forward_loss.item()
+        feature_var = torch.var(predicted_phi2, dim=0, keepdim=True) # feature variance across forward models
+        reward = torch.mean(feature_var, axis=-1) # mean over features
+        return self.prediction_beta * reward.item()
 
     def compute_loss(self, obs, action, next_obs):
         #------------------------------------------------------------#
-        # hacky dimension add for when you have only one environment
+        # hacky dimension add for when you have only one environment (debugging)
         if action.dim() == 2: 
             action = action.unsqueeze(1)
         #------------------------------------------------------------#
         phi1, phi2, predicted_phi2, predicted_action = self.forward(obs, next_obs, action)
         action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
-        forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2.detach())
-        return inverse_loss.squeeze(), forward_loss.squeeze()
+
+        forward_losses = []
+        for p_phi2 in predicted_phi2:
+            forward_losses.append(nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2))
+        forward_losses = torch.stack(forward_losses)
+        # forward_loss = nn.functional.dropout(0.5 * nn.functional.mse_loss(predicted_phi2[0], phi2.detach()), p=0.2)
+        # for p_phi2 in predicted_phi2:
+        #     forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
+
+        return inverse_loss.squeeze(), forward_losses
 
 
 

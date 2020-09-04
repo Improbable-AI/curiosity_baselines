@@ -1,6 +1,10 @@
 
 import torch
+from torch import nn
 
+class Flatten(nn.Module):
+    def forward(self, x):
+        return x.view(x.size(0), -1)
 
 def conv2d_output_shape(h, w, kernel_size=1, stride=1, padding=0, dilation=1):
     """
