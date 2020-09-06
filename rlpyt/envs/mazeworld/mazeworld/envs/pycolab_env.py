@@ -44,7 +44,8 @@ class PyColabEnv(gym.Env):
                  action_space,
                  delay=30,
                  resize_scale=8,
-                 crop_window=[5, 5]):
+                 crop_window=[5, 5],
+                 render_mode='uncropped'):
         """Create an `PyColabEnv` adapter to a `pycolab` game as a `gym.Env`.
 
         You can access the `pycolab.Engine` instance with `env.current_game`.
@@ -57,6 +58,8 @@ class PyColabEnv(gym.Env):
             delay: renderer delay.
             resize_scale: number of pixels per observation pixel.
                 Used only by the renderer.
+            crop_window: dimensions of observation cropping.
+            render_mode: render board `cropped` or `uncropped`.
         """
         assert max_iterations > 0
         assert isinstance(default_reward, numbers.Number)
@@ -86,13 +89,17 @@ class PyColabEnv(gym.Env):
         self._croppers = []
         self._state = None
         self._last_observations = None
+        self._last_uncropped_observations = None
         self._empty_board = None
+        self._empty_uncropped_board = None
         self._last_painted = None
+        self._last_uncropped_painted = None
         self._last_reward = None
         self._game_over = False
 
         self.viewer = None
         self.resize_scale = resize_scale
+        self.render_mode = render_mode
         self.delay = delay
 
         # Metrics
@@ -136,7 +143,10 @@ class PyColabEnv(gym.Env):
             3D np.array (np.uint32) representing the RGB of the observation
                 layers.
         """
-        board_shape = self._last_observations.board.shape
+        if self.render_mode == 'uncropped':
+            board_shape = self._last_uncropped_observations.board.shape
+        elif self.render_mode == 'cropped':
+            board_shape = self._last_observations.board.shape
         board = np.zeros(list(board_shape) + [3], np.uint32)
         board_mask = np.zeros(list(board_shape) + [3], np.bool)
 
@@ -172,8 +182,9 @@ class PyColabEnv(gym.Env):
 
         # rendering purposes (RGB)
         self._last_observations = observations
-        self._empty_board = np.zeros_like(self._last_observations.board)
-        self._last_painted = self._paint_board(observations.layers).astype(np.float32)
+        if self.render_mode == 'cropped':
+            self._empty_board = np.zeros_like(self._last_observations.board)
+            self._last_painted = self._paint_board(observations.layers).astype(np.float32)
 
         self._last_reward = reward if reward is not None else \
             self._default_reward
@@ -194,6 +205,9 @@ class PyColabEnv(gym.Env):
         self._last_observations = None
         self._last_reward = None
         observations, reward, _ = self.current_game.its_showtime()
+        self._last_uncropped_observations = observations
+        self._empty_uncropped_board = np.zeros_like(self._last_uncropped_observations.board)
+        self._last_uncropped_painted = self._paint_board(observations.layers).astype(np.float32)
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
         self._update_for_game_step(observations, reward)
@@ -219,6 +233,11 @@ class PyColabEnv(gym.Env):
         # Execute the action in pycolab.
         self.current_game.the_plot.info = {}
         observations, reward, _ = self.current_game.play(action)
+        self._last_uncropped_observations = observations
+        self._empty_uncropped_board = np.zeros_like(self._last_uncropped_observations.board)
+        self._last_uncropped_painted = self._paint_board(observations.layers).astype(np.float32)
+
+        # Crop and update
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
         self._update_for_game_step(observations, reward)
@@ -245,14 +264,24 @@ class PyColabEnv(gym.Env):
         Returns:
             3D np.array (np.uint8) or a `viewer.isopen`.
         """
-        img = self._empty_board
-        if self._last_observations:
-            img = self._last_observations.board
-            layers = self._last_observations.layers
-            if self._colors:
-                img = self._paint_board(layers)
-            else:
-                assert img is not None, '`board` must not be `None`.'
+        if self.render_mode == 'cropped':
+            img = self._empty_board
+            if self._last_observations:
+                img = self._last_observations.board
+                layers = self._last_observations.layers
+                if self._colors:
+                    img = self._paint_board(layers)
+                else:
+                    assert img is not None, '`board` must not be `None`.'
+        elif self.render_mode == 'uncropped':
+            img = self._empty_uncropped_board
+            if self._last_uncropped_observations:
+                img = self._last_uncropped_observations.board
+                layers = self._last_uncropped_observations.layers
+                if self._colors:
+                    img = self._paint_board(layers)
+                else:
+                    assert img is not None, '`board` must not be `None`.'
 
         img = _repeat_axes(img, self.resize_scale, axis=[0, 1])
         if len(img.shape) != 3:

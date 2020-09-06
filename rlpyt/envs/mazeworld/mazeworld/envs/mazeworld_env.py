@@ -27,7 +27,8 @@ class MazeWorld(pycolab_env.PyColabEnv):
             max_iterations=max_iterations,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
-            resize_scale=8)
+            resize_scale=8,
+            render_mode='uncropped')
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -51,7 +52,8 @@ class DeepmindMazeWorld_maze(pycolab_env.PyColabEnv):
             max_iterations=max_iterations,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
-            resize_scale=8)
+            resize_scale=8,
+            render_mode='uncropped')
 
     def make_game(self):
         self._croppers = self.make_croppers()
