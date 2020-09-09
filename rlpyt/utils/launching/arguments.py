@@ -43,7 +43,7 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-linear_lr', action='store_true', help='Whether or not to change learning rate linearly as a function of iteration.')
         parser.add_argument('-normalize_advantage', action='store_true', help='Whether or not to normalize advantages.')
         parser.add_argument('-normalize_reward', action='store_true', help='Whether or not to normalize rewards before computing advantages')
-        parser.add_argument('-kernel_mu', default=float(5e-3), type=float, help='Cutoff bound for the advantage bounding kernel half gaussian.')
+        parser.add_argument('-kernel_mu', default=0.0, type=float, help='Cutoff bound for the advantage bounding kernel half gaussian.')
         parser.add_argument('-kernel_sigma', default=float(1e-3), type=float, help='Dropoff rate for the advantage bounding kernel half gaussian.')
     elif 'a2c' in args_in:
         parser.add_argument('-discount', default=0.99, type=float, help='Reward discount factor applied.')

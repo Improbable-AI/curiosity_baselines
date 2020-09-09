@@ -22,7 +22,9 @@ from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 
 # Environments
+from rlpyt.samplers.collections import TrajInfo
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
+from mazeworld.envs.pycolab_env import PycolabTrajInfo
 from rlpyt.envs.gym import make as gym_make
 from rlpyt.envs.gym import mario_make, deepmind_make
 
@@ -151,7 +153,6 @@ def start_experiment(args):
         initial_optim_state_dict = checkpoint['optimizer_state_dict']
         initial_model_state_dict = checkpoint['agent_state_dict']
 
-
     # ----------------------------------------------------- POLICY ----------------------------------------------------- #
     model_args = dict(curiosity_kwargs=dict(curiosity_alg=args.curiosity_alg))
     if args.curiosity_alg =='icm':
@@ -217,6 +218,7 @@ def start_experiment(args):
     # ----------------------------------------------------- SAMPLER ----------------------------------------------------- #
 
     # environment setup
+    traj_info_cl = TrajInfo # environment specific - potentially overriden below
     if 'mario' in args.env.lower():
         env_cl = mario_make
         env_args = dict(
@@ -226,8 +228,9 @@ def start_experiment(args):
             normalize_obs=args.normalize_obs,
             normalize_obs_steps=10000
             )
-    elif 'deepmind' in args.env.lower(): # deepmind maze
+    elif 'deepmind' in args.env.lower(): # pycolab deepmind environments
         env_cl = deepmind_make
+        traj_info_cl = PycolabTrajInfo
         env_args = dict(
             game=args.env,
             no_extrinsic=args.no_extrinsic,
@@ -240,14 +243,20 @@ def start_experiment(args):
         env_args = dict(
             id=args.env, 
             no_extrinsic=args.no_extrinsic,
-            no_negative_reward=args.no_negative_reward
+            no_negative_reward=args.no_negative_reward,
+            normalize_obs=False,
+            normalize_obs_steps=10000
             )
-    else:
+    elif args.env in _ATARI_ENVS:
         env_cl = AtariEnv
+        traj_info_cl = AtariTrajInfo
         env_args = dict(
             game=args.env, 
             no_extrinsic=args.no_extrinsic,
-            no_negative_reward=args.no_negative_reward
+            no_negative_reward=args.no_negative_reward,
+            normalize_obs=False,
+            normalize_obs_steps=10000,
+            downsampling_scheme='classical'
             )
 
     if args.sample_mode == 'gpu':
@@ -262,6 +271,7 @@ def start_experiment(args):
             batch_T=args.timestep_limit,
             batch_B=args.num_envs,
             max_decorrelation_steps=0,
+            TrajInfoCls=traj_info_cl,
             eval_n_envs=args.eval_envs,
             eval_max_steps=args.eval_max_steps,
             eval_max_trajectories=args.eval_max_traj,
@@ -281,6 +291,7 @@ def start_experiment(args):
             batch_T=args.timestep_limit, # timesteps in a trajectory episode
             batch_B=args.num_envs, # environments distributed across workers
             max_decorrelation_steps=0,
+            TrajInfoCls=traj_info_cl,
             eval_n_envs=args.eval_envs,
             eval_max_steps=args.eval_max_steps,
             eval_max_trajectories=args.eval_max_traj,

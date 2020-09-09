@@ -10,12 +10,7 @@ from rlpyt.spaces.int_box import IntBox
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.samplers.collections import TrajInfo
 
-
-W, H = (80, 104)  # Crop two rows, then downsample by 2x (fast, clean image).
-
-
 EnvInfo = namedtuple("EnvInfo", ["game_score", "traj_done"])
-
 
 class AtariTrajInfo(TrajInfo):
     """TrajInfo class for use with Atari Env, to store raw game score separate
@@ -25,8 +20,8 @@ class AtariTrajInfo(TrajInfo):
         super().__init__(**kwargs)
         self.GameScore = 0
 
-    def step(self, observation, action, reward, done, agent_info, env_info):
-        super().step(observation, action, reward, done, agent_info, env_info)
+    def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info):
+        super().step(observation, action, reward_ext, reward_int, done, agent_info, env_info)
         self.GameScore += getattr(env_info, "game_score", 0)
 
 
@@ -44,7 +39,8 @@ class AtariEnv(Env):
     downsampling by 2x using `cv2`: (210, 160) --> (80, 104).  Downsampling by
     2x is much faster than the old scheme to (84, 84), and the (80, 104) shape
     is fairly convenient for convolution filter parameters which don't cut off
-    edges.
+    edges. There is an option to use the classical (84, 84) downsampling scheme,
+    set during initialization.
 
     The action space is an `IntBox` for the number of actions.  The observation
     space is an `IntBox` with ``dtype=uint8`` to save memory; conversion to float
@@ -64,12 +60,15 @@ class AtariEnv(Env):
         horizon (int): max number of steps before timeout / ``traj_done=True``
         no_extrinsic (bool): if ``True``, then all rewards are zeroed out.
         no_negative_reward (bool): if ``True``, then all negative rewards are zeroed out.
+        normalize_obs (bool): if ``True``, then a mean and std are computed at the start and used to normalize future observations
+        normalize_obs_steps (int): number of random samples used to compute observation mean and std if normalize_obs is ``True``
+        downsampling_scheme (string): if ``classical``, use (84, 84). If ``new``, use (80, 104)
     """
 
     def __init__(self,
                  game="pong",
                  frame_skip=4,  # Frames per step (>=1).
-                 num_img_obs=4,  # Number of (past) frames in observation (>=1).
+                 num_img_obs=4,  # Number of (past) frames in observation (>=1) - "frame stacking".
                  clip_reward=True,
                  episodic_lives=True,
                  fire_on_reset=False,
@@ -77,7 +76,10 @@ class AtariEnv(Env):
                  repeat_action_probability=0.,
                  horizon=27000,
                  no_extrinsic=False,
-                 no_negative_reward=False
+                 no_negative_reward=False,
+                 normalize_obs=False,
+                 normalize_obs_steps=10000,
+                 downsampling_scheme='classical'
                  ):
         save__init__args(locals(), underscore=True)
 
@@ -93,7 +95,11 @@ class AtariEnv(Env):
         # Spaces
         self._action_set = self.ale.getMinimalActionSet()
         self._action_space = IntBox(low=0, high=len(self._action_set))
-        obs_shape = (num_img_obs, H, W)
+        if downsampling_scheme == 'classical':
+            self._frame_shape = (84, 84) # (W, H)
+        elif downsampling_scheme == 'new':
+            self._frame_shape = (80, 104)
+        obs_shape = (num_img_obs, self._frame_shape[1], self._frame_shape[0])
         self._observation_space = IntBox(low=0, high=255, shape=obs_shape,
             dtype="uint8")
         self._max_frame = self.ale.getScreenGrayscale()
@@ -166,7 +172,7 @@ class AtariEnv(Env):
         """Max of last two frames; crop two rows; downsample by 2x."""
         self._get_screen(2)
         np.maximum(self._raw_frame_1, self._raw_frame_2, self._max_frame)
-        img = cv2.resize(self._max_frame[1:-1], (W, H), cv2.INTER_NEAREST)
+        img = cv2.resize(self._max_frame[1:-1], self._frame_shape, cv2.INTER_NEAREST)
         # NOTE: order OLDEST to NEWEST should match use in frame-wise buffer.
         self._obs = np.concatenate([self._obs[1:], img[np.newaxis]])
 

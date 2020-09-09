@@ -50,13 +50,7 @@ class TrajInfo(AttrDict):
         self.EpAveExtrinsicReward = []
         self.EpAveIntrinsicReward = []
 
-        # Deepmind world discovery models metrics
-        self.visit_freq_a = 0
-        self.visit_freq_b = 0
-        self.first_visit_a = 400
-        self.first_visit_b = 400
-
-    def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info, visitation_frequency, first_visit_time):
+    def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info):
         self.Length += 1
         self.EpExtrinsicReward += reward_ext
         self.EpNonzeroExtrinsicRewards += reward_ext != 0
@@ -68,15 +62,25 @@ class TrajInfo(AttrDict):
         self.EpAveExtrinsicReward.append(reward_ext)
         self.EpAveIntrinsicReward.append(reward_int)
 
-        # Deepmind world discovery models metrics
-        if self.visit_freq_a == 0 and visitation_frequency['a'] == 1: # first visit
-            self.first_visit_a = self.Length
-        if self.visit_freq_b == 0 and visitation_frequency['b'] == 1:
-            self.first_visit_b = self.Length
-        self.visit_freq_a = visitation_frequency['a']
-        self.visit_freq_b = visitation_frequency['b']
-
     def terminate(self, observation):
         self.EpAveExtrinsicReward = np.mean(self.EpAveExtrinsicReward)
         self.EpAveIntrinsicReward = np.mean(self.EpAveIntrinsicReward)
         return self
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
