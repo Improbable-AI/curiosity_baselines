@@ -130,15 +130,11 @@ class Disagreement(nn.Module):
         action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
 
-        forward_losses = []
+        forward_loss = torch.tensor(0.0)
         for p_phi2 in predicted_phi2:
-            forward_losses.append(nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2))
-        forward_losses = torch.stack(forward_losses)
-        # forward_loss = nn.functional.dropout(0.5 * nn.functional.mse_loss(predicted_phi2[0], phi2.detach()), p=0.2)
-        # for p_phi2 in predicted_phi2:
-        #     forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
+            forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
 
-        return inverse_loss.squeeze(), forward_losses
+        return inverse_loss.squeeze(), forward_loss
 
 
 

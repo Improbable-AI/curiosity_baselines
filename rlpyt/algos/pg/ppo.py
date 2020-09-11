@@ -154,12 +154,6 @@ class PPO(PolicyGradientAlgo):
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
                 loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
 
-                if self.curiosity_kwargs['curiosity_alg'] == 'disagreement':
-                    total_forward_loss = forward_loss[0]
-                    for floss in forward_loss[1:]:
-                        total_forward_loss += floss
-                    loss += total_forward_loss
-
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
                 self.optimizer.step()
@@ -170,17 +164,7 @@ class PPO(PolicyGradientAlgo):
                 opt_info.value_loss.append(value_loss.item())
                 opt_info.entropy_loss.append(entropy_loss.item())
                 opt_info.inv_loss.append(inv_loss.item())
-
-                if self.curiosity_kwargs['curiosity_alg'] == 'disagreement':
-                    opt_info.forward_loss_1.append(forward_loss[0].item())
-                    opt_info.forward_loss_2.append(forward_loss[1].item())
-                    opt_info.forward_loss_3.append(forward_loss[2].item())
-                    opt_info.forward_loss_4.append(forward_loss[3].item())
-                    opt_info.forward_loss_5.append(forward_loss[4].item())
-                    opt_info.total_forward_loss.append(total_forward_loss.item())
-                else:
-                    opt_info.forward_loss.append(forward_loss.item())
-
+                opt_info.forward_loss.append(forward_loss.item())
                 opt_info.curiosity_loss.append(curiosity_loss.item())
 
                 if self.normalize_reward:
