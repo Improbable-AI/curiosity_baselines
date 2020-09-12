@@ -262,7 +262,9 @@ def start_experiment(args):
             no_negative_reward=args.no_negative_reward,
             normalize_obs=False,
             normalize_obs_steps=10000,
-            downsampling_scheme='classical'
+            downsampling_scheme='classical',
+            record_freq=args.record_freq,
+            record_dir=args.log_dir
             )
 
     if args.sample_mode == 'gpu':

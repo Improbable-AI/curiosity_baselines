@@ -117,7 +117,7 @@ class Disagreement(nn.Module):
     def compute_bonus(self, obs, action, next_obs):
         phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs, next_obs, action)
         feature_var = torch.var(predicted_phi2_stacked, dim=0) # feature variance across forward models
-        reward = torch.mean(feature_var, axis=-1) # mean over features
+        reward = torch.mean(feature_var, axis=-1) # mean over feature
         return self.prediction_beta * reward.item()
 
     def compute_loss(self, obs, action, next_obs):
@@ -129,7 +129,7 @@ class Disagreement(nn.Module):
         phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs, next_obs, action)
         action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
-
+        
         forward_loss = torch.tensor(0.0)
         for p_phi2 in predicted_phi2:
             forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)

@@ -1,6 +1,7 @@
 
 import numpy as np
 import os
+import glob
 import atari_py
 import cv2
 from collections import namedtuple
@@ -79,7 +80,9 @@ class AtariEnv(Env):
                  no_negative_reward=False,
                  normalize_obs=False,
                  normalize_obs_steps=10000,
-                 downsampling_scheme='classical'
+                 downsampling_scheme='classical',
+                 record_freq=0,
+                 record_dir=None
                  ):
         save__init__args(locals(), underscore=True)
 
@@ -100,8 +103,7 @@ class AtariEnv(Env):
         elif downsampling_scheme == 'new':
             self._frame_shape = (80, 104)
         obs_shape = (num_img_obs, self._frame_shape[1], self._frame_shape[0])
-        self._observation_space = IntBox(low=0, high=255, shape=obs_shape,
-            dtype="uint8")
+        self._observation_space = IntBox(low=0, high=255, shape=obs_shape, dtype="uint8")
         self._max_frame = self.ale.getScreenGrayscale()
         self._raw_frame_1 = self._max_frame.copy()
         self._raw_frame_2 = self._max_frame.copy()
@@ -111,6 +113,15 @@ class AtariEnv(Env):
         self._has_fire = "FIRE" in self.get_action_meanings()
         self._has_up = "UP" in self.get_action_meanings()
         self._horizon = int(horizon)
+
+        # Recording
+        self.record_env = False # set in samping_process for environment 0
+        self._record_episode = False
+        self._record_freq = record_freq
+        self._video_dir = os.path.join(record_dir, 'videos')
+        self._frames_dir = os.path.join(self._video_dir, 'frames')
+        self._episode_number = 0
+
         self.reset()
 
 
@@ -125,6 +136,18 @@ class AtariEnv(Env):
             self.fire_and_up()
         self._update_obs()  # (don't bother to populate any frame history)
         self._step_counter = 0
+        if self.record_env and self._record_episode:
+            os.system('ffmpeg -r 60 -i {}/%d.png -f mp4 -c:v libx264 -pix_fmt yuv420p {}/{}.mp4'.format(self._frames_dir, self._video_dir, self.episode_number))
+            files = glob.glob(os.path.join(self._frames_dir, '*.png'))
+            for f in files:
+                os.remove(f)
+            # os.system('rm * {}/frames'.format(self._frames_dir))
+        self._episode_number += 1
+        if self.record_env and self._episode_number % self._record_freq == 0:
+            self._record_episode = True
+            self._frame_counter = 0
+        else:
+            self._record_episode = False
         return self.get_obs()
 
     def step(self, action):
@@ -132,8 +155,10 @@ class AtariEnv(Env):
         game_score = np.array(0., dtype="float32")
         for _ in range(self._frame_skip - 1):
             game_score += self.ale.act(a)
+            self._write_img()
         self._get_screen(1)
         game_score += self.ale.act(a)
+        self._write_img()
         lost_life = self._check_life()  # Advances from lost_life state.
         if lost_life and self._episodic_lives:
             self._reset_obs()  # Internal reset.
@@ -147,16 +172,20 @@ class AtariEnv(Env):
             reward = 0.0
         return EnvStep(self.get_obs(), reward, done, info)
 
-    def render(self, wait=10, show_full_obs=False):
-        """Shows game screen via cv2, with option to show all frames in observation."""
-        img = self.get_obs()
-        if show_full_obs:
-            shape = img.shape
-            img = img.reshape(shape[0] * shape[1], shape[2])
+    def render(self, cv2=False, wait=10, show_full_obs=False):
+        """Shows game screen via cv2, with option to show all frames in observation.
+        Alternatively, can render via gym.Monitor class and return a plain array."""
+        if cv2:
+            img = self.get_obs()
+            if show_full_obs:
+                shape = img.shape
+                img = img.reshape(shape[0] * shape[1], shape[2])
+            else:
+                img = img[-1]
+            cv2.imshow(self._game, img)
+            cv2.waitKey(wait)
         else:
-            img = img[-1]
-        cv2.imshow(self._game, img)
-        cv2.waitKey(wait)
+            return self.ale.getScreenRGB()
 
     def get_obs(self):
         return self._obs.copy()
@@ -169,7 +198,7 @@ class AtariEnv(Env):
         self.ale.getScreenGrayscale(frame)
 
     def _update_obs(self):
-        """Max of last two frames; crop two rows; downsample by 2x."""
+        """Max of last two frames; crop two rows; downsample by specified scheme."""
         self._get_screen(2)
         np.maximum(self._raw_frame_1, self._raw_frame_2, self._max_frame)
         img = cv2.resize(self._max_frame[1:-1], self._frame_shape, cv2.INTER_NEAREST)
@@ -199,6 +228,11 @@ class AtariEnv(Env):
             self.ale.act(1)  # (e.g. needed in Breakout, not sure what others)
         if self._has_up:
             self.ale.act(2)  # (not sure if this is necessary, saw it somewhere)
+
+    def _write_img(self):
+        if self.record_env and self._record_episode:
+            cv2.imwrite(self._frames_dir + '/{}.png'.format(self._frame_counter), self.render())
+            self._frame_counter += 1
 
 
     ###########################################################################
@@ -236,6 +270,10 @@ class AtariEnv(Env):
     def horizon(self):
         return self._horizon
 
+    @property
+    def episode_number(self):
+        return self._episode_number
+    
     def get_action_meanings(self):
         return [ACTION_MEANING[i] for i in self._action_set]
 

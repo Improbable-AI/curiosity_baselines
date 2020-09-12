@@ -1,4 +1,6 @@
 
+import os
+import json
 import psutil
 import time
 import torch
@@ -9,6 +11,9 @@ from rlpyt.utils.seed import set_seed, set_envs_seeds
 
 from gym.wrappers import Monitor
 
+with open('/curiosity_baselines/global.json') as global_params_file:
+    global_params = json.load(global_params_file)
+    ATARI_ENVS = global_params['envs']['atari_envs']
 
 def initialize_worker(rank, seed=None, cpu=None, torch_threads=None):
     """Assign CPU affinity, set random seed, set torch_threads if needed to
@@ -49,8 +54,12 @@ def sampling_process(common_kwargs, worker_kwargs):
     c, w = AttrDict(**common_kwargs), AttrDict(**worker_kwargs)
     initialize_worker(w.rank, w.seed, w.cpus, c.torch_threads)
     envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
-    if c.get("eval_n_envs", 0) == 0 and c.record_freq > 0: # only record workers if no evaluation processes are performed
-        envs[0] = Monitor(envs[0], c.log_dir + '/videos', video_callable=lambda episode_id: episode_id%c.record_freq==0)
+    if c.record_freq > 0:
+        if c.env_kwargs['game'] in ATARI_ENVS:
+            envs[0].record_env = True
+            os.makedirs(os.path.join(c.log_dir, 'videos/frames'))
+        elif c.get("eval_n_envs", 0) == 0: # only record workers if no evaluation processes are performed
+            envs[0] = Monitor(envs[0], c.log_dir + '/videos', video_callable=lambda episode_id: episode_id%c.record_freq==0)
 
     set_envs_seeds(envs, w.seed)
 
