@@ -100,7 +100,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
         completed_infos = list()
         
-        prev_observation, _, _ = agent_curiosity_inputs # shares action/observation object with agent_inputs
+        prev_observation, _, _ = agent_curiosity_inputs # shares action/observation buffers with agent_inputs
         observation, action, reward_tot = agent_inputs
         
         b = np.where(self.done)[0]
@@ -128,6 +128,8 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                     reward_tot[b] = 0
                     if agent_info:
                         agent_info[b] = 0
+                    if agent_curiosity_info:
+                        agent_curiosity_info = 0
                     # Leave self.done[b] = True, record that.
                     continue
                 # Environment inputs and outputs are numpy arrays.
@@ -166,10 +168,12 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                 #------------------------------------------------------------------------#
 
                 r_int = torch.tensor(0.0)
-                if self.curiosity_alg != 'none':
-                    r_int = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory 
+                if self.curiosity_alg in {'icm', 'disagreement'}:
+                    r_int, agent_curiosity_info = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory 
+                elif self.curiosity_alg == 'ndigo':
+                    r_int, agent_curiosity_info = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0), env_rank=self.env_ranks[b]) # torch.Tensor doesn't link memory 
 
-                traj_infos[b].step(observation[b], action[b], r_ext_log, r_int, d, agent_info[b], env_info)
+                traj_infos[b].step(observation[b], action[b], r_ext_log, r_int, d, agent_info[b], agent_curiosity_info, env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
@@ -193,6 +197,8 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
             env_buf.done[t] = self.done
             if agent_info:
                 agent_buf.agent_info[t] = agent_info
+            if agent_curiosity_info:
+                agent_buf.agent_curiosity_info[t] = agent_curiosity_info
 
         if "bootstrap_value" in agent_buf:
             # agent.value() should not advance rnn state.
@@ -213,7 +219,10 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
             agent_curiosity_inputs.observation[b] = o_reset
             agent_inputs.observation[b] = o_reset
             agent_curiosity_inputs.next_observation[b] = o_reset
-            self.agent.reset_one(idx=b)
+            if self.curiosity_alg == 'ndigo':
+                self.agent.reset_one(idx=b, env_rank=self.env_ranks[b], env_ranks=self.env_ranks)
+            else:
+                self.agent.reset_one(idx=b)
         self.need_reset[:] = False
 
 

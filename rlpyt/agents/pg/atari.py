@@ -1,6 +1,6 @@
 
 
-from rlpyt.agents.pg.categorical import CategoricalPgAgent, RecurrentCategoricalPgAgent, AlternatingRecurrentCategoricalPgAgent
+from rlpyt.agents.pg.categorical import CategoricalPgAgent, RecurrentCategoricalPgAgent, AlternatingRecurrentCategoricalPgAgent, RecurrentCategoricalPgNdigoAgent
 from rlpyt.models.pg.atari_ff_model import AtariFfModel
 from rlpyt.models.pg.atari_lstm_model import AtariLstmModel
 
@@ -32,5 +32,10 @@ class AtariLstmAgent(AtariMixin, RecurrentCategoricalPgAgent):
 class AlternatingAtariLstmAgent(AtariMixin,
         AlternatingRecurrentCategoricalPgAgent):
 
+    def __init__(self, ModelCls=AtariLstmModel, **kwargs):
+        super().__init__(ModelCls=ModelCls, **kwargs)
+
+class AtariNdigoLstmAgent(AtariMixin, RecurrentCategoricalPgNdigoAgent):
+    
     def __init__(self, ModelCls=AtariLstmModel, **kwargs):
         super().__init__(ModelCls=ModelCls, **kwargs)

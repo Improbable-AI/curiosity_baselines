@@ -10,6 +10,7 @@ from rlpyt.models.conv2d import Conv2dHeadModel
 from rlpyt.models.curiosity.encoders import UniverseHead, BurdaHead, MazeHead
 from rlpyt.models.curiosity.disagreement import Disagreement
 from rlpyt.models.curiosity.icm import ICM
+from rlpyt.models.curiosity.ndigo import NDIGO
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -40,22 +41,29 @@ class AtariLstmModel(torch.nn.Module):
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
 
-        if curiosity_kwargs['curiosity_alg'] in {'icm', 'disagreement'}:
+        if curiosity_kwargs['curiosity_alg'] in {'icm', 'disagreement', 'ndigo'}:
             if curiosity_kwargs['curiosity_alg'] == 'icm':
                 self.curiosity_model = ICM(image_shape=image_shape,
                                            action_size=output_size,
-                                           ensemble_size=curiosity_kwargs['ensemble_size'],
                                            feature_encoding=curiosity_kwargs['feature_encoding'],
                                            batch_norm=curiosity_kwargs['batch_norm'],
                                            prediction_beta=curiosity_kwargs['prediction_beta'],
                                            obs_stats=self.obs_stats)
             elif curiosity_kwargs['curiosity_alg'] == 'disagreement':
                 self.curiosity_model = Disagreement(image_shape=image_shape,
-                                           action_size=output_size,
-                                           feature_encoding=curiosity_kwargs['feature_encoding'],
-                                           batch_norm=curiosity_kwargs['batch_norm'],
-                                           prediction_beta=curiosity_kwargs['prediction_beta'],
-                                           obs_stats=self.obs_stats)
+                                                    action_size=output_size,
+                                                    feature_encoding=curiosity_kwargs['feature_encoding'],
+                                                    batch_norm=curiosity_kwargs['batch_norm'],
+                                                    prediction_beta=curiosity_kwargs['prediction_beta'],
+                                                    obs_stats=self.obs_stats)
+            elif curiosity_kwargs['curiosity_alg'] == 'ndigo':
+                self.curiosity_model = NDIGO(image_shape=image_shape,
+                                             action_size=output_size,
+                                             horizon=curiosity_kwargs['pred_horizon'],
+                                             feature_encoding=curiosity_kwargs['feature_encoding'],
+                                             batch_norm=curiosity_kwargs['batch_norm'],
+                                             obs_stats=self.obs_stats)
+
             if curiosity_kwargs['feature_encoding'] == 'idf':
                 self.conv = UniverseHead(image_shape=image_shape,
                                          batch_norm=curiosity_kwargs['batch_norm'])

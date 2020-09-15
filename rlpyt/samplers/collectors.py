@@ -134,7 +134,10 @@ class DecorrelatingStartCollector(BaseCollector):
             self.step_buffer_np.prev_reward[:] = prev_reward
             self.step_buffer_np.observation[:] = observation
 
+        # For NDIGO curiosity agent
+        last_losses = buffer_from_example(0.0, len(self.envs))
+
         # AgentInputs -> ['observation', 'prev_action', 'prev_reward']
-        # AgentCuriosityInputs -> ['observation', 'action', 'next_observation']
+        # AgentCuriosityInputs -> ['observation', 'action', 'next_observation', 'last_losses']
         return AgentInputs(observation, prev_action, prev_reward), AgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
 

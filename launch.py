@@ -11,7 +11,7 @@ import torch
 from rlpyt.runners.minibatch_rl import MinibatchRl, MinibatchRlEval
 
 # Policies
-from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent
+from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent, AtariNdigoLstmAgent
 from rlpyt.agents.pg.mujoco import MujocoFfAgent, MujocoLstmAgent
 
 # Samplers
@@ -166,6 +166,10 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
         model_args['curiosity_kwargs']['forward_loss_wt'] = args.forward_loss_wt
+    elif args.curiosity_alg == 'ndigo':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['pred_horizon'] = args.pred_horizon
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
 
     if args.env in _MUJOCO_ENVS:
         if args.lstm:
@@ -174,11 +178,19 @@ def start_experiment(args):
             agent = MujocoFfAgent(initial_model_state_dict=initial_model_state_dict)
     else:
         if args.lstm:
-            agent = AtariLstmAgent(
-                        initial_model_state_dict=initial_model_state_dict,
-                        model_kwargs=model_args,
-                        no_extrinsic=args.no_extrinsic
-                        )
+            if args.curiosity_alg == 'ndigo':
+                agent = AtariNdigoLstmAgent(
+                            initial_model_state_dict=initial_model_state_dict,
+                            model_kwargs=model_args,
+                            no_extrinsic=args.no_extrinsic,
+                            num_envs=args.num_envs
+                            )
+            else:
+                agent = AtariLstmAgent(
+                            initial_model_state_dict=initial_model_state_dict,
+                            model_kwargs=model_args,
+                            no_extrinsic=args.no_extrinsic
+                            )
         else:
             agent = AtariFfAgent(initial_model_state_dict=initial_model_state_dict)
 

@@ -7,9 +7,9 @@ from rlpyt.utils.collections import namedarraytuple, AttrDict
 Samples = namedarraytuple("Samples", ["agent", "env"])
 
 AgentSamples = namedarraytuple("AgentSamples",
-    ["action", "reward_int", "prev_action", "agent_info"])
+    ["action", "reward_int", "prev_action", "agent_info", "agent_curiosity_info"])
 AgentSamplesBsv = namedarraytuple("AgentSamplesBsv",
-    ["action", "reward_int", "prev_action", "agent_info", "bootstrap_value"])
+    ["action", "reward_int", "prev_action", "agent_info", "agent_curiosity_info", "bootstrap_value"])
 EnvSamples = namedarraytuple("EnvSamples",
     ["prev_observation", "reward", "prev_reward", "observation", "next_observation", "done", "env_info"])
 
@@ -50,7 +50,7 @@ class TrajInfo(AttrDict):
         self.EpAveExtrinsicReward = []
         self.EpAveIntrinsicReward = []
 
-    def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info):
+    def step(self, observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info):
         self.Length += 1
         self.EpExtrinsicReward += reward_ext
         self.EpNonzeroExtrinsicRewards += reward_ext != 0

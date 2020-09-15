@@ -102,6 +102,10 @@ class PPO(PolicyGradientAlgo):
         if recurrent:
             # Leave in [B,N,H] for slicing to minibatches.
             init_rnn_state = samples.agent.agent_info.prev_rnn_state[0]  # T=0.
+
+            if self.curiosity_kwargs['curiosity_alg'] == 'ndigo':
+                init_ndigo_gru_state = samples.agent.agent_curiosity_info.prev_gru_state[0]  # T=0.
+
         T, B = samples.env.reward.shape[:2]
         opt_info = OptInfo(*([] for _ in range(len(OptInfo._fields))))
 
@@ -151,8 +155,15 @@ class PPO(PolicyGradientAlgo):
                 B_idxs = idxs if recurrent else idxs // T
                 self.optimizer.zero_grad()
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
-                # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
+
+                if self.curiosity_kwargs['curiosity_alg'] == 'ndigo':
+                    ndigo_gru_state = init_ndigo_gru_state[B_idxs] if recurrent else None
+
+                    # NOTE: if not recurrent, will lose leading T dim, should be OK.
+                    loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state, ndigo_gru_state)
+                else:
+                    # NOTE: if not recurrent, will lose leading T dim, should be OK.
+                    loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
 
                 if self.curiosity_kwargs['curiosity_alg'] == 'disagreement':
                     total_forward_loss = forward_loss[0]
@@ -186,14 +197,14 @@ class PPO(PolicyGradientAlgo):
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
 
-                opt_info.gradNorm.append(torch.tensor(grad_norm).clone().detach().item())
+                opt_info.gradNorm.append(grad_norm.item())
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
 
-        opt_info.return_.append(torch.mean(return_).detach().clone().item())
-        opt_info.advantage.append(torch.mean(advantage).detach().clone().item())
-        opt_info.valpred.append(torch.mean(samples.agent.agent_info.value).detach().clone().item())
+        opt_info.return_.append(torch.mean(return_.detach()).detach().clone().item())
+        opt_info.advantage.append(torch.mean(advantage.detach()).detach().clone().item())
+        opt_info.valpred.append(torch.mean(samples.agent.agent_info.value.detach()).detach().clone().item())
 
         # layer_info['forward/lin1.w'] = self.agent.model.curiosity_model.forward_model.lin_1.weight
         # layer_info['forward/lin1.b'] = self.agent.model.curiosity_model.forward_model.lin_1.bias
@@ -237,7 +248,7 @@ class PPO(PolicyGradientAlgo):
         return opt_info, {}
 
     def loss(self, agent_inputs, agent_curiosity_inputs, action, return_, advantage, valid, old_dist_info,
-            init_rnn_state=None):
+            init_rnn_state=None, init_ndigo_gru=None):
         """
         Compute the training loss: policy_loss + value_loss + entropy_loss
         Policy loss: min(likelhood-ratio * advantage, clip(likelihood_ratio, 1-eps, 1+eps) * advantage)
@@ -269,6 +280,8 @@ class PPO(PolicyGradientAlgo):
 
         loss = pi_loss + value_loss + entropy_loss
         
+        perplexity = dist.mean_perplexity(dist_info, valid)
+
         if self.curiosity_kwargs['curiosity_alg'] == 'icm':
             forward_loss_wt = self.curiosity_kwargs['forward_loss_wt']
             inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
@@ -279,10 +292,17 @@ class PPO(PolicyGradientAlgo):
         elif self.curiosity_kwargs['curiosity_alg'] == 'disagreement':
             inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
             curiosity_loss = torch.tensor(0.0)
+        elif self.curiosity_kwargs['curiosity_alg'] == 'ndigo':
+            # [B,N,H] --> [N,B,H] (for cudnn).
+            init_ndigo_gru = buffer_method(init_ndigo_gru, "transpose", 0, 1)
+            init_ndigo_gru = buffer_method(init_ndigo_gru, "contiguous")
+            forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs, init_ndigo_gru)
+            loss += forward_loss
+            inv_loss = torch.tensor(0.0)
+            curiosity_loss = torch.tensor(0.0)
         else:
             inv_loss = torch.tensor(0.0)
             forward_loss = torch.tensor(0.0)
             curiosity_loss = torch.tensor(0.0)
 
-        perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity

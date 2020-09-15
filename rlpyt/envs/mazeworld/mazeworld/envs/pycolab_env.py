@@ -30,8 +30,8 @@ class PycolabTrajInfo(TrajInfo):
         self.first_visit_a = 400
         self.first_visit_b = 400
 
-    def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info):
-        super().step(observation, action, reward_ext, reward_int, done, agent_info, env_info)
+    def step(self, observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info):
+        super().step(observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info)
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
         first_visit_time = getattr(env_info, 'first_visit_time', None)
 
