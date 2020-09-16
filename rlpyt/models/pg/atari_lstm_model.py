@@ -44,7 +44,6 @@ class AtariLstmModel(torch.nn.Module):
             if curiosity_kwargs['curiosity_alg'] == 'icm':
                 self.curiosity_model = ICM(image_shape=image_shape,
                                            action_size=output_size,
-                                           ensemble_size=curiosity_kwargs['ensemble_size'],
                                            feature_encoding=curiosity_kwargs['feature_encoding'],
                                            batch_norm=curiosity_kwargs['batch_norm'],
                                            prediction_beta=curiosity_kwargs['prediction_beta'],
