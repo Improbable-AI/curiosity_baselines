@@ -134,7 +134,7 @@ class Disagreement(nn.Module):
         for p_phi2 in predicted_phi2:
             forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
 
-        return inverse_loss.squeeze(), forward_loss
+        return inverse_loss, forward_loss
 
 
 

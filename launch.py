@@ -205,7 +205,7 @@ def start_experiment(args):
                 normalize_advantage=args.normalize_advantage,
                 normalize_reward=args.normalize_reward,
                 kernel_params=kernel_params,
-                curiosity_kwargs=model_args['curiosity_kwargs']
+                curiosity_type=args.curiosity_alg
                 )
     elif args.alg == 'a2c':
         algo = A2C(

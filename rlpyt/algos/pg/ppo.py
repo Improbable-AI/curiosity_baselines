@@ -40,7 +40,7 @@ class PPO(PolicyGradientAlgo):
             normalize_advantage=False,
             normalize_reward=False,
             kernel_params=None,
-            curiosity_kwargs={'curiosity_alg':'none'}
+            curiosity_type='none'
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -105,7 +105,7 @@ class PPO(PolicyGradientAlgo):
         T, B = samples.env.reward.shape[:2]
         opt_info = OptInfo(*([] for _ in range(len(OptInfo._fields))))
 
-        if self.curiosity_kwargs['curiosity_alg'] == 'icm':
+        if self.curiosity_type == 'icm':
             layer_info = {'forward/lin1.w':None,
                           'forward/lin1.b':None,
                           'forward/res1/lin1.w':None,
@@ -141,7 +141,7 @@ class PPO(PolicyGradientAlgo):
                           'encoder/lin_out.w':None,
                           'encoder/lin_out.b':None
                           }
-        elif self.curiosity_kwargs['curiosity_alg'] == 'disagreement':
+        elif self.curiosity_type == 'disagreement':
             layer_info = {'forward1/lin1.w':None,
                           'forward1/lin1.b':None,
                           'forward1/res1/lin1.w':None,
@@ -273,7 +273,7 @@ class PPO(PolicyGradientAlgo):
                 self.optimizer.zero_grad()
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
+                loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
 
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
@@ -286,7 +286,6 @@ class PPO(PolicyGradientAlgo):
                 opt_info.entropy_loss.append(entropy_loss.item())
                 opt_info.inv_loss.append(inv_loss.item())
                 opt_info.forward_loss.append(forward_loss.item())
-                opt_info.curiosity_loss.append(curiosity_loss.item())
 
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
@@ -300,7 +299,7 @@ class PPO(PolicyGradientAlgo):
         opt_info.advantage.append(torch.mean(advantage).detach().clone().item())
         opt_info.valpred.append(torch.mean(samples.agent.agent_info.value).detach().clone().item())
 
-        if self.curiosity_kwargs['curiosity_alg'] == 'icm':
+        if self.curiosity_type == 'icm':
             layer_info['forward/lin1.w'] = self.agent.model.curiosity_model.forward_model.lin_1.weight
             layer_info['forward/lin1.b'] = self.agent.model.curiosity_model.forward_model.lin_1.bias
             layer_info['forward/res1/lin1.w'] = self.agent.model.curiosity_model.forward_model.res_block_1.lin_1.weight
@@ -336,7 +335,7 @@ class PPO(PolicyGradientAlgo):
             layer_info['encoder/lin_out.w'] = self.agent.model.curiosity_model.encoder.model[10].weight
             layer_info['encoder/lin_out.b'] = self.agent.model.curiosity_model.encoder.model[10].bias
         
-        elif self.curiosity_kwargs['curiosity_alg'] == 'disagreement':
+        elif self.curiosity_type == 'disagreement':
             layer_info['forward1/lin1.w'] = self.agent.model.curiosity_model.forward_model[0].lin_1.weight
             layer_info['forward1/lin1.b'] = self.agent.model.curiosity_model.forward_model[0].lin_1.bias
             layer_info['forward1/res1/lin1.w'] = self.agent.model.curiosity_model.forward_model[0].res_block_1.lin_1.weight
@@ -496,20 +495,17 @@ class PPO(PolicyGradientAlgo):
 
         loss = pi_loss + value_loss + entropy_loss
         
-        if self.curiosity_kwargs['curiosity_alg'] == 'icm':
-            forward_loss_wt = self.curiosity_kwargs['forward_loss_wt']
+        if self.curiosity_type == 'icm':
             inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
-            curiosity_loss = (1-forward_loss_wt)*inv_loss + (forward_loss_wt)*forward_loss # optional
-            # loss += curiosity_loss # optional
             loss += inv_loss
             loss += forward_loss
-        elif self.curiosity_kwargs['curiosity_alg'] == 'disagreement':
+        elif self.curiosity_type == 'disagreement':
             inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
-            curiosity_loss = torch.tensor(0.0)
+            loss += inv_loss
+            loss += forward_loss
         else:
             inv_loss = torch.tensor(0.0)
             forward_loss = torch.tensor(0.0)
-            curiosity_loss = torch.tensor(0.0)
 
         perplexity = dist.mean_perplexity(dist_info, valid)
-        return loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, curiosity_loss, entropy, perplexity
+        return loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, entropy, perplexity
