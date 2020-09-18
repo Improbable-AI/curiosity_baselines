@@ -139,28 +139,21 @@ class RecurrentCategoricalPgNdigoAgentBase(BaseAgent):
         return AgentStep(action=action, agent_info=agent_info)
 
     @torch.no_grad()
-    def curiosity_step(self, observation, action, next_observation, env_rank=None):
-        action = self.distribution.to_onehot(action)
-        if action.dim() == 1: # hacky way to fix action passed in as ([x]) instead of ([1, x]) in examples_output when building buffer
-            action = action.unsqueeze(0)
-        curiosity_agent_inputs = buffer_to((observation, action, next_observation), device=self.device)
-        # r_int, gru_state, loss = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs, self.prev_ndigo_loss[rank, env_id], self.prev_ndigo_gru)
-        r_int, gru_state, loss = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs, self.prev_ndigo_loss[env_rank], self.prev_ndigo_gru)
-        # Model handles None, but Buffer does not, make zeros if needed:
-        prev_ndigo_gru = self.prev_ndigo_gru or buffer_func(gru_state, torch.zeros_like)
-        # Transpose the rnn_state from [N,B,H] --> [B,N,H] for storage.
-        # (Special case: model should always leave B dimension in.)
-        prev_ndigo_gru = buffer_method(prev_ndigo_gru, "transpose", 0, 1)
-        agent_curiosity_info = NdigoInfo(prev_gru_state=prev_ndigo_gru)
+    def curiosity_step(self, observation, prev_actions, actions):
+        actions = self.distribution.to_onehot(actions)
+        prev_actions = self.distribution.to_onehot(prev_actions)
+        curiosity_agent_inputs = buffer_to((observation, prev_actions, actions), device=self.device)
+        r_int = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs)
+        agent_curiosity_info = NdigoInfo(prev_gru_state=None)
         r_int, agent_curiosity_info = buffer_to((r_int, agent_curiosity_info), device="cpu")
-        self.advance_ndigo_gru(gru_state)  # Keep on device.
-        self.advance_ndigo_loss(loss, env_rank)
         return AgentCuriosityStep(r_int=r_int, agent_curiosity_info=agent_curiosity_info)
 
-    def curiosity_loss(self, observation, action, next_observation, init_ndigo_gru=None):
-        action = self.distribution.to_onehot(action)
-        action = action.squeeze() # hacky way to fix action passed in as ([batch, 1, size]) instead of ([batch, size])
-        curiosity_agent_inputs = buffer_to((observation, action, next_observation, init_ndigo_gru), device=self.device)
+    def curiosity_loss(self, observation, prev_actions, actions):
+        actions = self.distribution.to_onehot(actions)
+        prev_actions = self.distribution.to_onehot(prev_actions)
+        actions = actions.squeeze() # hacky way to fix action passed in as ([batch, 1, size]) instead of ([batch, size])
+        prev_actions = prev_actions.squeeze() # hacky way to fix action passed in as ([batch, 1, size]) instead of ([batch, size])
+        curiosity_agent_inputs = buffer_to((observation, prev_actions, actions), device=self.device)
         ndigo_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
         return ndigo_loss
 
@@ -177,7 +170,7 @@ class RecurrentCategoricalPgAgent(RecurrentAgentMixin, RecurrentCategoricalPgAge
     pass
 
 
-class RecurrentCategoricalPgNdigoAgent(RecurrentNdigoAgentMixin, RecurrentCategoricalPgNdigoAgentBase):
+class RecurrentCategoricalPgNdigoAgent(RecurrentAgentMixin, RecurrentCategoricalPgNdigoAgentBase):
     pass
 
 

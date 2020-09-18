@@ -15,7 +15,7 @@ from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent, AtariNdigoLstmAg
 from rlpyt.agents.pg.mujoco import MujocoFfAgent, MujocoLstmAgent
 
 # Samplers
-from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector, CpuWaitResetCollector, CpuEvalCollector
+from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector, CpuWaitResetCollector, CpuEvalCollector, CpuWaitResetMultistepCollector
 from rlpyt.samplers.parallel.gpu.collectors import GpuResetCollector, GpuWaitResetCollector, GpuEvalCollector
 from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
@@ -217,7 +217,7 @@ def start_experiment(args):
                 normalize_advantage=args.normalize_advantage,
                 normalize_reward=args.normalize_reward,
                 kernel_params=kernel_params,
-                curiosity_kwargs=model_args['curiosity_kwargs']
+                curiosity_type=args.curiosity_alg
                 )
     elif args.alg == 'a2c':
         algo = A2C(

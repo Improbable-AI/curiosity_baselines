@@ -3,10 +3,10 @@ from copy import deepcopy
 import multiprocessing as mp
 import numpy as np
 
+from rlpyt.agents.pg.base import AgentInfo, NdigoInfo, IcmInfo, AgentInfoRnn
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 from rlpyt.agents.base import AgentInputs, AgentCuriosityInputs
-from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv,
-    EnvSamples)
+from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv, EnvSamples)
 
 
 def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
@@ -84,23 +84,22 @@ def get_example_outputs(agent, env, examples, subprocess=False):
     o, r, d, env_info = env.step(action)
     r = np.asarray(r, dtype="float32")  # Must match torch float dtype here.
     agent.reset()
-    agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, o))
     agent_inputs = torchify_buffer(AgentInputs(o, a, r))
     a, agent_info = agent.step(*agent_inputs)
 
     r_int = 0.0
-    if agent.curiosity_type in {'icm', 'disagreement'}:
-        r_int, agent_curiosity_info = agent.curiosity_step(*agent_curiosity_inputs)
-    elif agent.curiosity_type == 'ndigo':
-        r_int, agent_curiosity_info = agent.curiosity_step(*agent_curiosity_inputs, 0)
+    if agent.curiosity_type != 'none':
+        if agent.curiosity_type in {'icm', 'disagreement'}:
+            agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, o))
+            r_int, agent_curiosity_info = agent.curiosity_step(*agent_curiosity_inputs)
+        elif agent.curiosity_type == 'ndigo':
+            # agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, a))
+            agent_curiosity_info = NdigoInfo(prev_gru_state=None)
+            r_int = 0.0
 
     if "prev_rnn_state" in agent_info:
         # Agent leaves B dimension in, strip it: [B,N,H] --> [N,H]
         agent_info = agent_info._replace(prev_rnn_state=agent_info.prev_rnn_state[0])
-
-    if "prev_gru_state" in agent_curiosity_info:
-        # Agent leaves B dimension in, strip it: [B,N,H] --> [N,H]
-        agent_curiosity_info = agent_curiosity_info._replace(prev_gru_state=agent_curiosity_info.prev_gru_state[0])
 
     examples["prev_observation"] = deepcopy(o_reset) # used in gpu sampler step_buffer
     examples["observation"] = o_reset

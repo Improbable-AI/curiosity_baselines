@@ -88,7 +88,7 @@ class AtariLstmModel(torch.nn.Module):
                 hidden_sizes=fc_sizes, # Applies nonlinearity at end.
             )
 
-        self.lstm = torch.nn.LSTM(self.conv.output_size + output_size + 1, lstm_size)
+        self.lstm = torch.nn.LSTM(self.conv.output_size + output_size, lstm_size)
         self.pi = torch.nn.Linear(lstm_size, output_size)
         self.value = torch.nn.Linear(lstm_size, 1)
 
@@ -116,7 +116,6 @@ class AtariLstmModel(torch.nn.Module):
         lstm_input = torch.cat([
             fc_out.view(T, B, -1),
             prev_action.view(T, B, -1),  # Assumed onehot.
-            prev_reward.view(T, B, 1),
             ], dim=2)
         init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
         lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state)

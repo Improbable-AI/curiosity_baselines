@@ -11,6 +11,7 @@ from rlpyt.models.utils import strip_ddp_state_dict
 
 AgentInputs = namedarraytuple("AgentInputs", ["observation", "prev_action", "prev_reward"])
 AgentCuriosityInputs = namedarraytuple("AgentCuriosityInputs", ["observation", "action", "next_observation"])
+NdigoAgentCuriosityInputs = namedarraytuple("AgentCuriosityInputs", ["observation", "prev_actions", "actions"])
 AgentStep = namedarraytuple("AgentStep", ["action", "agent_info"])
 AgentCuriosityStep = namedarraytuple("AgentCuriosityStep", ["r_int", "agent_curiosity_info"])
 

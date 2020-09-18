@@ -74,8 +74,8 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
         parser.add_argument('-prediction_lr_scale', default=10.0, type=float, help='Scale the learning rate of predictor w/ respect to policy network.')
     elif 'ndigo' in args_in:
-        parser.add_argument('-feature_encoding', default='idf_burda', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
-        parser.add_argument('-pred_horizon', default=1, type=int, help='Number of steps ahead forward models predict.')
+        parser.add_argument('-feature_encoding', default='idf_maze', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
+        parser.add_argument('-pred_horizon', default=1, type=int, help='Number of prediction steps used to calculate intrinsic reward.')
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
 
 
