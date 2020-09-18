@@ -27,21 +27,22 @@ class PycolabTrajInfo(TrajInfo):
         super().__init__(**kwargs)
         self.visit_freq_a = 0
         self.visit_freq_b = 0
-        self.first_visit_a = 400
-        self.first_visit_b = 400
+        self.first_visit_a = 500
+        self.first_visit_b = 500
 
     def step(self, observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info):
-        super().step(observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info)
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
-        first_visit_time = getattr(env_info, 'first_visit_time', None)
+        first_visit_time = getattr(env_info, 'first_time_visit', None)
 
         if visitation_frequency is not None and first_visit_time is not None:
-            if first_visit_time['visit_freq_a'] == 0 and visitation_frequency['a'] == 1:
+            if first_visit_time[0] == 500 and visitation_frequency[0] == 1:
                 self.first_visit_a = self.Length
-            if first_visit_time['visit_freq_b'] == 0 and visitation_frequency['b'] == 1:
+            if first_visit_time[1] == 500 and visitation_frequency[1] == 1:
                 self.first_visit_b = self.Length
-            self.visit_freq_a = visitation_frequency['a']
-            self.visit_freq_b = visitation_frequency['b']
+            self.visit_freq_a = visitation_frequency[0]
+            self.visit_freq_b = visitation_frequency[1]
+
+        super().step(observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info)
 
 def _repeat_axes(x, factor, axis=[0, 1]):
     """Repeat np.array tiling it by `factor` on all axes.
@@ -133,7 +134,7 @@ class PyColabEnv(gym.Env):
 
         # Metrics
         self.visitation_frequency = {char:0 for char in self.objects}
-        self.first_visit_time = {char:400 for char in self.objects}
+        self.first_visit_time = {char:500 for char in self.objects}
 
 
     @abc.abstractmethod
