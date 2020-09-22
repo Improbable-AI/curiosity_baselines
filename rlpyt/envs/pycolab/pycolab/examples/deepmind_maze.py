@@ -207,8 +207,6 @@ class BouncingObject(prefab_sprites.MazeWalker):
 
     # Make our move. 
     (self._east if self._moving_east else self._west)(board, the_plot)
-    # if self.position == things['P'].position: # if you want the player to be killed by sprites
-    #   the_plot.terminate_episode()
 
 class BrownianObject(prefab_sprites.MazeWalker):
   """Randomly sample direction from left/right/up/down"""
@@ -237,8 +235,6 @@ class BrownianObject(prefab_sprites.MazeWalker):
     elif self._direction == 1: self._west(board, the_plot)
     elif self._direction == 2: self._north(board, the_plot)
     elif self._direction == 3: self._south(board, the_plot)
-    # if self.position == things['P'].position:
-    #   the_plot.terminate_episode()
 
 class WhiteNoiseObject(prefab_sprites.MazeWalker):
   """Randomly sample direction from left/right/up/down"""
@@ -261,8 +257,6 @@ class WhiteNoiseObject(prefab_sprites.MazeWalker):
 
     # Sample and make a move
     self._teleport(self._empty_coords[np.random.choice(len(self._empty_coords))])
-    if self.position == things['P'].position:
-      the_plot.terminate_episode()
 
 class FixedObject(plab_things.Sprite):
   """Static object. Doesn't move."""
@@ -273,8 +267,6 @@ class FixedObject(plab_things.Sprite):
 
   def update(self, actions, board, layers, backdrop, things, the_plot):
     del actions, backdrop  # Unused.
-    # if self.position == things['P'].position:
-    #   the_plot.terminate_episode()
 
 class CashDrape(plab_things.Drape):
   """A `Drape` handling all of the coins.

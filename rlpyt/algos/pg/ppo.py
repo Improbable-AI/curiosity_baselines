@@ -55,6 +55,9 @@ class PPO(PolicyGradientAlgo):
             self.kernel_line = lambda x: x
             self.kernel_gauss = lambda x: np.sign(x)*self.mu*np.exp(-(abs(x)-self.mu)**2/(2*self.sigma**2))
 
+        if self.curiosity_type == 'ndigo':
+            self.ndigo_intrinsic_rewards = None # for logging
+
     def initialize(self, *args, **kwargs):
         """
         Extends base ``initialize()`` to initialize learning rate schedule, if
@@ -197,6 +200,9 @@ class PPO(PolicyGradientAlgo):
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
+
+        if self.curiosity_type == 'ndigo':
+            opt_info.ndigo_intrinsic_rewards.append(torch.mean(self.ndigo_intrinsic_rewards.detach()).detach().clone().item())
 
         opt_info.return_.append(torch.mean(return_.detach()).detach().clone().item())
         opt_info.advantage.append(torch.mean(advantage.detach()).detach().clone().item())

@@ -99,7 +99,7 @@ class NDIGO(torch.nn.Module):
         # return predictions, predictions_stacked, gru_state_next
         
 
-    def compute_bonus(self, observations, prev_actions, actions, example=False):
+    def compute_bonus(self, observations, prev_actions, actions):
         #------------------------------------------------------------#
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
         # hacky dimension add for when you have only one environment
@@ -129,19 +129,12 @@ class NDIGO(torch.nn.Module):
         true_obs = observations[self.horizon:]
         losses = nn.functional.binary_cross_entropy_with_logits(predicted_states.view(-1, *predicted_states.shape[1:]), true_obs.view(-1, *predicted_states.shape[1:]).detach(), reduce=False)
         losses = torch.sum(losses, dim=-1)/losses.shape[-1] # average of each feature for each environment at each timestep (T, B, ave_loss_over_feature)
-        losses = torch.cat([torch.zeros((1, B)), losses], 0) # add first row of zeros for r_k calculation
-
+        
         # subtract losses to get rewards
-        r_int = torch.zeros((T-self.horizon, B))
-        for i in range(1, len(losses)-1):
-            r_int[i] = losses[i-1] - losses[i]
+        r_int = torch.zeros((T, B))
+        for i in range(1, len(losses)):
+            r_int[i+self.horizon-1] = losses[i-1] - losses[i]
 
-        # set first rewards to zero (can't compute first horizon-1 rewards)
-        r_int = torch.cat([torch.zeros((self.horizon-1, B)), r_int], 0)
-
-        # TODO: fix this
-        # TECHNICALLY INCORRECT (last state isn't logged, so zero out these rewards)
-        r_int = torch.cat([r_int, torch.zeros((1, B))], 0)
         return r_int
 
 
@@ -169,12 +162,14 @@ class NDIGO(torch.nn.Module):
                 action_seq = torch.reshape(action_seq, (action_seq.shape[0], -1))
                 action_seqs[i] = action_seq
 
-            # make forward model predictions for this predictor
+            # make forward model predictions for this predinorctor
             predicted_states = self.forward_model[k-1](belief_states[:T-k], action_seqs)
 
             # generate losses for this predictor
             true_obs = observations[k:]
-            loss += nn.functional.binary_cross_entropy_with_logits(predicted_states.view(-1, *predicted_states.shape[1:]), true_obs.view(-1, *predicted_states.shape[1:]).detach(), reduction='mean')
+
+            # loss += nn.functional.binary_cross_entropy_with_logits(predicted_states.view(-1, *predicted_states.shape[1:]), true_obs.view(-1, *predicted_states.shape[1:]).detach(), reduction='mean')
+            loss += nn.functional.binary_cross_entropy_with_logits(predicted_states.view(-1, *predicted_states.shape[1:]), true_obs.view(-1, *predicted_states.shape[1:]).detach(), reduction='sum')
 
         return loss
 
