@@ -77,6 +77,7 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-feature_encoding', default='idf_maze', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
         parser.add_argument('-pred_horizon', default=1, type=int, help='Number of prediction steps used to calculate intrinsic reward.')
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
+        parser.add_argument('-num_predictors', default=10, type=int, help='How many forward models to train.')
 
 
     # switch argument (only used in launch.py in __main__)

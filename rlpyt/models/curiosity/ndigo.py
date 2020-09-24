@@ -1,4 +1,7 @@
 
+from PIL import Image
+import os
+
 import numpy as np
 import torch
 from torch import nn
@@ -41,15 +44,19 @@ class NDIGO(torch.nn.Module):
             feature_encoding='idf_maze',
             gru_size=128,
             batch_norm=False,
-            obs_stats=None
+            obs_stats=None,
+            num_predictors=10
             ):
         """Instantiate neural net module according to inputs."""
         super(NDIGO, self).__init__()
+
+        assert num_predictors >= horizon
 
         self.action_size = action_size
         self.horizon = horizon
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
+        self.num_predictors = num_predictors
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
 
@@ -69,7 +76,7 @@ class NDIGO(torch.nn.Module):
         self.gru_states = None # state output of last batch - (1, B, gru_size) or None
 
         self.forward_model = []
-        for k in range(1, 11):
+        for k in range(1, self.num_predictors+1):
             self.forward_model.append(NdigoForward(feature_size=self.gru_size, 
                                                    action_size=action_size * k, 
                                                    output_size=image_shape[0]*image_shape[1]*image_shape[2]))
@@ -91,12 +98,6 @@ class NDIGO(torch.nn.Module):
         belief_states, gru_output_states = self.gru(gru_inputs, self.gru_states)
 
         return belief_states, gru_output_states
-
-        # predictions = []
-        # for forw_model in self.forward_model:
-        #     predicted_phi2.append(forw_model(b_t, action_seq.view(T, B, -1)))
-        # predictions_stacked = torch.stack(predictions)
-        # return predictions, predictions_stacked, gru_state_next
         
 
     def compute_bonus(self, observations, prev_actions, actions):
@@ -123,11 +124,32 @@ class NDIGO(torch.nn.Module):
             action_seqs[i] = action_seq
         
         # make forward model predictions
-        predicted_states = self.forward_model[self.horizon-1](belief_states, action_seqs)
+        predicted_states = self.forward_model[self.horizon-1](belief_states, action_seqs).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
+        true_obs = observations[self.horizon:].view(-1, *predicted_states.shape[1:])
+
+        # DEBUGGING
+        path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/run_63/images'
+        if not os.path.isdir(path):
+            os.mkdir(path)
+        ep_num = len(os.listdir(path))
+        os.mkdir(path + '/ep_{}'.format(ep_num))
+        pred = predicted_states.clone().detach().data.numpy()
+        true = true_obs.clone().detach().data.numpy()
+        pred = np.reshape(pred[10, 0], (3, 5, 5))
+        true = np.reshape(true[10, 0], (3, 5, 5))
+
+        print(pred)
+        print('-'*100)
+        print(true)
+        print('#'*100)
+        for i in range(3):
+            pred_img = Image.fromarray((pred[i]*500).astype(np.uint8), 'L')
+            true_img = Image.fromarray((true[i]*500).astype(np.uint8), 'L')
+            pred_img.save(path + '/ep_{}/pred_{}.jpg'.format(ep_num, i))
+            true_img.save(path + '/ep_{}/true_{}.jpg'.format(ep_num, i))
 
         # generate losses
-        true_obs = observations[self.horizon:]
-        losses = nn.functional.binary_cross_entropy_with_logits(predicted_states.view(-1, *predicted_states.shape[1:]), true_obs.view(-1, *predicted_states.shape[1:]).detach(), reduce=False)
+        losses = nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduce=False)
         losses = torch.sum(losses, dim=-1)/losses.shape[-1] # average of each feature for each environment at each timestep (T, B, ave_loss_over_feature)
         
         # subtract losses to get rewards
@@ -154,7 +176,7 @@ class NDIGO(torch.nn.Module):
 
         # generate loss for each forward predictor
         loss = torch.tensor(0.0)
-        for k in range(1, 11):
+        for k in range(1, self.num_predictors+1):
             action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
             for i in range(len(actions)-k):
                 action_seq = actions[i:i+k]
@@ -163,13 +185,13 @@ class NDIGO(torch.nn.Module):
                 action_seqs[i] = action_seq
 
             # make forward model predictions for this predinorctor
-            predicted_states = self.forward_model[k-1](belief_states[:T-k], action_seqs)
+            predicted_states = self.forward_model[k-1](belief_states[:T-k], action_seqs).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
 
             # generate losses for this predictor
-            true_obs = observations[k:]
+            true_obs = observations[k:].view(-1, *predicted_states.shape[1:])
 
-            # loss += nn.functional.binary_cross_entropy_with_logits(predicted_states.view(-1, *predicted_states.shape[1:]), true_obs.view(-1, *predicted_states.shape[1:]).detach(), reduction='mean')
-            loss += nn.functional.binary_cross_entropy_with_logits(predicted_states.view(-1, *predicted_states.shape[1:]), true_obs.view(-1, *predicted_states.shape[1:]).detach(), reduction='sum')
+            # loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+            loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
 
         return loss
 

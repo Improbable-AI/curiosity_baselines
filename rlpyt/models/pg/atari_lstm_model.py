@@ -59,10 +59,12 @@ class AtariLstmModel(torch.nn.Module):
             elif curiosity_kwargs['curiosity_alg'] == 'ndigo':
                 self.curiosity_model = NDIGO(image_shape=image_shape,
                                              action_size=output_size,
+                                             obs_stats=self.obs_stats,
                                              horizon=curiosity_kwargs['pred_horizon'],
                                              feature_encoding=curiosity_kwargs['feature_encoding'],
                                              batch_norm=curiosity_kwargs['batch_norm'],
-                                             obs_stats=self.obs_stats)
+                                             num_predictors=curiosity_kwargs['num_predictors']
+                                             )
 
             if curiosity_kwargs['feature_encoding'] == 'idf':
                 self.conv = UniverseHead(image_shape=image_shape,
