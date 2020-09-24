@@ -149,7 +149,7 @@ class NDIGO(torch.nn.Module):
             true_img.save(path + '/ep_{}/true_{}.jpg'.format(ep_num, i))
 
         # generate losses
-        losses = nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduce=False)
+        losses = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduce=False)
         losses = torch.sum(losses, dim=-1)/losses.shape[-1] # average of each feature for each environment at each timestep (T, B, ave_loss_over_feature)
         
         # subtract losses to get rewards
@@ -191,7 +191,7 @@ class NDIGO(torch.nn.Module):
             true_obs = observations[k:].view(-1, *predicted_states.shape[1:])
 
             # loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
-            loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+            loss += nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
 
         return loss
 
