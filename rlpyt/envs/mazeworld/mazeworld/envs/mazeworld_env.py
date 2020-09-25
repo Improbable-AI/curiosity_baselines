@@ -27,6 +27,7 @@ class MazeWorld(pycolab_env.PyColabEnv):
             max_iterations=max_iterations,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
+            act_null_value=4,
             resize_scale=8,
             render_mode='uncropped')
 
@@ -52,6 +53,7 @@ class DeepmindMazeWorld_maze(pycolab_env.PyColabEnv):
             max_iterations=max_iterations,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
+            act_null_value=4,
             resize_scale=8,
             render_mode='uncropped')
 

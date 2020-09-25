@@ -72,6 +72,7 @@ class PyColabEnv(gym.Env):
                  max_iterations,
                  default_reward,
                  action_space,
+                 act_null_value=4,
                  delay=30,
                  resize_scale=8,
                  crop_window=[5, 5],
@@ -114,6 +115,7 @@ class PyColabEnv(gym.Env):
         self._observation_order = sorted(observation_layers)
         self.observation_space = spaces.Box(0., 1., [len(self.state_layer_chars)] + crop_window) # don't count empty space layer
         self.action_space = action_space
+        self.act_null_value = act_null_value
 
         self.current_game = None
         self._croppers = []

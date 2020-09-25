@@ -185,7 +185,11 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
 
                 prev_observation[b] = observation[b]
                 observation[b] = o
-                reward_tot[b] = r_ext + r_int
+
+                if self.curiosity_alg in {'icm', 'disagreement'}:
+                    reward_tot[b] = r_ext + r_int
+                else:
+                    reward_tot[b] = r_ext
 
                 if env_info: 
                     env_buf.env_info[t, b] = env_info
