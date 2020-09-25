@@ -132,24 +132,25 @@ class NDIGO(torch.nn.Module):
 
         # DEBUGGING
         path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/run_0/images'
-        if not os.path.isdir(path):
-            os.mkdir(path)
-        ep_num = len(os.listdir(path))
-        os.mkdir(path + '/ep_{}'.format(ep_num))
-        pred = predicted_states.detach().clone().data.numpy()
-        true = true_obs.detach().clone().data.numpy()
-        pred = np.reshape(pred[10, 0], (3, 5, 5))
-        true = np.reshape(true[10, 0], (3, 5, 5))
+        if np.random.randint(low=0, high=30) == 1: # save 10%
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            ep_num = len(os.listdir(path))
+            os.mkdir(path + '/ep_{}'.format(ep_num))
+            pred = predicted_states.detach().clone().data.numpy()
+            true = true_obs.detach().clone().data.numpy()
+            pred = np.reshape(pred[10, 0], (3, 5, 5))
+            true = np.reshape(true[10, 0], (3, 5, 5))
 
-        print(pred)
-        print('-'*100)
-        print(true)
-        print('#'*100)
-        for i in range(3):
-            pred_img = Image.fromarray((pred[i]*500).astype(np.uint8), 'L')
-            true_img = Image.fromarray((true[i]*500).astype(np.uint8), 'L')
-            pred_img.save(path + '/ep_{}/pred_{}.jpg'.format(ep_num, i))
-            true_img.save(path + '/ep_{}/true_{}.jpg'.format(ep_num, i))
+            print(pred)
+            print('-'*100)
+            print(true)
+            print('#'*100)
+            for i in range(3):
+                pred_img = Image.fromarray((pred[i]*500).astype(np.uint8), 'L')
+                true_img = Image.fromarray((true[i]*500).astype(np.uint8), 'L')
+                pred_img.save(path + '/ep_{}/pred_{}.jpg'.format(ep_num, i))
+                true_img.save(path + '/ep_{}/true_{}.jpg'.format(ep_num, i))
 
         # generate losses
         losses = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='none')
