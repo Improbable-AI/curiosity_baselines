@@ -82,6 +82,8 @@ class NDIGO(torch.nn.Module):
                                                    action_size=action_size * k, 
                                                    output_size=image_shape[0]*image_shape[1]*image_shape[2]))
 
+        self.pred_vis_counter = 0
+
 
     def forward(self, observations, prev_actions, actions):
 
@@ -132,7 +134,8 @@ class NDIGO(torch.nn.Module):
 
         # DEBUGGING
         path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/run_0/images'
-        if np.random.randint(low=0, high=30) == 1: # save 10%
+        if self.pred_vis_counter == 30:
+            self.pred_vis_counter = 0
             if not os.path.isdir(path):
                 os.mkdir(path)
             ep_num = len(os.listdir(path))
@@ -151,6 +154,8 @@ class NDIGO(torch.nn.Module):
                 true_img = Image.fromarray((true[i]*500).astype(np.uint8), 'L')
                 pred_img.save(path + '/ep_{}/pred_{}.jpg'.format(ep_num, i))
                 true_img.save(path + '/ep_{}/true_{}.jpg'.format(ep_num, i))
+        else:
+            self.pred_vis_counter += 1
 
         # generate losses
         losses = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='none')
