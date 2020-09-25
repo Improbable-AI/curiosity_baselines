@@ -131,7 +131,7 @@ class NDIGO(torch.nn.Module):
         true_obs = observations[self.horizon:].view(-1, *predicted_states.shape[1:])
 
         # DEBUGGING
-        path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/run_96/images'
+        path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/run_0/images'
         if not os.path.isdir(path):
             os.mkdir(path)
         ep_num = len(os.listdir(path))
