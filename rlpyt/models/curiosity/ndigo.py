@@ -119,15 +119,15 @@ class NDIGO(torch.nn.Module):
         # slice beliefs and actions
         belief_states = belief_states[:T-self.horizon] # slice off last timesteps
         
-        # action_seqs = torch.zeros((T-self.horizon, B, self.horizon*self.action_size)) # placeholder
-        # for i in range(len(actions)-self.horizon):
-        #     action_seq = actions[i:i+self.horizon]
-        #     action_seq = torch.transpose(action_seq, 0, 1)
-        #     action_seq = torch.reshape(action_seq, (action_seq.shape[0], -1))
-        #     action_seqs[i] = action_seq
+        action_seqs = torch.zeros((T-self.horizon, B, self.horizon*self.action_size)) # placeholder
+        for i in range(len(actions)-self.horizon):
+            action_seq = actions[i:i+self.horizon]
+            action_seq = torch.transpose(action_seq, 0, 1)
+            action_seq = torch.reshape(action_seq, (action_seq.shape[0], -1))
+            action_seqs[i] = action_seq
         
         # make forward model predictions
-        predicted_states = self.forward_model[self.horizon-1](belief_states, actions[:T-self.horizon].detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
+        predicted_states = self.forward_model[self.horizon-1](belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
         true_obs = observations[self.horizon:].view(-1, *predicted_states.shape[1:])
 
         # DEBUGGING
@@ -184,15 +184,15 @@ class NDIGO(torch.nn.Module):
         # generate loss for each forward predictor
         loss = torch.tensor(0.0)
         for k in range(1, self.num_predictors+1):
-            # action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
-            # for i in range(len(actions)-k):
-            #     action_seq = actions[i:i+k]
-            #     action_seq = torch.transpose(action_seq, 0, 1)
-            #     action_seq = torch.reshape(action_seq, (action_seq.shape[0], -1))
-            #     action_seqs[i] = action_seq
+            action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
+            for i in range(len(actions)-k):
+                action_seq = actions[i:i+k]
+                action_seq = torch.transpose(action_seq, 0, 1)
+                action_seq = torch.reshape(action_seq, (action_seq.shape[0], -1))
+                action_seqs[i] = action_seq
 
             # make forward model predictions for this predinorctor
-            predicted_states = self.forward_model[k-1](belief_states[:T-k], actions[:T-k].detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
+            predicted_states = self.forward_model[k-1](belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
 
             # generate losses for this predictor
             true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach()
