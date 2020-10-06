@@ -187,6 +187,9 @@ class BaseAgent:
         """Parameters to be optimized (overwrite in subclass if multiple models)."""
         return self.model.parameters()
 
+    def named_parameters(self):
+        return self.model.named_parameters()
+
     def state_dict(self):
         """Returns model parameters for saving."""
         return self.model.state_dict()

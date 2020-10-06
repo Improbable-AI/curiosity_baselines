@@ -9,6 +9,7 @@ torch.set_printoptions(threshold=500*2*100)
 
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+from rlpyt.utils.graph_utils import save_dot
 from rlpyt.models.curiosity.encoders import BurdaHead, MazeHead, UniverseHead
 
 GruState = namedarraytuple("GruState", ["c"])  # For downstream namedarraytuples to work
@@ -75,11 +76,36 @@ class NDIGO(torch.nn.Module):
         self.gru = torch.nn.GRU(self.feature_size + action_size, self.gru_size)
         self.gru_states = None # state output of last batch - (1, B, gru_size) or None
 
-        self.forward_model = []
-        for k in range(1, self.num_predictors+1):
-            self.forward_model.append(NdigoForward(feature_size=self.gru_size, 
-                                                   action_size=action_size * k, 
-                                                   output_size=image_shape[0]*image_shape[1]*image_shape[2]))
+        self.forward_model_1 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*1, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_2 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*2, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_3 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*3, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_4 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*4, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_5 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*5, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_6 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*6, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_7 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*7, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_8 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*8, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_9 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*9, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
+        self.forward_model_10 = NdigoForward(feature_size=self.gru_size, 
+                                            action_size=action_size*10, 
+                                            output_size=image_shape[0]*image_shape[1]*image_shape[2])
 
         self.pred_vis_counter = 0
 
@@ -127,7 +153,27 @@ class NDIGO(torch.nn.Module):
             action_seqs[i] = action_seq
         
         # make forward model predictions
-        predicted_states = self.forward_model[self.horizon-1](belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
+        if self.horizon == 1:
+            predicted_states = self.forward_model_1(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
+        elif self.horizon == 2:
+            predicted_states = self.forward_model_2(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
+        elif self.horizon == 3:
+            predicted_states = self.forward_model_3(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
+        elif self.horizon == 4:
+            predicted_states = self.forward_model_4(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
+        elif self.horizon == 5:
+            predicted_states = self.forward_model_5(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
+        elif self.horizon == 6:
+            predicted_states = self.forward_model_6(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
+        elif self.horizon == 7:
+            predicted_states = self.forward_model_7(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
+        elif self.horizon == 8:
+            predicted_states = self.forward_model_8(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
+        elif self.horizon == 9:
+            predicted_states = self.forward_model_9(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
+        elif self.horizon == 10:
+            predicted_states = self.forward_model_10(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
+
         true_obs = observations[self.horizon:].view(-1, *predicted_states.shape[1:])
 
         # DEBUGGING
@@ -182,7 +228,7 @@ class NDIGO(torch.nn.Module):
         self.gru_states = None # only bc we're processing exactly 1 episode per batch
 
         # generate loss for each forward predictor
-        loss = torch.tensor(0.0)
+        # loss = torch.tensor(0.0)
         for k in range(1, self.num_predictors+1):
             action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
             for i in range(len(actions)-k):
@@ -191,13 +237,59 @@ class NDIGO(torch.nn.Module):
                 action_seq = torch.reshape(action_seq, (action_seq.shape[0], -1))
                 action_seqs[i] = action_seq
 
-            # make forward model predictions for this predinorctor
-            predicted_states = self.forward_model[k-1](belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-k, B, 75)
+            # make forward model predictions for this predictor
+            if k == 1:
+                predicted_states = self.forward_model_1(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
+            elif k == 2:
+                predicted_states = self.forward_model_2(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
+            elif k == 3:
+                predicted_states = self.forward_model_3(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
+            elif k == 4:
+                predicted_states = self.forward_model_4(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
+            elif k == 5:
+                predicted_states = self.forward_model_5(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
+            elif k == 6:
+                predicted_states = self.forward_model_6(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
+            elif k == 7:
+                predicted_states = self.forward_model_7(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
+            elif k == 8:
+                predicted_states = self.forward_model_8(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
+            elif k == 9:
+                predicted_states = self.forward_model_9(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
+            elif k == 10:
+                predicted_states = self.forward_model_10(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
 
             # generate losses for this predictor
             true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach()
 
-            loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+            if k == 1:
+                loss = nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+            else:
+                loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+
+        # print("SAVING")
+        # save_dot(loss,
+        #          {loss: 'forward_loss',
+        #           self.encoder.model[0].weight: 'encoder.conv1.w',
+        #           self.encoder.model[0].bias: 'encoder.conv1.b',
+        #           self.encoder.model[2].weight: 'encoder.conv2.w',
+        #           self.encoder.model[2].bias: 'encoder.conv2.b',
+        #           self.encoder.model[5].weight: 'encoder.lin_out.w',
+        #           self.encoder.model[5].bias: 'encoder.lin_out.b',
+        #           self.gru.weight_ih_l0: 'gru.input_h.w',
+        #           self.gru.bias_ih_l0: 'gru.input_h.b',
+        #           self.gru.weight_hh_l0: 'gru.hidden_h.w',
+        #           self.gru.bias_hh_l0: 'gru.hidden_h.b',
+        #           # self.forward_model_1.model[0].weight: 'forward_1.lin_1.w',
+        #           # self.forward_model_1.model[0].bias: 'forward_1.lin_1.b',
+        #           # self.forward_model_1.model[2].weight: 'forward_1.lin_2.w',
+        #           # self.forward_model_1.model[2].bias: 'forward_1.lin_2.b',
+        #           self.forward_model_2.model[0].weight: 'forward_2.lin_1.w',
+        #           self.forward_model_2.model[0].bias: 'forward_2.lin_1.b',
+        #           self.forward_model_2.model[2].weight: 'forward_2.lin_2.w',
+        #           self.forward_model_2.model[2].bias: 'forward_2.lin_2.b',}, 
+        #          open('./ndigo.dot', 'w'))
+        # print('DONE SAVING')
 
         return loss
 
