@@ -28,6 +28,8 @@ This is a collection of curiosity algorithms implemented in pytorch on top of th
 
 3.  Make sure you have docker installed to run the [image](https://hub.docker.com/repository/docker/echen9898/curiosity_baselines).
 
+4.  Edit global.json to customize volume mount points, port forwarding, and select a specific docker image from the registry.
+
 4.  The makefile contains some basic commands (we use node to read in the global configuration in global.json, its not used for anything else).
 ```
 make start # start the docker container and drop you in a shell
@@ -35,6 +37,13 @@ make stop # stop the docker container
 make clean # clean all subdirectories of pycache files etc.
 make view # check results in tensorboard
 ```
+
+5.  Run the launch file from the command line, substituting in your preferences for the correct arguments (see rlpyt/utils/launching/arguments.py for a complete list).
+```
+python3 launch.py -env SuperMarioBros-v0 -alg ppo -curiosity_alg icm
+```
+
+6.  This will launch your experiment in a tmux session, along with an htop monitoring process and a tensorboard visualization.
 
 ## Notes
 
@@ -61,6 +70,8 @@ The class types perform the following roles:
     * **OptimizationInfo** - Diagnostics logged on a per-training batch basis.
 
 ### Sources and Acknowledgements
+
+This codebase is currently funded by [Amazon MLRA](https://www.amazon.science/research-awards) - we thank them for their support.
 
 Parts of the following open source codebases were used to make this codebase possible. Thanks to all of them for their amazing work!
 
