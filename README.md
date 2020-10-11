@@ -1,23 +1,24 @@
 
 ## Overview
 
-This is a collection of curiosity algorithms implemented in pytorch. The core learning algorithms and sampling framework are a slightly modified version of the [rlpyt](https://github.com/astooke/rlpyt) deep rl codebase. 
+This is a collection of curiosity algorithms implemented in pytorch on top of the [rlpyt](https://github.com/astooke/rlpyt) deep rl codebase. 
 
 ### Available Algorithms
-**Policy Gradient** A2C, PPO.
+**Policy Gradient** A2C, PPO
 
 **Replay Buffers** (supporting both DQN + QPG) non-sequence and sequence (for recurrent) replay, n-step returns, uniform or prioritized replay, full-observation or frame-based buffer (e.g. for Atari, stores only unique frames to save memory, reconstructs multi-frame observations).
 
-**Deep Q-Learning** DQN + variants: Double, Dueling, Categorical (up to Rainbow minus Noisy Nets), Recurrent (R2D2-style).  *Coming soon*: Implicit Quantile Networks?
+**Deep Q-Learning** DQN + variants: Double, Dueling, Categorical (up to Rainbow minus Noisy Nets), Recurrent (R2D2-style)
 
-**Q-Function Policy Gradient** DDPG, TD3, SAC.  *Coming soon*: Distributional DDPG?
+**Q-Function Policy Gradient** DDPG, TD3, SAC
 
-**Curiosity** ICM.
+**Curiosity** ICM, Disagreement, NDIGO
 
 ### Available Environments
 * Standard gym environments (mujoco, etc.)
 * Atari environments
 * SuperMarioBros
+* Deepmind PyColab
 
 ### Usage
 
@@ -32,6 +33,7 @@ This is a collection of curiosity algorithms implemented in pytorch. The core le
 make start # start the docker container and drop you in a shell
 make stop # stop the docker container
 make clean # clean all subdirectories of pycache files etc.
+make view # check results in tensorboard
 ```
 
 ## Notes
@@ -54,7 +56,7 @@ The class types perform the following roles:
   * **Algorithm** - Uses gathered samples to train the `agent` (e.g. defines a loss function and performs gradient descent).
     * **Optimizer** - Training update rule (e.g. Adam), attached to the `algorithm`.
     * **OptimizationInfo** - Diagnostics logged on a per-training batch basis.
-  * **Curiosity Algorithm** - Modifies the reward signal by generating intrinsic rewards.
+  * **Curiosity Algorithm** - Generates an intrinsic reward signal that can be passed directly through the sampler or in batches to the Algorithm.
     * **Optimizer** - Training update rule (e.g. Adam), attached to the `algorithm`.
     * **OptimizationInfo** - Diagnostics logged on a per-training batch basis.
 
@@ -64,6 +66,7 @@ Parts of the following open source codebases were used to make this codebase pos
 
 * [rlpyt](https://github.com/astooke/rlpyt)
 * [gym-super-mario-bros](https://github.com/Kautenja/gym-super-mario-bros)
+* [pycolab](https://github.com/deepmind/pycolab)
 * [stable-baselines](https://github.com/hill-a/stable-baselines)
 
 Thanks to Prof. Pulkit Agrawal and the members of the Improbable AI lab at MIT CSAIL for their continued guidance and support.
