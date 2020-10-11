@@ -80,7 +80,7 @@ Parts of the following open source codebases were used to make this codebase pos
 * [pycolab](https://github.com/deepmind/pycolab)
 * [stable-baselines](https://github.com/hill-a/stable-baselines)
 
-Thanks to Prof. Pulkit Agrawal and the members of the Improbable AI lab at MIT CSAIL for their continued guidance and support.
+Thanks to [Prof. Pulkit Agrawal](https://people.csail.mit.edu/pulkitag/) and the members of the [Improbable AI lab](https://people.csail.mit.edu/pulkitag/) at MIT CSAIL for their continued guidance and support.
 
 
 
