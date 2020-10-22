@@ -226,8 +226,6 @@ class BouncingObject(prefab_sprites.MazeWalker):
     # We only move once every two game iterations.
     if the_plot.frame % 2:
       self._stay(board, the_plot)
-      if self.position == things['P'].position:
-        the_plot.terminate_episode()
       return
 
     # If there is a wall next to us, we ought to switch direction.
@@ -253,8 +251,6 @@ class BrownianObject(prefab_sprites.MazeWalker):
     # We only move once every two game iterations.
     if the_plot.frame % 2:
       self._stay(board, the_plot)
-      if self.position == things['P'].position:
-        the_plot.terminate_episode()
       return
 
     # Sample a move
@@ -281,8 +277,6 @@ class WhiteNoiseObject(prefab_sprites.MazeWalker):
     # We only move once every two game iterations.
     if the_plot.frame % 2:
       self._stay(board, the_plot)
-      if self.position == things['P'].position:
-        the_plot.terminate_episode()
       return
 
     # Sample and make a move
@@ -314,7 +308,6 @@ class CashDrape(plab_things.Drape):
       the_plot.log('Coin collected at {}!'.format(player_pattern_position))
       the_plot.add_reward(1.0)
       self.curtain[player_pattern_position] = False
-      if not self.curtain.any(): the_plot.terminate_episode()
 
 def main(argv=()):
   level = int(argv[1]) if len(argv) > 1 else 0
