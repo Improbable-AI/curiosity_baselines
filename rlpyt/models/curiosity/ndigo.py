@@ -1,5 +1,6 @@
 
 from PIL import Image
+import matplotlib.pyplot as plt
 import os
 
 import numpy as np
@@ -107,7 +108,23 @@ class NDIGO(torch.nn.Module):
                                             action_size=action_size*10, 
                                             output_size=image_shape[0]*image_shape[1]*image_shape[2])
 
-        self.pred_vis_counter = 0
+
+        # DEBUGGING
+        self.ep_counter = 0
+        self.vis = False
+
+        runs = os.listdir('/curiosity_baselines/results/ppo_Deepmind5Room-v0')
+        try:
+            runs.remove('tmp')
+        except ValueError:
+            pass
+        try:
+            runs.remove('.DS_Store')
+        except ValueError:
+            pass
+        sorted_runs = sorted(runs, key=lambda run: int(run.split('_')[-1]))
+        self.path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/{}/images'.format(sorted_runs[-1])
+        os.mkdir(self.path)
 
 
     def forward(self, observations, prev_actions, actions):
@@ -176,31 +193,6 @@ class NDIGO(torch.nn.Module):
 
         true_obs = observations[self.horizon:].view(-1, *predicted_states.shape[1:])
 
-        # DEBUGGING
-        # path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/run_0/images'
-        # if self.pred_vis_counter == 30:
-        #     self.pred_vis_counter = 0
-        #     if not os.path.isdir(path):
-        #         os.mkdir(path)
-        #     ep_num = len(os.listdir(path))
-        #     os.mkdir(path + '/ep_{}'.format(ep_num))
-        #     pred = predicted_states.detach().clone().data.numpy()
-        #     true = true_obs.detach().clone().data.numpy()
-        #     pred = np.reshape(pred[10, 0], (3, 5, 5))
-        #     true = np.reshape(true[10, 0], (3, 5, 5))
-
-        #     print(pred)
-        #     print('-'*100)
-        #     print(true)
-        #     print('#'*100)
-        #     for i in range(3):
-        #         pred_img = Image.fromarray((pred[i]*500).astype(np.uint8), 'L')
-        #         true_img = Image.fromarray((true[i]*500).astype(np.uint8), 'L')
-        #         pred_img.save(path + '/ep_{}/pred_{}.jpg'.format(ep_num, i))
-        #         true_img.save(path + '/ep_{}/true_{}.jpg'.format(ep_num, i))
-        # else:
-        #     self.pred_vis_counter += 1
-
         # generate losses
         losses = nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='none')
         losses = torch.sum(losses, dim=-1)/losses.shape[-1] # average of each feature for each environment at each timestep (T, B, ave_loss_over_feature)
@@ -229,6 +221,19 @@ class NDIGO(torch.nn.Module):
 
         # generate loss for each forward predictor
         # loss = torch.tensor(0.0)
+
+        # DEBUGGING
+        if self.ep_counter % 10 == 0:
+            os.mkdir(self.path + '/ep_{}'.format(self.ep_counter))
+            self.vis = True
+            rand_time = np.random.randint(480)
+            b = 0
+            start = observations[rand_time, b].detach().clone().data.numpy() # (T, B, 3, 5, 5)
+            for i in range(3):
+                plt.imsave(self.path + '/ep_{}/o_t{}_{}.jpg'.format(self.ep_counter, rand_time, i), start[i])
+        else:
+            self.vis = False
+
         for k in range(1, self.num_predictors+1):
             action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
             for i in range(len(actions)-k):
@@ -239,25 +244,25 @@ class NDIGO(torch.nn.Module):
 
             # make forward model predictions for this predictor
             if k == 1:
-                predicted_states = self.forward_model_1(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
+                predicted_states = self.forward_model_1(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
             elif k == 2:
-                predicted_states = self.forward_model_2(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
+                predicted_states = self.forward_model_2(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
             elif k == 3:
-                predicted_states = self.forward_model_3(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
+                predicted_states = self.forward_model_3(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
             elif k == 4:
-                predicted_states = self.forward_model_4(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
+                predicted_states = self.forward_model_4(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
             elif k == 5:
-                predicted_states = self.forward_model_5(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
+                predicted_states = self.forward_model_5(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
             elif k == 6:
-                predicted_states = self.forward_model_6(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
+                predicted_states = self.forward_model_6(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
             elif k == 7:
-                predicted_states = self.forward_model_7(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
+                predicted_states = self.forward_model_7(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
             elif k == 8:
-                predicted_states = self.forward_model_8(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
+                predicted_states = self.forward_model_8(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
             elif k == 9:
-                predicted_states = self.forward_model_9(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
+                predicted_states = self.forward_model_9(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
             elif k == 10:
-                predicted_states = self.forward_model_10(belief_states[:T-k], action_seqs.detach()).view(-1, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
+                predicted_states = self.forward_model_10(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
 
             # generate losses for this predictor
             true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach()
@@ -266,6 +271,24 @@ class NDIGO(torch.nn.Module):
                 loss = nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
             else:
                 loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+
+            # DEBUGGING
+            if self.vis:
+                with torch.no_grad():
+
+                    os.mkdir(self.path + '/ep_{}/pred_{}'.format(self.ep_counter, k))
+
+                    np.savetxt(self.path + '/ep_{}/pred_{}/actions.txt'.format(self.ep_counter, k, i),
+                               action_seqs[rand_time, b].detach().clone().data.numpy())
+                    predicted_states = predicted_states.detach().clone().data.numpy() # (T, B, 75)
+                    true = true_obs.detach().clone().data.numpy() # (T, B, 75)
+                    predicted_states = np.reshape(predicted_states[rand_time, b], (3, 5, 5))
+                    true = np.reshape(true[rand_time, b], (3, 5, 5))
+
+                    for i in range(3):
+                        plt.imsave(self.path + '/ep_{}/pred_{}/pred_{}.jpg'.format(self.ep_counter, k, i), predicted_states[i])
+                        plt.imsave(self.path + '/ep_{}/pred_{}/true_{}.jpg'.format(self.ep_counter, k, i), true[i])
+
 
         # print("SAVING")
         # save_dot(loss,
@@ -290,7 +313,7 @@ class NDIGO(torch.nn.Module):
         #           self.forward_model_2.model[2].bias: 'forward_2.lin_2.b',}, 
         #          open('./ndigo.dot', 'w'))
         # print('DONE SAVING')
-
+        self.ep_counter += 1
         return loss
 
 
