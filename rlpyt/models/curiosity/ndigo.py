@@ -223,7 +223,7 @@ class NDIGO(torch.nn.Module):
         # loss = torch.tensor(0.0)
 
         # DEBUGGING
-        if self.ep_counter % 10 == 0:
+        if self.ep_counter % 200 == 0:
             os.mkdir(self.path + '/ep_{}'.format(self.ep_counter))
             self.vis = True
             rand_time = np.random.randint(480)
