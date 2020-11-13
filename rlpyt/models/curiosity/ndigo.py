@@ -203,7 +203,7 @@ class NDIGO(torch.nn.Module):
         # subtract losses to get rewards
         r_int = torch.zeros((T, B))
         for i in range(1, len(losses)):
-            r_int[i+self.horizon-1] = losses[i-1] - losses[i]
+            r_int[i-1] = losses[i-1] - losses[i]
 
         if self.ep_counter % 50 == 0:
             np.savetxt(self.path + '/rewards/rewards_{}.txt'.format(self.ep_counter), r_int.detach().clone().data.numpy())
