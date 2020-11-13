@@ -1,6 +1,7 @@
 
 from PIL import Image
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import os
 
 import numpy as np
@@ -125,6 +126,7 @@ class NDIGO(torch.nn.Module):
         sorted_runs = sorted(runs, key=lambda run: int(run.split('_')[-1]))
         self.path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/{}/images'.format(sorted_runs[-1])
         os.mkdir(self.path)
+        os.mkdir(self.path + '/rewards')
 
 
     def forward(self, observations, prev_actions, actions):
@@ -191,16 +193,20 @@ class NDIGO(torch.nn.Module):
         elif self.horizon == 10:
             predicted_states = self.forward_model_10(belief_states, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
 
+        predicted_states = nn.functional.sigmoid(predicted_states)
         true_obs = observations[self.horizon:].view(-1, *predicted_states.shape[1:])
 
         # generate losses
-        losses = nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='none')
+        losses = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='none')
         losses = torch.sum(losses, dim=-1)/losses.shape[-1] # average of each feature for each environment at each timestep (T, B, ave_loss_over_feature)
         
         # subtract losses to get rewards
         r_int = torch.zeros((T, B))
         for i in range(1, len(losses)):
             r_int[i+self.horizon-1] = losses[i-1] - losses[i]
+
+        if self.ep_counter % 50 == 0:
+            np.savetxt(self.path + '/rewards/rewards_{}.txt'.format(self.ep_counter), r_int.detach().clone().data.numpy())
 
         return r_int
 
@@ -223,14 +229,14 @@ class NDIGO(torch.nn.Module):
         # loss = torch.tensor(0.0)
 
         # DEBUGGING
-        if self.ep_counter % 200 == 0:
+        if self.ep_counter % 50 == 0:
             os.mkdir(self.path + '/ep_{}'.format(self.ep_counter))
             self.vis = True
-            rand_time = np.random.randint(480)
+            rand_time = np.random.randint(200)
             b = 0
             start = observations[rand_time, b].detach().clone().data.numpy() # (T, B, 3, 5, 5)
             for i in range(3):
-                plt.imsave(self.path + '/ep_{}/o_t{}_{}.jpg'.format(self.ep_counter, rand_time, i), start[i])
+                plt.imsave(self.path + '/ep_{}/o_t{}_{}.png'.format(self.ep_counter, rand_time, i), start[i], cmap='afmhot', vmin=0.0, vmax=1.0)
         else:
             self.vis = False
 
@@ -265,12 +271,13 @@ class NDIGO(torch.nn.Module):
                 predicted_states = self.forward_model_10(belief_states[:T-k], action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
 
             # generate losses for this predictor
+            predicted_states = nn.functional.sigmoid(predicted_states)
             true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach()
 
             if k == 1:
-                loss = nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+                loss = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
             else:
-                loss += nn.functional.binary_cross_entropy_with_logits(predicted_states, true_obs.detach(), reduction='mean')
+                loss += nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
 
             # DEBUGGING
             if self.vis:
@@ -278,17 +285,19 @@ class NDIGO(torch.nn.Module):
 
                     os.mkdir(self.path + '/ep_{}/pred_{}'.format(self.ep_counter, k))
 
-                    np.savetxt(self.path + '/ep_{}/pred_{}/actions.txt'.format(self.ep_counter, k, i),
-                               action_seqs[rand_time, b].detach().clone().data.numpy())
+                    np.savetxt(self.path + '/ep_{}/pred_{}/actions.txt'.format(self.ep_counter, k, i), action_seqs[rand_time, b].detach().clone().data.numpy())
                     predicted_states = predicted_states.detach().clone().data.numpy() # (T, B, 75)
                     true = true_obs.detach().clone().data.numpy() # (T, B, 75)
                     predicted_states = np.reshape(predicted_states[rand_time, b], (3, 5, 5))
                     true = np.reshape(true[rand_time, b], (3, 5, 5))
 
+                    # print(predicted_states)
+                    # print('-'*100)
+                    # print(true)
+                    # print('#'*100)
                     for i in range(3):
-                        plt.imsave(self.path + '/ep_{}/pred_{}/pred_{}.jpg'.format(self.ep_counter, k, i), predicted_states[i])
-                        plt.imsave(self.path + '/ep_{}/pred_{}/true_{}.jpg'.format(self.ep_counter, k, i), true[i])
-
+                        plt.imsave(self.path + '/ep_{}/pred_{}/pred_{}.png'.format(self.ep_counter, k, i), predicted_states[i], cmap='afmhot', vmin=0.0, vmax=1.0)
+                        plt.imsave(self.path + '/ep_{}/pred_{}/true_{}.png'.format(self.ep_counter, k, i), true[i], cmap='afmhot', vmin=0.0, vmax=1.0)
 
         # print("SAVING")
         # save_dot(loss,
@@ -314,6 +323,7 @@ class NDIGO(torch.nn.Module):
         #          open('./ndigo.dot', 'w'))
         # print('DONE SAVING')
         self.ep_counter += 1
+        # print('LOSS: ', loss.clone().detach().item())
         return loss
 
 
