@@ -11,6 +11,7 @@ from rlpyt.utils.collections import is_namedtuple_class
 from rlpyt.utils.averages import generate_observation_stats
 from rlpyt.envs.wrappers.general_wrappers import *
 from rlpyt.envs.wrappers.mario_wrappers import *
+from rlpyt.envs.wrappers.fetch_wrappers import *
 
 
 class GymEnvWrapper(Wrapper):
@@ -37,8 +38,9 @@ class GymEnvWrapper(Wrapper):
     def __init__(self, env,
             act_null_value=0, obs_null_value=0, force_float32=True):
         super().__init__(env)
-        o = self.env.reset()
-        o, r, d, info = self.env.step(self.env.action_space.sample())
+        # o = self.env.reset()
+        # o, r, d, info = self.env.step(self.env.action_space.sample())
+        info = dict()
         env_ = self.env
         time_limit = isinstance(self.env, TimeLimit)
         while not time_limit and hasattr(env_, "env"):
@@ -234,6 +236,20 @@ def deepmind_make(*args, info_example=None, **kwargs):
     import mazeworld
 
     env = gym.make(kwargs['game'])
+
+    if kwargs['no_negative_reward']:
+        env = NoNegativeReward(env)
+    if info_example is None:
+        env = GymEnvWrapper(env)
+    else:
+        env = GymEnvWrapper(EnvInfoWrapper(env))
+
+    return env
+
+def fetch_make(*args, info_example=None, **kwargs):
+    env = gym.make(kwargs['id'])
+    env = GridActions(env)
+    env = PytorchImage(env) # (h,w,c) -> (c,h,w)
 
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)

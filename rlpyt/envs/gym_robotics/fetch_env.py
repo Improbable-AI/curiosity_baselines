@@ -1,7 +1,5 @@
 import numpy as np
-
 from gym.envs.robotics import rotations, robot_env, utils
-
 from mujoco_py.generated import const
 
 def goal_distance(goal_a, goal_b):
@@ -16,7 +14,7 @@ class FetchEnv(robot_env.RobotEnv):
     def __init__(
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
-        distance_threshold, initial_qpos, reward_type,
+        distance_threshold, initial_qpos, reward_type, obs_type, camera_name,
     ):
         """Initializes a new Fetch environment.
 
@@ -33,6 +31,9 @@ class FetchEnv(robot_env.RobotEnv):
             distance_threshold (float): the threshold after which a goal is considered achieved
             initial_qpos (dict): a dictionary of joint names and values that define the initial configuration
             reward_type ('sparse' or 'dense'): the reward type, i.e. sparse or dense
+            obs_type ('state' or 'img'): the observation type, i.e. RGB image or state space
+            camera_name ('external_camera_0' or 'external_camera_1' or 'external_camera_2' or 
+                         'lidar' or 'gripper_camera_rgb' or 'head_camera_rgb'): which camera view to use
         """
         self.gripper_extra_height = gripper_extra_height
         self.block_gripper = block_gripper
@@ -46,7 +47,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         super(FetchEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
-            initial_qpos=initial_qpos)
+            initial_qpos=initial_qpos, obs_type=obs_type)
 
     # GoalEnv methods
     # ----------------------------
@@ -55,7 +56,7 @@ class FetchEnv(robot_env.RobotEnv):
         # Compute distance between goal and the achieved goal.
         d = goal_distance(achieved_goal, goal)
         if self.reward_type == 'sparse':
-            return -(d > self.distance_threshold).astype(np.float32)
+            return -(d > self.distance_threshold).astype(np.float32) + 1 # 0 or 1
         else:
             return -d
 
@@ -85,7 +86,7 @@ class FetchEnv(robot_env.RobotEnv):
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
 
-    def _get_obs(self):
+    def _get_state_obs(self):
         # positions
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
@@ -121,11 +122,12 @@ class FetchEnv(robot_env.RobotEnv):
             'desired_goal': self.goal.copy(),
         }
 
+    def _get_img_obs(self):
+        img = self.sim.render(width=500, height=500, camera_name='external_camera_0', depth=False)
+        img = img[::-1, :, :].copy()
+        return img
+
     def _viewer_setup(self):
-        # If we set the camera ID and to FIXED (from FREE), it should automatically go to the latest
-        # camera
-        self.viewer.cam.fixedcamid = 3
-        self.viewer.cam.type = const.CAMERA_FIXED
         body_id = self.sim.model.body_name2id('robot0:gripper_link')
         lookat = self.sim.data.body_xpos[body_id]
         for idx, value in enumerate(lookat):

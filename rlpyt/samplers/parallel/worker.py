@@ -55,7 +55,7 @@ def sampling_process(common_kwargs, worker_kwargs):
     initialize_worker(w.rank, w.seed, w.cpus, c.torch_threads)
     envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
     if c.record_freq > 0:
-        if c.env_kwargs['game'] in ATARI_ENVS:
+        if c.env_kwargs.get('game', 'none') in ATARI_ENVS:
             envs[0].record_env = True
             os.makedirs(os.path.join(c.log_dir, 'videos/frames'))
         elif c.get("eval_n_envs", 0) == 0: # only record workers if no evaluation processes are performed

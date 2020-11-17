@@ -26,7 +26,7 @@ from rlpyt.samplers.collections import TrajInfo
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from mazeworld.envs.pycolab_env import PycolabTrajInfo
 from rlpyt.envs.gym import make as gym_make
-from rlpyt.envs.gym import mario_make, deepmind_make
+from rlpyt.envs.gym import mario_make, deepmind_make, fetch_make
 
 # Learning Algorithms
 from rlpyt.algos.pg.ppo import PPO
@@ -46,6 +46,7 @@ with open('./global.json') as global_params:
     _TB_PORT = params['tb_port']
     _ATARI_ENVS = params['envs']['atari_envs']
     _MUJOCO_ENVS = params['envs']['mujoco_envs']
+    _FETCH_ENVS = params['envs']['fetch_envs']
 
 
 def launch_tmux(args):
@@ -252,6 +253,16 @@ def start_experiment(args):
             no_negative_reward=args.no_negative_reward,
             normalize_obs=False,
             normalize_obs_steps=10000
+            )
+    elif args.env in _FETCH_ENVS:
+        env_cl = fetch_make
+        env_args = dict(
+            id=args.env,
+            no_extrinsic=args.no_extrinsic,
+            no_negative_reward=args.no_negative_reward,
+            normalize_obs=False,
+            normalize_obs_steps=10000,
+            camera_id=1
             )
     elif args.env in _ATARI_ENVS:
         env_cl = AtariEnv

@@ -3,7 +3,7 @@ import torch
 from torch import nn
 
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
-from rlpyt.models.curiosity.encoders import BurdaHead, MazeHead, UniverseHead
+from rlpyt.models.curiosity.encoders import BurdaHead, MazeHead, UniverseHead, FetchHead
 
 class ResBlock(nn.Module):
     def __init__(self,
@@ -70,6 +70,9 @@ class ICM(nn.Module):
             elif self.feature_encoding == 'idf_maze':
                 self.feature_size = 256
                 self.encoder = MazeHead(image_shape=image_shape, output_size=self.feature_size, batch_norm=batch_norm)
+            elif self.feature_encoding == 'idf_fetch':
+                self.feature_size = 512
+                self.encoder = FetchHead(image_shape=(3,500,500), conv_output_size=4096, output_size=self.feature_size, batch_norm=batch_norm)
 
         self.inverse_model = nn.Sequential(
             nn.Linear(self.feature_size * 2, self.feature_size),

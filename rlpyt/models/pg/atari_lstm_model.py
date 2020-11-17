@@ -7,7 +7,7 @@ from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.conv2d import Conv2dHeadModel
 
-from rlpyt.models.curiosity.encoders import UniverseHead, BurdaHead, MazeHead
+from rlpyt.models.curiosity.encoders import UniverseHead, BurdaHead, MazeHead, FetchHead
 from rlpyt.models.curiosity.disagreement import Disagreement
 from rlpyt.models.curiosity.icm import ICM
 
@@ -64,6 +64,11 @@ class AtariLstmModel(torch.nn.Module):
                                       batch_norm=curiosity_kwargs['batch_norm'])
             elif curiosity_kwargs['feature_encoding'] == 'idf_maze':
                 self.conv = MazeHead(image_shape=image_shape,
+                                     output_size=self.curiosity_model.feature_size,
+                                     batch_norm=curiosity_kwargs['batch_norm'])
+            elif curiosity_kwargs['feature_encoding'] == 'idf_fetch':
+                self.conv = FetchHead(image_shape=(3,500,500),
+                                     conv_output_size=4096, # 16*16*16
                                      output_size=self.curiosity_model.feature_size,
                                      batch_norm=curiosity_kwargs['batch_norm'])
             self.conv.output_size = self.curiosity_model.feature_size

@@ -121,11 +121,11 @@
 			<geom mesh="robot0:torso_fixed_link" name="robot0:torso_fixed_link" class="robot0:blue"></geom>
 		</body>
 		<body name="robot0:external_camera_body_0" pos="0 0 0">
-			<!-- <camera euler="0 0.75 1.57" fovy="43.3" name="external_camera_0" pos="1.3 0 1.2"></camera> -->
+			<camera euler="0 0.75 1.57" fovy="43.3" name="external_camera_0" pos="1.3 0 1.2"></camera>
 			<!-- Fixed side view slighlty down.  Adjust second euler angle as needed and x or z -->
-			<camera euler="0 1.1 1.57" fovy="43.3" name="external_camera_0" pos="1.1 0 0.8"></camera>
+			<camera euler="0 1.1 1.57" fovy="43.3" name="external_camera_1" pos="1.1 0 0.8"></camera>
 			<!-- Fixed overhead -->
-			<!-- <camera euler="0 0 -1.57" fovy="43.3" name="external_camera_0" pos="0.6 0 1.0"></camera> -->
+			<camera euler="0 0 -1.57" fovy="43.3" name="external_camera_2" pos="0.6 0 1.0"></camera>
 		</body>
 	</body>
 </mujoco>

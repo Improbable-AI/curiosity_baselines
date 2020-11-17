@@ -1,5 +1,5 @@
 {
-    "container_image": "echen9898/curiosity_baselines:0.1.7",
+    "container_image": "echen9898/curiosity_baselines:0.1.8",
     "container_workdir": "/curiosity_baselines",
     "container_resultsdir": "/curiosity_baselines/results",
     "tb_port": "12345",
@@ -71,18 +71,24 @@
         ],
         "mujoco_envs": [
             "Hopper-v3",
+            "Swimmer-v3",
             "HalfCheetah-v3",
             "Ant-v3",
             "Humanoid-v3",
             "HumanoidStandup-v3",
             "Reacher-v3",
-            "Swimmer-v3",
             "Walker2d-v3",
             "InvertedPendulum-v3",
             "InvertedDoublePendulum-v3"
         ],
         "mario_envs": [
             "SuperMarioBros-Nes"
+        ],
+        "fetch_envs": [
+            "FetchSlide-v1",
+            "FetchPickAndPlace-v1",
+            "FetchReach-v1",
+            "FetchPush-v1"
         ]
     }
 }

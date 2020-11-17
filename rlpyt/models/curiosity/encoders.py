@@ -117,3 +117,54 @@ class BurdaHead(nn.Module):
         assumes correct input shape: [B,C,H,W]."""
         encoded_state = self.model(state)
         return encoded_state
+
+
+class FetchHead(nn.Module):
+    '''
+    Fetch 500x500x3 image encoder.
+    '''
+    def __init__(
+            self, 
+            image_shape,
+            conv_output_size,
+            output_size,
+            batch_norm=False
+            ):
+        super(FetchHead, self).__init__()
+        c, w, h = 3, 500, 500
+        self.output_size = output_size
+        self.conv_output_size = conv_output_size
+        sequence = list()
+        for l in range(5):
+            if l == 0:
+                conv = nn.Conv2d(in_channels=c, out_channels=32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+            elif l == 1:
+                conv = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+            elif l in {2, 3}:
+                conv = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+            else:
+                conv = nn.Conv2d(in_channels=32, out_channels=16, kernel_size=(2, 2), stride=(2, 2), padding=(0, 0))
+            block = [conv, nn.ELU()]
+            if batch_norm:
+                block.append(nn.BatchNorm2d(32))
+            sequence.extend(block)
+        sequence.append(Flatten())
+        sequence.append(nn.Linear(in_features=self.conv_output_size, out_features=self.output_size))
+        self.model = nn.Sequential(*sequence)
+
+    def forward(self, state):
+        """Compute the feature encoding convolution + head on the input;
+        assumes correct input shape: [B,C,H,W]."""
+        encoded_state = self.model(state)
+        return encoded_state.view(encoded_state.shape[0], -1)
+
+
+
+
+
+
+
+
+
+
+
