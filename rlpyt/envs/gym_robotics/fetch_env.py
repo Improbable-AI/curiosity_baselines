@@ -44,6 +44,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.target_range = target_range
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
+        self.camera_name = camera_name
 
         super(FetchEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
@@ -123,7 +124,7 @@ class FetchEnv(robot_env.RobotEnv):
         }
 
     def _get_img_obs(self):
-        img = self.sim.render(width=500, height=500, camera_name='external_camera_0', depth=False)
+        img = self.sim.render(width=500, height=500, camera_name=self.camera_name, depth=False)
         img = img[::-1, :, :].copy()
         return img
 

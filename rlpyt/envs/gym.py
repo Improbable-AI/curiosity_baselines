@@ -249,6 +249,8 @@ def deepmind_make(*args, info_example=None, **kwargs):
 def fetch_make(*args, info_example=None, **kwargs):
     env = gym.make(kwargs['id'])
     env = GridActions(env)
+    # env = ResizeImage(env, height=100, width=100)
+    # env = GrayscaleImage(env)
     env = PytorchImage(env) # (h,w,c) -> (c,h,w)
 
     if kwargs['no_negative_reward']:
