@@ -49,8 +49,7 @@ class RobotEnv(gym.Env):
             ))
         elif self.obs_type == 'img':
             # img_obs = self._get_img_obs()
-            # TODO: Maybe make this uint8 instead?
-            self.observation_space = spaces.Box(0., 255., (500,500,3), dtype='float32')
+            self.observation_space = spaces.Box(0., 255., (500,500,3), dtype='uint8')
 
     @property
     def dt(self):

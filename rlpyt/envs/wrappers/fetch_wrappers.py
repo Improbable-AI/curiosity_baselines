@@ -96,10 +96,11 @@ class GrayscaleImage(gym.ObservationWrapper):
         assert self.obs_type == 'img', self.__class__.__name__ + "only works for `img` obs_type"
 
         # Reformat observation space from 3 channel to 1 channel grayscale
-        assert (len(self.observation_space.shape) == 3), 'Make sure observation is a 3 channel RGB img'
+        assert (self.observation_space.shape[2]==3), 'Make sure observation is a 3 channel RGB img'
         shape = (self.height, self.width)
         self.observation_space = spaces.Box(0., 255., shape, dtype=self.observation_space.dtype)
 
     def observation(self, obs):
         # Grayscale conversion ITU-R601-2 luma transform (http://effbot.org/imagingbook/image.htm)
-        return obs[:, :, 0] * 0.299 + obs[:, :, 1] * 0.587 + obs[:, :, 2] * 0.114
+        # Using 0:1 for channel so that output is still (h, w, 1)
+        return (obs[:, :, 0:1] * 0.299 + obs[:, :, 1:2] * 0.587 + obs[:, :, 2:3] * 0.114).astype(self.observation_space.dtype)
