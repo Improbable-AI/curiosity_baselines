@@ -186,7 +186,7 @@ class NDIGO(torch.nn.Module):
         for i in range(1, len(losses)):
             r_int[i-1] = losses[i-1] - losses[i]
 
-        return r_int
+        return torch.abs(r_int)
 
 
     def compute_loss(self, observations, prev_actions, actions):
