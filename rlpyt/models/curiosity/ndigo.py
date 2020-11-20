@@ -110,25 +110,6 @@ class NDIGO(torch.nn.Module):
                                             output_size=image_shape[0]*image_shape[1]*image_shape[2])
 
 
-        # DEBUGGING
-        self.ep_counter = 0
-        self.vis = False
-
-        runs = os.listdir('/curiosity_baselines/results/ppo_Deepmind5Room-v0')
-        try:
-            runs.remove('tmp')
-        except ValueError:
-            pass
-        try:
-            runs.remove('.DS_Store')
-        except ValueError:
-            pass
-        sorted_runs = sorted(runs, key=lambda run: int(run.split('_')[-1]))
-        self.path = '/curiosity_baselines/results/ppo_Deepmind5Room-v0/{}/images'.format(sorted_runs[-1])
-        os.mkdir(self.path)
-        os.mkdir(self.path + '/rewards')
-
-
     def forward(self, observations, prev_actions, actions):
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
@@ -205,9 +186,6 @@ class NDIGO(torch.nn.Module):
         for i in range(1, len(losses)):
             r_int[i-1] = losses[i-1] - losses[i]
 
-        if self.ep_counter % 50 == 0:
-            np.savetxt(self.path + '/rewards/rewards_{}.txt'.format(self.ep_counter), r_int.detach().clone().data.numpy())
-
         return r_int
 
 
@@ -224,21 +202,6 @@ class NDIGO(torch.nn.Module):
         # generate belief states
         belief_states, gru_output_states = self.forward(observations, prev_actions, actions)
         self.gru_states = None # only bc we're processing exactly 1 episode per batch
-
-        # generate loss for each forward predictor
-        # loss = torch.tensor(0.0)
-
-        # DEBUGGING
-        if self.ep_counter % 50 == 0:
-            os.mkdir(self.path + '/ep_{}'.format(self.ep_counter))
-            self.vis = True
-            rand_time = np.random.randint(200)
-            b = 0
-            start = observations[rand_time, b].detach().clone().data.numpy() # (T, B, 3, 5, 5)
-            for i in range(3):
-                plt.imsave(self.path + '/ep_{}/o_t{}_{}.png'.format(self.ep_counter, rand_time, i), start[i], cmap='afmhot', vmin=0.0, vmax=1.0)
-        else:
-            self.vis = False
 
         for k in range(1, self.num_predictors+1):
             action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
@@ -279,51 +242,6 @@ class NDIGO(torch.nn.Module):
             else:
                 loss += nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
 
-            # DEBUGGING
-            if self.vis:
-                with torch.no_grad():
-
-                    os.mkdir(self.path + '/ep_{}/pred_{}'.format(self.ep_counter, k))
-
-                    np.savetxt(self.path + '/ep_{}/pred_{}/actions.txt'.format(self.ep_counter, k, i), action_seqs[rand_time, b].detach().clone().data.numpy())
-                    predicted_states = predicted_states.detach().clone().data.numpy() # (T, B, 75)
-                    true = true_obs.detach().clone().data.numpy() # (T, B, 75)
-                    predicted_states = np.reshape(predicted_states[rand_time, b], (3, 5, 5))
-                    true = np.reshape(true[rand_time, b], (3, 5, 5))
-
-                    # print(predicted_states)
-                    # print('-'*100)
-                    # print(true)
-                    # print('#'*100)
-                    for i in range(3):
-                        plt.imsave(self.path + '/ep_{}/pred_{}/pred_{}.png'.format(self.ep_counter, k, i), predicted_states[i], cmap='afmhot', vmin=0.0, vmax=1.0)
-                        plt.imsave(self.path + '/ep_{}/pred_{}/true_{}.png'.format(self.ep_counter, k, i), true[i], cmap='afmhot', vmin=0.0, vmax=1.0)
-
-        # print("SAVING")
-        # save_dot(loss,
-        #          {loss: 'forward_loss',
-        #           self.encoder.model[0].weight: 'encoder.conv1.w',
-        #           self.encoder.model[0].bias: 'encoder.conv1.b',
-        #           self.encoder.model[2].weight: 'encoder.conv2.w',
-        #           self.encoder.model[2].bias: 'encoder.conv2.b',
-        #           self.encoder.model[5].weight: 'encoder.lin_out.w',
-        #           self.encoder.model[5].bias: 'encoder.lin_out.b',
-        #           self.gru.weight_ih_l0: 'gru.input_h.w',
-        #           self.gru.bias_ih_l0: 'gru.input_h.b',
-        #           self.gru.weight_hh_l0: 'gru.hidden_h.w',
-        #           self.gru.bias_hh_l0: 'gru.hidden_h.b',
-        #           # self.forward_model_1.model[0].weight: 'forward_1.lin_1.w',
-        #           # self.forward_model_1.model[0].bias: 'forward_1.lin_1.b',
-        #           # self.forward_model_1.model[2].weight: 'forward_1.lin_2.w',
-        #           # self.forward_model_1.model[2].bias: 'forward_1.lin_2.b',
-        #           self.forward_model_2.model[0].weight: 'forward_2.lin_1.w',
-        #           self.forward_model_2.model[0].bias: 'forward_2.lin_1.b',
-        #           self.forward_model_2.model[2].weight: 'forward_2.lin_2.w',
-        #           self.forward_model_2.model[2].bias: 'forward_2.lin_2.b',}, 
-        #          open('./ndigo.dot', 'w'))
-        # print('DONE SAVING')
-        self.ep_counter += 1
-        # print('LOSS: ', loss.clone().detach().item())
         return loss
 
 
