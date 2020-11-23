@@ -55,7 +55,7 @@ class ResizeImage(gym.ObservationWrapper):
     `width` :: int : Pixel width to scale image to.
     '''
 
-    def __init__(self, env, height=100, width=100):
+    def __init__(self, env, height=84, width=84):
         super(ResizeImage, self).__init__(env)
         assert self.obs_type == 'img', self.__class__.__name__ + "only works for `img` obs_type"
         self.height = height
@@ -97,7 +97,7 @@ class GrayscaleImage(gym.ObservationWrapper):
 
         # Reformat observation space from 3 channel to 1 channel grayscale
         assert (self.observation_space.shape[2]==3), 'Make sure observation is a 3 channel RGB img'
-        shape = (self.height, self.width)
+        shape = (self.height, self.width, 1)
         self.observation_space = spaces.Box(0., 255., shape, dtype=self.observation_space.dtype)
 
     def observation(self, obs):

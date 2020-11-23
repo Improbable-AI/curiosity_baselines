@@ -44,6 +44,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.target_range = target_range
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
+        self.obs_type = obs_type
         self.camera_name = camera_name
 
         super(FetchEnv, self).__init__(

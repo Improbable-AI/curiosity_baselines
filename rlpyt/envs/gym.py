@@ -249,7 +249,7 @@ def deepmind_make(*args, info_example=None, **kwargs):
 def fetch_make(*args, info_example=None, **kwargs):
     env = gym.make(kwargs['id'])
     env = GridActions(env)
-    env = ResizeImage(env, height=100, width=100)
+    env = ResizeImage(env, height=84, width=84)
     env = GrayscaleImage(env)
     env = PytorchImage(env) # (h,w,c) -> (c,h,w)
 
