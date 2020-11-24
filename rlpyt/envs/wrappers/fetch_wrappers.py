@@ -21,7 +21,7 @@ class GridActions(gym.Wrapper):
     '''
     def __init__(self, env, distance=0.03):
         super().__init__(env)
-        self.action_space = spaces.Discrete(8)
+        self.action_space = spaces.Discrete(9)
         self.distance = distance
 
         self.action_mapping = { # maps from action index to (dx, dy)
@@ -32,7 +32,8 @@ class GridActions(gym.Wrapper):
             4 : (1, 1),
             5 : (-1, -1),
             6 : (1, -1),
-            7 : (-1, 1)
+            7 : (-1, 1),
+            8 : (0, 0)
         }
 
     def step(self, action):

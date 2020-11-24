@@ -51,6 +51,8 @@ class RobotEnv(gym.Env):
             # img_obs = self._get_img_obs()
             self.observation_space = spaces.Box(0., 255., (500,500,3), dtype='uint8')
 
+        self.time_elapsed = 0
+
     @property
     def dt(self):
         return self.sim.model.opt.timestep * self.sim.nsubsteps
@@ -71,6 +73,9 @@ class RobotEnv(gym.Env):
         img_obs = self._get_img_obs()
 
         done = False
+        self.time_elapsed += 1
+        if self.time_elapsed == self.time_limit:
+            done = True
         info = {
             'is_success': self._is_success(state_obs['achieved_goal'], self.goal),
         }
@@ -96,6 +101,7 @@ class RobotEnv(gym.Env):
         state_obs = self._get_state_obs()
         img_obs = self._get_img_obs()
 
+        self.time_elapsed = 0
         if self.obs_type == 'state':
             return state_obs
         elif self.obs_type == 'img':

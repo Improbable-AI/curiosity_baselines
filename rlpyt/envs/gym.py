@@ -247,7 +247,11 @@ def deepmind_make(*args, info_example=None, **kwargs):
     return env
 
 def fetch_make(*args, info_example=None, **kwargs):
-    env = gym.make(kwargs['id'])
+    if kwargs['id'] in {'FetchPushExp1-v1'}:
+        from rlpyt.envs.gym_robotics.fetch.push import FetchPushExp1
+        env = FetchPushExp1()
+    else:
+        env = gym.make(kwargs['id'])
     env = GridActions(env)
     env = ResizeImage(env, height=84, width=84)
     env = GrayscaleImage(env)

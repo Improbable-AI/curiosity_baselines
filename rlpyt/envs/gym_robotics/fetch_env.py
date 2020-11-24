@@ -14,7 +14,8 @@ class FetchEnv(robot_env.RobotEnv):
     def __init__(
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
-        distance_threshold, initial_qpos, reward_type, obs_type, camera_name,
+        distance_threshold, initial_qpos, reward_type, obs_type, camera_name, 
+        fixed_goal, fixed_obj, time_limit,
     ):
         """Initializes a new Fetch environment.
 
@@ -34,6 +35,9 @@ class FetchEnv(robot_env.RobotEnv):
             obs_type ('state' or 'img'): the observation type, i.e. RGB image or state space
             camera_name ('external_camera_0' or 'external_camera_1' or 'external_camera_2' or 
                          'lidar' or 'gripper_camera_rgb' or 'head_camera_rgb'): which camera view to use
+            fixed_goal (np.array or None): the target goal (x,y,z)
+            fixed_obj (np.array or None): the object starting position (x,y,z)
+            time_limit (int or None): timestep limit for custom environments
         """
         self.gripper_extra_height = gripper_extra_height
         self.block_gripper = block_gripper
@@ -46,6 +50,9 @@ class FetchEnv(robot_env.RobotEnv):
         self.reward_type = reward_type
         self.obs_type = obs_type
         self.camera_name = camera_name
+        self.fixed_goal = fixed_goal
+        self.fixed_obj = fixed_obj
+        self.time_limit = time_limit
 
         super(FetchEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
@@ -149,7 +156,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.set_state(self.initial_state)
 
         # Randomize start position of object.
-        if self.has_object:
+        if self.has_object and self.fixed_obj is None:
             object_xpos = self.initial_gripper_xpos[:2]
             while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                 object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
@@ -157,17 +164,24 @@ class FetchEnv(robot_env.RobotEnv):
             assert object_qpos.shape == (7,)
             object_qpos[:2] = object_xpos
             self.sim.data.set_joint_qpos('object0:joint', object_qpos)
+        elif self.has_object and self.fixed_obj is not None:
+            object_qpos = self.sim.data.get_joint_qpos('object0:joint')
+            assert object_qpos.shape == (7,)
+            object_qpos[:2] = self.fixed_obj[:2]
+            self.sim.data.set_joint_qpos('object0:joint', object_qpos)
 
         self.sim.forward()
         return True
 
     def _sample_goal(self):
-        if self.has_object:
+        if self.has_object and self.fixed_goal is None:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
             goal += self.target_offset
             goal[2] = self.height_offset
             if self.target_in_the_air and self.np_random.uniform() < 0.5:
                 goal[2] += self.np_random.uniform(0, 0.45)
+        elif self.fixed_goal is not None:
+            goal = self.fixed_goal.copy()
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
         return goal.copy()
