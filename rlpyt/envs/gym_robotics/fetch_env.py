@@ -1,6 +1,5 @@
 import numpy as np
-from gym.envs.robotics import rotations, robot_env, utils
-from mujoco_py.generated import const
+from gym.envs.robotics import rotations, utils, robot_env
 
 def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
@@ -15,7 +14,7 @@ class FetchEnv(robot_env.RobotEnv):
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
         distance_threshold, initial_qpos, reward_type, obs_type, camera_name, 
-        fixed_goal, fixed_obj, time_limit,
+        fixed_start, fixed_goal, fixed_obj, time_limit,
     ):
         """Initializes a new Fetch environment.
 
@@ -35,6 +34,7 @@ class FetchEnv(robot_env.RobotEnv):
             obs_type ('state' or 'img'): the observation type, i.e. RGB image or state space
             camera_name ('external_camera_0' or 'external_camera_1' or 'external_camera_2' or 
                          'lidar' or 'gripper_camera_rgb' or 'head_camera_rgb'): which camera view to use
+            fixed_start (np.array) or None): the starting position of the arm (x,y,z), defaults to [-0.498, 0.005, -0.431 + self.gripper_extra_height] if None
             fixed_goal (np.array or None): the target goal (x,y,z)
             fixed_obj (np.array or None): the object starting position (x,y,z)
             time_limit (int or None): timestep limit for custom environments
@@ -50,6 +50,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.reward_type = reward_type
         self.obs_type = obs_type
         self.camera_name = camera_name
+        self.fixed_start = fixed_start
         self.fixed_goal = fixed_goal
         self.fixed_obj = fixed_obj
         self.time_limit = time_limit
@@ -198,6 +199,10 @@ class FetchEnv(robot_env.RobotEnv):
 
         # Move end effector into position.
         gripper_target = np.array([-0.498, 0.005, -0.431 + self.gripper_extra_height]) + self.sim.data.get_site_xpos('robot0:grip')
+
+        if not (self.fixed_start is None):
+            gripper_target[:3] = self.fixed_start
+
         gripper_rotation = np.array([1., 0., 1., 0.])
         self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
         self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)

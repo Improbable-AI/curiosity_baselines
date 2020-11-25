@@ -250,6 +250,9 @@ def fetch_make(*args, info_example=None, **kwargs):
     if kwargs['id'] in {'FetchPushExp1-v1'}:
         from rlpyt.envs.gym_robotics.fetch.push import FetchPushExp1
         env = FetchPushExp1()
+    elif kwargs['id'] in {'FetchPushExp2-v1'}:
+        from rlpyt.envs.gym_robotics.fetch.push import FetchPushExp2
+        env = FetchPushExp2()
     else:
         env = gym.make(kwargs['id'])
     env = GridActions(env)
