@@ -53,7 +53,7 @@ class FetchPushExp1(fetch_env.FetchEnv, utils.EzPickle):
             fixed_obj=np.array(OBJ_1), time_limit=50*2)
         utils.EzPickle.__init__(self)
 
-# 881 experiment 1 - start is close to goal
+# 881 experiment 2 - arm at the back of table, start at center
 ARM_START_2 = TOP_CENTER
 OBJ_2     = CENTER
 TARGET_2  = BOTTOM_CENTER
@@ -63,7 +63,7 @@ class FetchPushExp2(fetch_env.FetchEnv, utils.EzPickle):
             'robot0:slide0': 0.405,
             'robot0:slide1': 0.48,
             'robot0:slide2': 0.0,
-            'object0:joint': OBJ_1+[1., 0., 0., 0.],
+            'object0:joint': OBJ_2+[1., 0., 0., 0.],
         }
         fetch_env.FetchEnv.__init__(
             self, MODEL_XML_PATH, has_object=True, block_gripper=True, n_substeps=20,
@@ -71,7 +71,49 @@ class FetchPushExp2(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=np.array(ARM_START_2), fixed_goal=np.array(TARGET_2),
-            fixed_obj=np.array(OBJ_1), time_limit=50*2)
+            fixed_obj=np.array(OBJ_2), time_limit=50*2)
+        utils.EzPickle.__init__(self)
+
+# 881 experiment 3 - arm at the back of table, start is not close to the arm
+ARM_START_3 = TOP_CENTER
+OBJ_3     = CENTER_RIGHT
+TARGET_3  = BOTTOM_CENTER
+class FetchPushExp3(fetch_env.FetchEnv, utils.EzPickle):
+    def __init__(self, reward_type='sparse'):
+        initial_qpos = {
+            'robot0:slide0': 0.405,
+            'robot0:slide1': 0.48,
+            'robot0:slide2': 0.0,
+            'object0:joint': OBJ_3+[1., 0., 0., 0.],
+        }
+        fetch_env.FetchEnv.__init__(
+            self, MODEL_XML_PATH, has_object=True, block_gripper=True, n_substeps=20,
+            gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.05,
+            initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
+            camera_name='external_camera_0', fixed_start=np.array(ARM_START_3), fixed_goal=np.array(TARGET_3),
+            fixed_obj=np.array(OBJ_3), time_limit=50*2)
+        utils.EzPickle.__init__(self)
+
+# 881 experiment 4 - arm at the back of table, start is not close to the arm
+ARM_START_4 = TOP_CENTER
+OBJ_4     = TOP_LEFT
+TARGET_4  = BOTTOM_CENTER
+class FetchPushExp4(fetch_env.FetchEnv, utils.EzPickle):
+    def __init__(self, reward_type='sparse'):
+        initial_qpos = {
+            'robot0:slide0': 0.405,
+            'robot0:slide1': 0.48,
+            'robot0:slide2': 0.0,
+            'object0:joint': OBJ_4+[1., 0., 0., 0.],
+        }
+        fetch_env.FetchEnv.__init__(
+            self, MODEL_XML_PATH, has_object=True, block_gripper=True, n_substeps=20,
+            gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.05,
+            initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
+            camera_name='external_camera_0', fixed_start=np.array(ARM_START_4), fixed_goal=np.array(TARGET_4),
+            fixed_obj=np.array(OBJ_4), time_limit=50*2)
         utils.EzPickle.__init__(self)
 
 

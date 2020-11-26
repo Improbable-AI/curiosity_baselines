@@ -90,7 +90,9 @@
             "FetchReach-v1",
             "FetchPush-v1",
             "FetchPushExp1-v1",
-            "FetchPushExp2-v1"
+            "FetchPushExp2-v1",
+            "FetchPushExp3-v1",
+            "FetchPushExp4-v1"
         ]
     }
 }
