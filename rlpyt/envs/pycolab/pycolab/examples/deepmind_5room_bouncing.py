@@ -68,7 +68,7 @@ MAZES_ART = [
      '#    ##     ##    #',
      '#    ##     ##    #',
      '#        P        #',
-     '#    ##     ##    #',
+     '#    ##     ## c  #',
      '#    ##     ##    #',
      '#    #### ####    #',
      '#    #### ####    #',
@@ -151,21 +151,16 @@ def make_game(level):
   """Builds and returns a Better Scrolly Maze game for the selected level."""
   maze_ascii = MAZES_ART[level]
 
-  # change location of fixed object in the top room
-  for row in range(1, 5):
-    if 'a' in maze_ascii[row]:
-      maze_ascii[row] = maze_ascii[row].replace('a', ' ', 1)
-  new_coord = random.sample(ROOMS[2], 1)[0]
-  maze_ascii[new_coord[0]] = maze_ascii[new_coord[0]][:new_coord[1]] + 'a' + maze_ascii[new_coord[0]][new_coord[1]+1:]
-
   return ascii_art.ascii_art_to_game(
       maze_ascii, what_lies_beneath=' ',
       sprites={
           'P': PlayerSprite,
-          'a': FixedObject,
-          'b': WhiteNoiseObject},
-      update_schedule=['P', 'a', 'b'],
-      z_order='abP')
+          'a': BouncingObject,
+          'b': BouncingObject,
+          'c': WhiteNoiseObject},
+      update_schedule=['P', 'a', 'b', 'c'],
+      z_order='abcP')
+
 
 def make_croppers(level):
   """Builds and returns `ObservationCropper`s for the selected level.
@@ -183,6 +178,7 @@ def make_croppers(level):
       # The player view.
       cropping.ScrollingCropper(rows=5, cols=5, to_track=['P']),
   ]
+
 
 class PlayerSprite(prefab_sprites.MazeWalker):
   """A `Sprite` for our player, the maze explorer."""
@@ -234,32 +230,6 @@ class BouncingObject(prefab_sprites.MazeWalker):
     # Make our move. 
     (self._east if self._moving_east else self._west)(board, the_plot)
 
-class BrownianObject(prefab_sprites.MazeWalker):
-  """Randomly sample direction from left/right/up/down"""
-
-  def __init__(self, corner, position, character):
-    """Constructor: list impassables, initialise direction."""
-    super(BrownianObject, self).__init__(corner, position, character, impassable='#')
-    # Choose our initial direction.
-    self._direction = np.random.choice(4) # 0 = east, 1 = west, 2 = north, 3 = south
-
-  def update(self, actions, board, layers, backdrop, things, the_plot):
-    del actions, backdrop  # Unused.
-
-    # We only move once every two game iterations.
-    if the_plot.frame % 2:
-      self._stay(board, the_plot)
-      return
-
-    # Sample a move
-    self._direction = np.random.choice(4) # 0 = east, 1 = west, 2 = north, 3 = south
-
-    # Make a move
-    if self._direction == 0: self._east(board, the_plot)
-    elif self._direction == 1: self._west(board, the_plot)
-    elif self._direction == 2: self._north(board, the_plot)
-    elif self._direction == 3: self._south(board, the_plot)
-
 class WhiteNoiseObject(prefab_sprites.MazeWalker):
   """Randomly sample direction from left/right/up/down"""
 
@@ -267,7 +237,7 @@ class WhiteNoiseObject(prefab_sprites.MazeWalker):
     """Constructor: list impassables, initialise direction."""
     super(WhiteNoiseObject, self).__init__(corner, position, character, impassable='#')
     # Initialize empty space in surrounding radius.
-    self._empty_coords = ROOMS[4]
+    self._empty_coords = ROOMS[3]
 
   def update(self, actions, board, layers, backdrop, things, the_plot):
     del actions, backdrop  # Unused.
@@ -279,34 +249,6 @@ class WhiteNoiseObject(prefab_sprites.MazeWalker):
 
     # Sample and make a move
     self._teleport(self._empty_coords[np.random.choice(len(self._empty_coords))])
-
-class FixedObject(plab_things.Sprite):
-  """Static object. Doesn't move."""
-
-  def __init__(self, corner, position, character):
-    super(FixedObject, self).__init__(
-        corner, position, character)
-
-  def update(self, actions, board, layers, backdrop, things, the_plot):
-    del actions, backdrop  # Unused.
-
-class CashDrape(plab_things.Drape):
-  """A `Drape` handling all of the coins.
-
-  This Drape detects when a player traverses a coin, removing the coin and
-  crediting the player for the collection. Terminates if all coins are gone.
-  """
-
-  def update(self, actions, board, layers, backdrop, things, the_plot):
-    # If the player has reached a coin, credit one reward and remove the coin
-    # from the scrolling pattern. If the player has obtained all coins, quit!
-    player_pattern_position = things['P'].position
-
-    if self.curtain[player_pattern_position]:
-      the_plot.log('Coin collected at {}!'.format(player_pattern_position))
-      the_plot.add_reward(1.0)
-      self.curtain[player_pattern_position] = False
-      if not self.curtain.any(): the_plot.terminate_episode()
 
 def main(argv=()):
   level = int(argv[1]) if len(argv) > 1 else 0

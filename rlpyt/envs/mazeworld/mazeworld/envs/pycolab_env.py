@@ -21,26 +21,47 @@ EnvInfo = namedtuple("EnvInfo", ["visitation_frequency", "first_visit_time", "tr
 
 class PycolabTrajInfo(TrajInfo):
     """TrajInfo class for use with Pycolab Env, to store visitation
-    frequencies and any other custom metrics."""
+    frequencies and any other custom metrics. Has room to store up to 5 sprites
+    currently, but can be expanded. Can store fewer automatically as well. """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.visit_freq_a = 0
         self.visit_freq_b = 0
+        self.visit_freq_c = 0
+        self.visit_freq_d = 0
+        self.visit_freq_e = 0
         self.first_visit_a = 500
         self.first_visit_b = 500
+        self.first_visit_c = 500
+        self.first_visit_d = 500
+        self.first_visit_e = 500
 
     def step(self, observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info):
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
         first_visit_time = getattr(env_info, 'first_time_visit', None)
 
         if visitation_frequency is not None and first_visit_time is not None:
-            if first_visit_time[0] == 500 and visitation_frequency[0] == 1:
-                self.first_visit_a = self.Length
-            if first_visit_time[1] == 500 and visitation_frequency[1] == 1:
-                self.first_visit_b = self.Length
-            self.visit_freq_a = visitation_frequency[0]
-            self.visit_freq_b = visitation_frequency[1]
+            if len(visitation_frequency) >= 1:
+                if first_visit_time[0] == 500 and visitation_frequency[0] == 1:
+                    self.first_visit_a = self.Length
+                self.visit_freq_a = visitation_frequency[0]
+            if len(visitation_frequency) >= 2:
+                if first_visit_time[1] == 500 and visitation_frequency[1] == 1:
+                    self.first_visit_b = self.Length
+                self.visit_freq_b = visitation_frequency[1]
+            if len(visitation_frequency) >= 3:
+                if first_visit_time[2] == 500 and visitation_frequency[2] == 1:
+                    self.first_visit_c = self.Length
+                self.visit_freq_c = visitation_frequency[2]
+            if len(visitation_frequency) >= 4:
+                if first_visit_time[3] == 500 and visitation_frequency[3] == 1:
+                    self.first_visit_d = self.Length
+                self.visit_freq_d = visitation_frequency[3]
+            if len(visitation_frequency) >= 5:
+                if first_visit_time[4] == 500 and visitation_frequency[4] == 1:
+                    self.first_visit_e = self.Length
+                self.visit_freq_e = visitation_frequency[4]
 
         super().step(observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info)
 
@@ -158,8 +179,8 @@ class PyColabEnv(gym.Env):
         return {'P' : (255., 255., 255.),
                 'a' : (175., 255., 15.),
                 'b' : (21., 0., 255.),
-                'c' : (0., 250., 71.),
-                'd' : (250., 0., 129.),
+                'c' : (250., 0., 129.),
+                'd' : (0., 250., 71.),
                 'e' : (255., 0., 0.),
                 '#' : (61., 61., 61.),
                 '@' : (255., 255., 0.),

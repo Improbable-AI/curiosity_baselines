@@ -4,7 +4,12 @@ from __future__ import print_function
 
 from gym.envs.registration import register
 
-from mazeworld.envs import MazeWorld, DeepmindMazeWorld_maze, DeepmindMazeWorld_5room
+from mazeworld.envs import (MazeWorld, 
+                            DeepmindMazeWorld_maze, 
+                            DeepmindMazeWorld_5room, 
+                            DeepmindMazeWorld_5room_randomfixed, 
+                            DeepmindMazeWorld_5room_bouncing,
+                            DeepmindMazeWorld_5room_brownian)
 
 register(
     id='Maze-v0',
@@ -21,5 +26,23 @@ register(
 register(
     id='Deepmind5Room-v0',
     entry_point='mazeworld.envs:DeepmindMazeWorld_5room',
+    max_episode_steps=500,
+    kwargs={'level': 0, 'max_iterations': 500})
+
+register(
+    id='Deepmind5RoomRandomFixed-v0',
+    entry_point='mazeworld.envs:DeepmindMazeWorld_5room_randomfixed',
+    max_episode_steps=500,
+    kwargs={'level': 0, 'max_iterations': 500})
+
+register(
+    id='Deepmind5RoomBouncing-v0',
+    entry_point='mazeworld.envs:DeepmindMazeWorld_5room_bouncing',
+    max_episode_steps=500,
+    kwargs={'level': 0, 'max_iterations': 500})
+
+register(
+    id='Deepmind5RoomBrownian-v0',
+    entry_point='mazeworld.envs:DeepmindMazeWorld_5room_brownian',
     max_episode_steps=500,
     kwargs={'level': 0, 'max_iterations': 500})

@@ -116,69 +116,6 @@ class PPO(PolicyGradientAlgo):
         T, B = samples.env.reward.shape[:2]
         opt_info = OptInfo(*([] for _ in range(len(OptInfo._fields))))
 
-        layer_info = {'forward_1/lin1.w':None,
-                      'forward_1/lin1.b':None,
-                      'forward_1/lin2.w':None,
-                      'forward_1/lin2.b':None,
-
-                      'forward_2/lin1.w':None,
-                      'forward_2/lin1.b':None,
-                      'forward_2/lin2.w':None,
-                      'forward_2/lin2.b':None,
-
-                      'forward_3/lin1.w':None,
-                      'forward_3/lin1.b':None,
-                      'forward_3/lin2.w':None,
-                      'forward_3/lin2.b':None,
-
-                      'forward_4/lin1.w':None,
-                      'forward_4/lin1.b':None,
-                      'forward_4/lin2.w':None,
-                      'forward_4/lin2.b':None,
-
-                      'forward_5/lin1.w':None,
-                      'forward_5/lin1.b':None,
-                      'forward_5/lin2.w':None,
-                      'forward_5/lin2.b':None,
-
-                      'forward_6/lin1.w':None,
-                      'forward_6/lin1.b':None,
-                      'forward_6/lin2.w':None,
-                      'forward_6/lin2.b':None,
-
-                      'forward_7/lin1.w':None,
-                      'forward_7/lin1.b':None,
-                      'forward_7/lin2.w':None,
-                      'forward_7/lin2.b':None,
-
-                      'forward_8/lin1.w':None,
-                      'forward_8/lin1.b':None,
-                      'forward_8/lin2.w':None,
-                      'forward_8/lin2.b':None,
-
-                      'forward_9/lin1.w':None,
-                      'forward_9/lin1.b':None,
-                      'forward_9/lin2.w':None,
-                      'forward_9/lin2.b':None,
-
-                      'forward_10/lin1.w':None,
-                      'forward_10/lin1.b':None,
-                      'forward_10/lin2.w':None,
-                      'forward_10/lin2.b':None,
-
-                      'gru/l0.input_w':None,
-                      'gru/l0.input_b':None,
-                      'gru/l0.hidden_w':None,
-                      'gru/l0.hidden_b':None,
-
-                      'encoder/conv1.w':None,
-                      'encoder/conv1.b':None,
-                      'encoder/conv2.w':None,
-                      'encoder/conv2.b':None,
-                      'encoder/lin_out.w':None,
-                      'encoder/lin_out.b':None
-                      }
-
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
         batch_size = B if self.agent.recurrent else T * B
         mb_size = batch_size // self.minibatches
@@ -237,72 +174,12 @@ class PPO(PolicyGradientAlgo):
         opt_info.advantage.append(torch.mean(advantage.detach()).detach().clone().item())
         opt_info.valpred.append(torch.mean(samples.agent.agent_info.value.detach()).detach().clone().item())
 
-        layer_info['forward_1/lin1.w'] = self.agent.model.curiosity_model.forward_model_1.model[0].weight
-        layer_info['forward_1/lin1.b'] = self.agent.model.curiosity_model.forward_model_1.model[0].bias
-        layer_info['forward_1/lin2.w'] = self.agent.model.curiosity_model.forward_model_1.model[2].weight
-        layer_info['forward_1/lin2.b'] = self.agent.model.curiosity_model.forward_model_1.model[2].bias
-
-        layer_info['forward_2/lin1.w'] = self.agent.model.curiosity_model.forward_model_2.model[0].weight
-        layer_info['forward_2/lin1.b'] = self.agent.model.curiosity_model.forward_model_2.model[0].bias
-        layer_info['forward_2/lin2.w'] = self.agent.model.curiosity_model.forward_model_2.model[2].weight
-        layer_info['forward_2/lin2.b'] = self.agent.model.curiosity_model.forward_model_2.model[2].bias
-
-        layer_info['forward_3/lin1.w'] = self.agent.model.curiosity_model.forward_model_3.model[0].weight
-        layer_info['forward_3/lin1.b'] = self.agent.model.curiosity_model.forward_model_3.model[0].bias
-        layer_info['forward_3/lin2.w'] = self.agent.model.curiosity_model.forward_model_3.model[2].weight
-        layer_info['forward_3/lin2.b'] = self.agent.model.curiosity_model.forward_model_3.model[2].bias
-
-        layer_info['forward_4/lin1.w'] = self.agent.model.curiosity_model.forward_model_4.model[0].weight
-        layer_info['forward_4/lin1.b'] = self.agent.model.curiosity_model.forward_model_4.model[0].bias
-        layer_info['forward_4/lin2.w'] = self.agent.model.curiosity_model.forward_model_4.model[2].weight
-        layer_info['forward_4/lin2.b'] = self.agent.model.curiosity_model.forward_model_4.model[2].bias
-
-        layer_info['forward_5/lin1.w'] = self.agent.model.curiosity_model.forward_model_5.model[0].weight
-        layer_info['forward_5/lin1.b'] = self.agent.model.curiosity_model.forward_model_5.model[0].bias
-        layer_info['forward_5/lin2.w'] = self.agent.model.curiosity_model.forward_model_5.model[2].weight
-        layer_info['forward_5/lin2.b'] = self.agent.model.curiosity_model.forward_model_5.model[2].bias
-
-        layer_info['forward_6/lin1.w'] = self.agent.model.curiosity_model.forward_model_6.model[0].weight
-        layer_info['forward_6/lin1.b'] = self.agent.model.curiosity_model.forward_model_6.model[0].bias
-        layer_info['forward_6/lin2.w'] = self.agent.model.curiosity_model.forward_model_6.model[2].weight
-        layer_info['forward_6/lin2.b'] = self.agent.model.curiosity_model.forward_model_6.model[2].bias
-
-        layer_info['forward_7/lin1.w'] = self.agent.model.curiosity_model.forward_model_7.model[0].weight
-        layer_info['forward_7/lin1.b'] = self.agent.model.curiosity_model.forward_model_7.model[0].bias
-        layer_info['forward_7/lin2.w'] = self.agent.model.curiosity_model.forward_model_7.model[2].weight
-        layer_info['forward_7/lin2.b'] = self.agent.model.curiosity_model.forward_model_7.model[2].bias
-
-        layer_info['forward_8/lin1.w'] = self.agent.model.curiosity_model.forward_model_8.model[0].weight
-        layer_info['forward_8/lin1.b'] = self.agent.model.curiosity_model.forward_model_8.model[0].bias
-        layer_info['forward_8/lin2.w'] = self.agent.model.curiosity_model.forward_model_8.model[2].weight
-        layer_info['forward_8/lin2.b'] = self.agent.model.curiosity_model.forward_model_8.model[2].bias
-
-        layer_info['forward_9/lin1.w'] = self.agent.model.curiosity_model.forward_model_9.model[0].weight
-        layer_info['forward_9/lin1.b'] = self.agent.model.curiosity_model.forward_model_9.model[0].bias
-        layer_info['forward_9/lin2.w'] = self.agent.model.curiosity_model.forward_model_9.model[2].weight
-        layer_info['forward_9/lin2.b'] = self.agent.model.curiosity_model.forward_model_9.model[2].bias
-
-        layer_info['forward_10/lin1.w'] = self.agent.model.curiosity_model.forward_model_10.model[0].weight
-        layer_info['forward_10/lin1.b'] = self.agent.model.curiosity_model.forward_model_10.model[0].bias
-        layer_info['forward_10/lin2.w'] = self.agent.model.curiosity_model.forward_model_10.model[2].weight
-        layer_info['forward_10/lin2.b'] = self.agent.model.curiosity_model.forward_model_10.model[2].bias
-        
-        layer_info['gru/l0.input_w'] = self.agent.model.curiosity_model.gru.weight_ih_l0
-        layer_info['gru/l0.input_b'] = self.agent.model.curiosity_model.gru.bias_ih_l0
-        layer_info['gru/l0.hidden_w'] = self.agent.model.curiosity_model.gru.weight_hh_l0
-        layer_info['gru/l0.hidden_b'] = self.agent.model.curiosity_model.gru.bias_hh_l0
-
-        layer_info['encoder/conv1.w'] = self.agent.model.curiosity_model.encoder.model[0].weight
-        layer_info['encoder/conv1.b'] = self.agent.model.curiosity_model.encoder.model[0].bias
-        layer_info['encoder/conv2.w'] = self.agent.model.curiosity_model.encoder.model[2].weight
-        layer_info['encoder/conv2.b'] = self.agent.model.curiosity_model.encoder.model[2].bias
-        layer_info['encoder/lin_out.w'] = self.agent.model.curiosity_model.encoder.model[5].weight
-        layer_info['encoder/lin_out.b'] = self.agent.model.curiosity_model.encoder.model[5].bias
-
         if self.linear_lr_schedule:
             self.lr_scheduler.step()
             self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
 
+        layer_info = dict() # empty dict to store model layer weights for tensorboard visualizations
+        
         return opt_info, layer_info
 
     def loss(self, agent_inputs, agent_curiosity_inputs, action, return_, advantage, valid, old_dist_info,
