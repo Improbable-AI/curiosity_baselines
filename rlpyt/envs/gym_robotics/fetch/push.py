@@ -30,7 +30,7 @@ class FetchPushEnv(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='state', 
             camera_name='external_camera_0', fixed_start=None, fixed_goal=None,
-            fixed_obj=None, time_limit=None)
+            fixed_obj=None, time_limit=None, visitation_thresh=0.05)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 1 - start is close to goal
@@ -50,7 +50,7 @@ class FetchPushExp1(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=None, fixed_goal=np.array(TARGET_1),
-            fixed_obj=np.array(OBJ_1), time_limit=50*2)
+            fixed_obj=np.array(OBJ_1), time_limit=50*2, visitation_thresh=0.05)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 2 - arm at the back of table, start at center

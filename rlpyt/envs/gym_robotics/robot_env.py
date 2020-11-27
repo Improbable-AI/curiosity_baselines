@@ -81,6 +81,8 @@ class RobotEnv(gym.Env):
         }
         reward = self.compute_reward(state_obs['achieved_goal'], self.goal, info)
 
+        info = self._metric_info(info)
+
         if self.obs_type == 'state':
             return state_obs, reward, done, info
         elif self.obs_type == 'img':
@@ -196,3 +198,9 @@ class RobotEnv(gym.Env):
         to enforce additional constraints on the simulation state.
         """
         pass
+
+    def _metric_info(self, info):
+        """A custom method that adds metrics to the info dictionary after each step in
+        the simulation.
+        """
+        return info

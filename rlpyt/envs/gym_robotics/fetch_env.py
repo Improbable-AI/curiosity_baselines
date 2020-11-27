@@ -14,7 +14,7 @@ class FetchEnv(robot_env.RobotEnv):
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
         distance_threshold, initial_qpos, reward_type, obs_type, camera_name, 
-        fixed_start, fixed_goal, fixed_obj, time_limit,
+        fixed_start, fixed_goal, fixed_obj, time_limit, visitation_thresh
     ):
         """Initializes a new Fetch environment.
 
@@ -38,6 +38,7 @@ class FetchEnv(robot_env.RobotEnv):
             fixed_goal (np.array or None): the target goal (x,y,z)
             fixed_obj (np.array or None): the object starting position (x,y,z)
             time_limit (int or None): timestep limit for custom environments
+            visitation_thresh (float): L2 distance threshold at which gripper is considered interacting with block
         """
         self.gripper_extra_height = gripper_extra_height
         self.block_gripper = block_gripper
@@ -54,6 +55,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.fixed_goal = fixed_goal
         self.fixed_obj = fixed_obj
         self.time_limit = time_limit
+        self.visitation_thresh = visitation_thresh
 
         super(FetchEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
@@ -173,6 +175,17 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.sim.forward()
         return True
+    
+    def _metric_info(self, info):
+        # Get center of gripper location
+        gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()
+        # Get block center location
+        block_xpos = self.sim.data.get_site_xpos('object0').copy()
+        gripper_block_separation = np.linalg.norm(gripper_xpos - block_xpos)
+        info['gripper_block_separation'] = gripper_block_separation
+        info['block_visit'] = gripper_block_separation < self.visitation_thresh
+        return info            
+
 
     def _sample_goal(self):
         if self.has_object and self.fixed_goal is None:
