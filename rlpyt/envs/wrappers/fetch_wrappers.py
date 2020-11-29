@@ -39,8 +39,12 @@ class GridActions(gym.Wrapper):
     def step(self, action):
         delta_x, delta_y = self.action_mapping[action]
         n_steps = int(2 * (self.distance // 0.03)) # 2 steps with force 1 gets you 0.03 distance
+        # Keep track of visits throughout all steps instead of just last one
+        info = {'block_visit': False}
         for _ in range(n_steps):
-            obs, reward, done, info = self.env.step([delta_x, delta_y, 0.0055, 0.0])
+            obs, reward, done, info_tmp = self.env.step([delta_x, delta_y, 0.0055, 0.0])
+            info_tmp['block_visit'] = info['block_visit'] or info_tmp['block_visit']
+            info = info_tmp
         return obs, reward, done, info
 
 class ResizeImage(gym.ObservationWrapper):

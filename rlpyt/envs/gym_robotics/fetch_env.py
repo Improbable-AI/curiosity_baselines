@@ -60,6 +60,12 @@ class FetchEnv(robot_env.RobotEnv):
         super(FetchEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
             initial_qpos=initial_qpos, obs_type=obs_type)
+        
+        #  Objects for Visitation Counting in _metric_info()
+        gripper_geoms = ['robot0:l_gripper_finger_link', 'robot0:r_gripper_finger_link']
+        self.gripper_geom_ids = [self.sim.model.geom_name2id(name) for name in gripper_geoms]
+        object_geom = 'object0'
+        self.object_geom_id = self.sim.model.geom_name2id(object_geom)
 
     # GoalEnv methods
     # ----------------------------
@@ -177,13 +183,34 @@ class FetchEnv(robot_env.RobotEnv):
         return True
     
     def _metric_info(self, info):
-        # Get center of gripper location
+        """
+        Metrics for evaluating different scenarios.  Currently this tracks visitation count, which
+        is when the gripper interacts with the block.  We use both distance and contact because contact
+        seems to miss some events.
+
+        In GridActions wrapper step method. You need to add any metrics that rely on substeps, such as
+        visits in this case, because for each substep that makes a full grip step, there can be contact 
+        or not.  Otherwise, only the final substep gets used.
+        """
+        # From https://gist.github.com/machinaut/209c44e8c55245c0d0f0094693053158
+        visit = False
+        for i in range(self.sim.data.ncon):
+            # Note that the contact array has more than `ncon` entries,
+            # so be careful to only read the valid entries.
+            contact = self.sim.data.contact[i]
+            if (self.object_geom_id == contact.geom1) and (contact.geom2 in self.gripper_geom_ids):
+                visit = True
+                break
+            if (self.object_geom_id == contact.geom2) and (contact.geom1 in self.gripper_geom_ids):
+                visit = True
+                break
+        
+        # print("Viting Contact: ", visit)
         gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()
-        # Get block center location
         block_xpos = self.sim.data.get_site_xpos('object0').copy()
         gripper_block_separation = np.linalg.norm(gripper_xpos - block_xpos)
-        info['gripper_block_separation'] = gripper_block_separation
-        info['block_visit'] = gripper_block_separation < self.visitation_thresh
+        # print("Visting Distance: ", gripper_block_separation < self.visitation_thresh)
+        info['block_visit'] = visit or (gripper_block_separation < self.visitation_thresh)
         return info            
 
 

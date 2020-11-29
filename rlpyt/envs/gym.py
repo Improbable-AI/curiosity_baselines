@@ -40,7 +40,8 @@ class GymEnvWrapper(Wrapper):
         super().__init__(env)
         # o = self.env.reset()
         # o, r, d, info = self.env.step(self.env.action_space.sample())
-        info = dict()
+        info = {'block_visit': False,}
+        # info = dict()
         env_ = self.env
         time_limit = isinstance(self.env, TimeLimit)
         while not time_limit and hasattr(env_, "env"):
