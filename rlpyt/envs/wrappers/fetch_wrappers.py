@@ -17,11 +17,9 @@ class FetchTrajInfo(TrajInfo):
     def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info):
         block_visit = getattr(env_info, 'block_visit', None)
 
-        print(block_visit)
         if block_visit is not None and block_visit == True:
             self.total_block_visits += 1
 
-        print(self.total_block_visits)
         super().step(observation, action, reward_ext, reward_int, done, agent_info, env_info)
 
 class GridActions(gym.Wrapper):
