@@ -3,6 +3,27 @@ from gym import spaces
 import numpy as np
 from PIL import Image
 
+from collections import namedtuple
+from rlpyt.samplers.collections import TrajInfo
+
+class FetchTrajInfo(TrajInfo):
+    """TrajInfo class for use with Pycolab Env, to store visitation
+    frequencies and any other custom metrics."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.total_block_visits = 0
+
+    def step(self, observation, action, reward_ext, reward_int, done, agent_info, env_info):
+        block_visit = getattr(env_info, 'block_visit', None)
+
+        print(block_visit)
+        if block_visit is not None and block_visit == True:
+            self.total_block_visits += 1
+
+        print(self.total_block_visits)
+        super().step(observation, action, reward_ext, reward_int, done, agent_info, env_info)
+
 class GridActions(gym.Wrapper):
     '''
         A Wrapper that maps the usual continuous action

@@ -25,6 +25,7 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.collections import TrajInfo
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from mazeworld.envs.pycolab_env import PycolabTrajInfo
+from rlpyt.envs.wrappers.fetch_wrappers import FetchTrajInfo
 from rlpyt.envs.gym import make as gym_make
 from rlpyt.envs.gym import mario_make, deepmind_make, fetch_make
 
@@ -256,6 +257,7 @@ def start_experiment(args):
             )
     elif args.env in _FETCH_ENVS:
         env_cl = fetch_make
+        traj_info_cl = FetchTrajInfo
         env_args = dict(
             id=args.env,
             no_extrinsic=args.no_extrinsic,
