@@ -1,6 +1,7 @@
 import os
 import copy
 import numpy as np
+from datetime import datetime
 
 import gym
 from gym import error, spaces
@@ -37,7 +38,7 @@ class RobotEnv(gym.Env):
         self.initial_state = copy.deepcopy(self.sim.get_state())
 
         self.goal = self._sample_goal()
-        self.action_space = spaces.Box(-1., 1., shape=(n_actions,), dtype='float32')
+        self.action_space = spaces.Box(-2., 2., shape=(n_actions,), dtype='float32')
 
         self.obs_type = obs_type
         if self.obs_type == 'state':
@@ -52,6 +53,15 @@ class RobotEnv(gym.Env):
             self.observation_space = spaces.Box(0., 255., (500,500,3), dtype='uint8')
 
         self.time_elapsed = 0
+
+        self.table_center = [1.3, 0.75, 0.42469975] # Hardcoded center of tabletop.  TODO: figure out how to import properly
+        self.heatmap_spacing = 0.03
+        self.heatmap_edge = 2 # The length of heatmap in m.  If gripper ends up outside of this, the heatmap
+        # is just not updated
+        # Store discrete grid of where gripper is after each step.
+        # TODO: Make this scale with action discretation
+        # TODO: Make 3D also
+        self.visitation_heatmap = np.zeros((int(self.heatmap_edge//self.heatmap_spacing),)*2, dtype=np.int64)
 
     @property
     def dt(self):
@@ -72,10 +82,16 @@ class RobotEnv(gym.Env):
         state_obs = self._get_state_obs()
         img_obs = self._get_img_obs()
 
+        # Update that we've visited the heatmap
+        self._update_heatmap(state_obs['observation'][:3])
+
         done = False
         self.time_elapsed += 1
         if self.time_elapsed == self.time_limit:
             done = True
+            # Save visitation heatmap to file
+            timestamp = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S') 
+            np.save(f"heatmap_data_{timestamp}.npy", self.visitation_heatmap)
         info = {
             'is_success': self._is_success(state_obs['achieved_goal'], self.goal),
         }
@@ -139,6 +155,22 @@ class RobotEnv(gym.Env):
 
     # Extension methods
     # ----------------------------
+    def _update_heatmap(self, gripper_pos):
+        # Only deal with 2D for now
+        gripper_pos = gripper_pos[:2]
+        center = self.table_center[:2]
+        vec = gripper_pos - center
+        if np.any(np.abs(vec) > self.heatmap_edge/2):
+            # Don't update heatmap if gripper is outside heatmap grid
+            return
+        # Convert distance to grid indices
+        indices = (vec / self.heatmap_spacing).astype(np.int16) 
+        # Global coordinates are +x left, +y forward, so adjust indices accordingly
+        x = int(self.visitation_heatmap.shape[1]/2) + indices[1]
+        y = int(self.visitation_heatmap.shape[1]/2) + indices[0]
+        self.visitation_heatmap[y, x] += 1
+        return
+
 
     def _reset_sim(self):
         """Resets a simulation and indicates whether or not it was successful.

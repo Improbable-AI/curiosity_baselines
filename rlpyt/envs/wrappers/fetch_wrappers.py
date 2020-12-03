@@ -47,6 +47,48 @@ class GridActions(gym.Wrapper):
             info = info_tmp
         return obs, reward, done, info
 
+
+class ActionNoise(gym.ActionWrapper):
+    '''
+        A ActionWrapper that applies noise to the actual actions in Fetch environment. This
+        MUST BE APPLIED BEFORE the GridActions() wrapper, due to the multiple substeps that
+        GridActions uses.
+
+        The RobotEnv environment clips the actions to it's own high low limits, so the noise
+        may not be visually noticeable since the actions are already random.
+
+        Parameters
+        ----------
+        `env` :: OpenAI Gym Env : the env to wrap
+        `std`:: float :: the std. deviation of mean-zero guassian normal noise to apply
+        `actions_with_noise` :: List of ints or "all" : the indices of the actions
+            actually sent to step() that the noise should be applied to.
+    '''
+
+    def __init__(self, env, std=0.1, actions_with_noise='all'):
+        super(ActionNoise, self).__init__(env)
+
+        # There are 4 actions [pos_control(x,y,z), gripper_control] sent to the
+        # _set_action method.  Choose which ones should have noise based on their
+        # index.
+        if actions_with_noise == 'all':
+            self.noise_indices = np.arange(4)
+        else:
+            self.noise_indices = np.array(actions_with_noise)
+                
+        self.mu = 0 # Keep zero mean
+        self.std = std
+        # Random noise generator
+        self.rng = np.random.default_rng()
+
+    def step(self, action):
+        # Ensure action is numpy array format
+        action = np.array(action)
+        assert action.shape == (4,)
+        action = action.copy()  # ensure that we don't change the action outside of this scope
+        action[self.noise_indices] += self.rng.normal(loc=self.mu, scale=self.std, size=self.noise_indices.shape)
+        return self.env.step(action)
+
 class ResizeImage(gym.ObservationWrapper):
     '''
     A Wrapper takes the image obervation from step and
