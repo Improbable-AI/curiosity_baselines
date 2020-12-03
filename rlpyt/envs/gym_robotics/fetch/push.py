@@ -137,6 +137,48 @@ class FetchPushExp5(fetch_env.FetchEnv, utils.EzPickle):
             fixed_obj=np.array(OBJ_5), time_limit=50*2, visitation_thresh=0.055)
         utils.EzPickle.__init__(self)
 
+# 881 experiment 6 - arm at back corner, object on edge, goal bottom center
+ARM_START_6 = TOP_RIGHT
+OBJ_6     = CENTER_RIGHT
+TARGET_6  = BOTTOM_CENTER
+class FetchPushExp6(fetch_env.FetchEnv, utils.EzPickle):
+    def __init__(self, reward_type='sparse'):
+        initial_qpos = {
+            'robot0:slide0': 0.405,
+            'robot0:slide1': 0.48,
+            'robot0:slide2': 0.0,
+            'object0:joint': OBJ_6+[1., 0., 0., 0.],
+        }
+        fetch_env.FetchEnv.__init__(
+            self, MODEL_XML_PATH, has_object=True, block_gripper=True, n_substeps=20,
+            gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.05,
+            initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
+            camera_name='external_camera_0', fixed_start=np.array(ARM_START_6), fixed_goal=np.array(TARGET_6),
+            fixed_obj=np.array(OBJ_6), time_limit=50*2, visitation_thresh=0.055)
+        utils.EzPickle.__init__(self)
+
+# 881 experiment 7 - arm at back corner, object on edge, goal bottom left
+ARM_START_7 = TOP_RIGHT
+OBJ_7     = CENTER_RIGHT
+TARGET_7  = BOTTOM_LEFT
+class FetchPushExp7(fetch_env.FetchEnv, utils.EzPickle):
+    def __init__(self, reward_type='sparse'):
+        initial_qpos = {
+            'robot0:slide0': 0.405,
+            'robot0:slide1': 0.48,
+            'robot0:slide2': 0.0,
+            'object0:joint': OBJ_7+[1., 0., 0., 0.],
+        }
+        fetch_env.FetchEnv.__init__(
+            self, MODEL_XML_PATH, has_object=True, block_gripper=True, n_substeps=20,
+            gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.05,
+            initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
+            camera_name='external_camera_0', fixed_start=np.array(ARM_START_7), fixed_goal=np.array(TARGET_7),
+            fixed_obj=np.array(OBJ_7), time_limit=50*2, visitation_thresh=0.055)
+        utils.EzPickle.__init__(self)
+
 
 
 
