@@ -275,7 +275,14 @@ def fetch_make(*args, info_example=None, **kwargs):
     # Since forces actions are -1, 0 or 1, these correspond to 
     # 2%, 10% and 30% noise
     env = ActionNoise(env, std=std, actions_with_noise=[0,1]) # Must be applied BEFORE GridActions
+    
+
+    # Comment/Uncomment this block to choose your wrapper
     env = GridActions(env, distance=0.03)
+    # env = MicroGridActions(env, distance=0.03)
+    # env = NanoGridActions(env, distance=0.03)
+    # env = PicoGridActions(env, distance=0.03)
+    
     env = ResizeImage(env, height=84, width=84)
     env = GrayscaleImage(env)
     env = PytorchImage(env) # (h,w,c) -> (c,h,w)
