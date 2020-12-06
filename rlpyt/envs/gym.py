@@ -274,7 +274,7 @@ def fetch_make(*args, info_example=None, **kwargs):
     std = 0.1 # Low case: 0.02 Medium Case: 0.1 High Case: 0.3
     # Since forces actions are -1, 0 or 1, these correspond to 
     # 2%, 10% and 30% noise
-    env = ActionNoise(env, std=std, actions_with_noise=[0,1]) # Must be applied BEFORE GridActions
+    # env = ActionNoise(env, std=std, actions_with_noise=[0,1]) # Must be applied BEFORE GridActions
     
 
     # Comment/Uncomment this block to choose your wrapper
