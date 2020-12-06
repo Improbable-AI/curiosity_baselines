@@ -1,7 +1,7 @@
 import os
 import copy
 import numpy as np
-# from datetime import datetime
+from datetime import datetime
 
 import gym
 from gym import error, spaces
@@ -15,7 +15,7 @@ except ImportError as e:
 DEFAULT_SIZE = 500
 
 class RobotEnv(gym.Env):
-    def __init__(self, model_path, initial_qpos, n_actions, n_substeps, obs_type):
+    def __init__(self, model_path, initial_qpos, n_actions, n_substeps, obs_type, use_heatmap):
         if model_path.startswith('/'):
             fullpath = model_path
         else:
@@ -54,14 +54,18 @@ class RobotEnv(gym.Env):
 
         self.time_elapsed = 0
 
-        self.table_center = [1.3, 0.75, 0.42469975] # Hardcoded center of tabletop.  TODO: figure out how to import properly
-        self.heatmap_spacing = 0.03
-        self.heatmap_edge = 2 # The length of heatmap in m.  If gripper ends up outside of this, the heatmap
-        # is just not updated
-        # Store discrete grid of where gripper is after each step.
-        # TODO: Make this scale with action discretation
-        # TODO: Make 3D also
-        self.visitation_heatmap = np.zeros((int(self.heatmap_edge//self.heatmap_spacing),)*2, dtype=np.int64)
+        self.use_heatmap = use_heatmap
+        if self.use_heatmap:
+            if not os.path.exists('heatmaps'):
+                raise FileNotFoundError('Please create a heatmaps directory in the base dir for storing heatmaps')
+            self.table_center = [1.3, 0.75, 0.42469975] # Hardcoded center of tabletop.  TODO: figure out how to import properly
+            self.heatmap_spacing = 0.03
+            self.heatmap_edge = 2 # The length of heatmap in m.  If gripper ends up outside of this, the heatmap
+            # is just not updated
+            # Store discrete grid of where gripper is after each step.
+            # TODO: Make this scale with action discretation
+            # TODO: Make 3D also
+            self.visitation_heatmap = np.zeros((int(self.heatmap_edge//self.heatmap_spacing),)*2, dtype=np.int64)
 
     @property
     def dt(self):
@@ -83,15 +87,18 @@ class RobotEnv(gym.Env):
         img_obs = self._get_img_obs()
 
         # Update that we've visited the heatmap
-        # self._update_heatmap(state_obs['observation'][:3])
+        if self.use_heatmap:
+            self._update_heatmap(state_obs['observation'][:3])
 
         done = False
         self.time_elapsed += 1
         if self.time_elapsed == self.time_limit:
             done = True
-            # Save visitation heatmap to file
-            # timestamp = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S') 
-            # np.save(f"heatmap_data_{timestamp}.npy", self.visitation_heatmap)
+            if self.use_heatmap:
+                # Save visitation heatmap to file
+                timestamp = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S') 
+                np.save(f"heatmaps/heatmap_data_{timestamp}.npy", self.visitation_heatmap)
+        
         info = {
             'is_success': self._is_success(state_obs['achieved_goal'], self.goal),
         }

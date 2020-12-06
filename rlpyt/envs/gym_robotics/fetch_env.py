@@ -14,7 +14,8 @@ class FetchEnv(robot_env.RobotEnv):
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
         distance_threshold, initial_qpos, reward_type, obs_type, camera_name, 
-        fixed_start, fixed_goal, fixed_obj, time_limit, visitation_thresh
+        fixed_start, fixed_goal, fixed_obj, time_limit, visitation_thresh,
+        use_heatmap
     ):
         """Initializes a new Fetch environment.
 
@@ -39,6 +40,7 @@ class FetchEnv(robot_env.RobotEnv):
             fixed_obj (np.array or None): the object starting position (x,y,z)
             time_limit (int or None): timestep limit for custom environments
             visitation_thresh (float): L2 distance threshold at which gripper is considered interacting with block
+            use_heatmap (boolean): True if update heatmap each step and save at end of episode, False doens't update or save.
         """
         self.gripper_extra_height = gripper_extra_height
         self.block_gripper = block_gripper
@@ -56,10 +58,11 @@ class FetchEnv(robot_env.RobotEnv):
         self.fixed_obj = fixed_obj
         self.time_limit = time_limit
         self.visitation_thresh = visitation_thresh
+        self.use_heatmap = use_heatmap
 
         super(FetchEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
-            initial_qpos=initial_qpos, obs_type=obs_type)
+            initial_qpos=initial_qpos, obs_type=obs_type, use_heatmap=use_heatmap)
         
         #  Objects for Visitation Counting in _metric_info()
         gripper_geoms = ['robot0:l_gripper_finger_link', 'robot0:r_gripper_finger_link']

@@ -30,7 +30,7 @@ class FetchPushEnv(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='state', 
             camera_name='external_camera_0', fixed_start=None, fixed_goal=None,
-            fixed_obj=None, time_limit=None, visitation_thresh=0.055)
+            fixed_obj=None, time_limit=None, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 1 - start is close to goal
@@ -50,7 +50,7 @@ class FetchPushExp1(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=None, fixed_goal=np.array(TARGET_1),
-            fixed_obj=np.array(OBJ_1), time_limit=50*2, visitation_thresh=0.055)
+            fixed_obj=np.array(OBJ_1), time_limit=50*2, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 2 - arm at the back of table, start at center
@@ -71,7 +71,7 @@ class FetchPushExp2(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=np.array(ARM_START_2), fixed_goal=np.array(TARGET_2),
-            fixed_obj=np.array(OBJ_2), time_limit=50*2, visitation_thresh=0.055)
+            fixed_obj=np.array(OBJ_2), time_limit=50*2, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 3 - arm at the back of table, start is not close to the arm
@@ -92,7 +92,7 @@ class FetchPushExp3(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=np.array(ARM_START_3), fixed_goal=np.array(TARGET_3),
-            fixed_obj=np.array(OBJ_3), time_limit=50*2, visitation_thresh=0.055)
+            fixed_obj=np.array(OBJ_3), time_limit=50*2, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 4 - arm at the back of table, start is not close to the arm
@@ -113,7 +113,7 @@ class FetchPushExp4(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=np.array(ARM_START_4), fixed_goal=np.array(TARGET_4),
-            fixed_obj=np.array(OBJ_4), time_limit=50*2, visitation_thresh=0.055)
+            fixed_obj=np.array(OBJ_4), time_limit=50*2, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 5 - arm at back corner, object center, goal far right (diagonal push)
@@ -134,7 +134,7 @@ class FetchPushExp5(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=np.array(ARM_START_5), fixed_goal=np.array(TARGET_5),
-            fixed_obj=np.array(OBJ_5), time_limit=50*2, visitation_thresh=0.055)
+            fixed_obj=np.array(OBJ_5), time_limit=50*2, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 6 - arm at back corner, object on edge, goal bottom center
@@ -155,7 +155,7 @@ class FetchPushExp6(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=np.array(ARM_START_6), fixed_goal=np.array(TARGET_6),
-            fixed_obj=np.array(OBJ_6), time_limit=50*2, visitation_thresh=0.055)
+            fixed_obj=np.array(OBJ_6), time_limit=50*2, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 # 881 experiment 7 - arm at back corner, object on edge, goal bottom left
@@ -176,7 +176,7 @@ class FetchPushExp7(fetch_env.FetchEnv, utils.EzPickle):
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             initial_qpos=initial_qpos, reward_type=reward_type, obs_type='img', 
             camera_name='external_camera_0', fixed_start=np.array(ARM_START_7), fixed_goal=np.array(TARGET_7),
-            fixed_obj=np.array(OBJ_7), time_limit=50*2, visitation_thresh=0.055)
+            fixed_obj=np.array(OBJ_7), time_limit=50*2, visitation_thresh=0.055, use_heatmap=True)
         utils.EzPickle.__init__(self)
 
 
