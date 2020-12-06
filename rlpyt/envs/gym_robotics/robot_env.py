@@ -1,7 +1,7 @@
 import os
 import copy
 import numpy as np
-from datetime import datetime
+# from datetime import datetime
 
 import gym
 from gym import error, spaces
@@ -83,15 +83,15 @@ class RobotEnv(gym.Env):
         img_obs = self._get_img_obs()
 
         # Update that we've visited the heatmap
-        self._update_heatmap(state_obs['observation'][:3])
+        # self._update_heatmap(state_obs['observation'][:3])
 
         done = False
         self.time_elapsed += 1
         if self.time_elapsed == self.time_limit:
             done = True
             # Save visitation heatmap to file
-            timestamp = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S') 
-            np.save(f"heatmap_data_{timestamp}.npy", self.visitation_heatmap)
+            # timestamp = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S') 
+            # np.save(f"heatmap_data_{timestamp}.npy", self.visitation_heatmap)
         info = {
             'is_success': self._is_success(state_obs['achieved_goal'], self.goal),
         }
