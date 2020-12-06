@@ -154,6 +154,127 @@ class PicoGridActions(MicroGridActions):
         self.action_mapping = self._init_action_mapping(step=0.1)
         self.action_space = spaces.Discrete(len(self.action_mapping))
 
+class GridActions3D(gym.Wrapper):
+    '''
+        A Wrapper that maps the usual continuous action
+        space of the RoboticsEnv to a grid-structured
+        environment, where our arm is constrained roughly
+        to tiles of size (0.03, 0.03, 0.03)
+
+        Going with Wrapper instead of ActionWrapper, as
+        `step()` requires some modification to make this
+        work best.
+
+        Parameters
+        ----------
+        `env` :: OpenAI Gym Env : the env to wrap
+        `distance` :: float : multiple of 0.03. Corresponds to unit distance in each direction travelled at each step.
+    '''
+    def __init__(self, env, distance=0.03):
+        super().__init__(env)
+        self.action_space = spaces.Discrete(9)
+        self.distance = distance
+
+        self.action_mapping = self._init_action_mapping()
+        self.action_space = spaces.Discrete(len(self.action_mapping))
+
+    def _init_action_mapping(self, step=1):
+        lower_bound = -1
+        upper_bound = 1 + step
+
+        val_range = np.arange(lower_bound, upper_bound, step)
+
+        action_mapping = dict()
+
+        counter = 0
+
+        for dx in val_range:
+            for dy in val_range:
+                for dz in val_range:
+                    action_mapping[counter] = (dx, dy, dz)
+                    counter += 1
+
+        return action_mapping.copy()
+
+    def step(self, action):
+        delta_x, delta_y, delta_z = self.action_mapping[action]
+        n_steps = int(2 * (self.distance // 0.03)) # 2 steps with force 1 gets you 0.03 distance
+        # Keep track of visits throughout all steps instead of just last one
+        info = {'block_visit': False}
+        for _ in range(n_steps):
+            obs, reward, done, info_tmp = self.env.step([delta_x, delta_y, delta_z, 0.0])
+            info_tmp['block_visit'] = info['block_visit'] or info_tmp['block_visit']
+            info = info_tmp
+        return obs, reward, done, info
+
+class MicroGridActions3D(GridActions3D):
+    '''
+        A Wrapper that maps the usual continuous action
+        space of the RoboticsEnv to a grid-structured
+        environment, where our arm is constrained roughly
+        to tiles of size (0.003, 0.003, 0.003)
+
+        Going with Wrapper instead of ActionWrapper, as
+        `step()` requires some modification to make this
+        work best.
+
+        Parameters
+        ----------
+        `env` :: OpenAI Gym Env : the env to wrap
+        `distance` :: float : multiple of 0.03. Corresponds to unit distance in each direction travelled at each step.
+    '''
+    def __init__(self, env, distance=0.03):
+        super().__init__(env)
+        self.distance = distance
+
+        self.action_mapping = self._init_action_mapping(step=0.5)
+        self.action_space = spaces.Discrete(len(self.action_mapping))
+
+class NanoGridActions3D(MicroGridActions3D):
+    '''
+        A Wrapper that maps the usual continuous action
+        space of the RoboticsEnv to a grid-structured
+        environment, where our arm is constrained roughly
+        to tiles of size (0.0003, 0.0003, 0.0003)
+
+        Going with Wrapper instead of ActionWrapper, as
+        `step()` requires some modification to make this
+        work best.
+
+        Parameters
+        ----------
+        `env` :: OpenAI Gym Env : the env to wrap
+        `distance` :: float : multiple of 0.03. Corresponds to unit distance in each direction travelled at each step.
+    '''
+    def __init__(self, env, distance=0.03):
+        super().__init__(env)
+        self.distance = distance
+
+        self.action_mapping = self._init_action_mapping(step=0.25)
+        self.action_space = spaces.Discrete(len(self.action_mapping))
+
+class PicoGridActions3D(MicroGridActions3D):
+    '''
+        A Wrapper that maps the usual continuous action
+        space of the RoboticsEnv to a grid-structured
+        environment, where our arm is constrained roughly
+        to tiles of size (0.0003, 0.0003, 0.0003)
+
+        Going with Wrapper instead of ActionWrapper, as
+        `step()` requires some modification to make this
+        work best.
+
+        Parameters
+        ----------
+        `env` :: OpenAI Gym Env : the env to wrap
+        `distance` :: float : multiple of 0.03. Corresponds to unit distance in each direction travelled at each step.
+    '''
+    def __init__(self, env, distance=0.03):
+        super().__init__(env)
+        self.distance = distance
+
+        self.action_mapping = self._init_action_mapping(step=0.1)
+        self.action_space = spaces.Discrete(len(self.action_mapping))
 
 class ActionNoise(gym.ActionWrapper):
     '''

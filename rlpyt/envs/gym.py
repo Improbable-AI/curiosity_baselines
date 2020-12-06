@@ -278,10 +278,15 @@ def fetch_make(*args, info_example=None, **kwargs):
     
 
     # Comment/Uncomment this block to choose your wrapper
-    env = GridActions(env, distance=0.03)
+    # 2D
+    # env = GridActions(env, distance=0.03)
     # env = MicroGridActions(env, distance=0.03)
     # env = NanoGridActions(env, distance=0.03)
     # env = PicoGridActions(env, distance=0.03)
+    # 3D
+    env = GridActions3D(env, distance=0.03)
+    # env = MicroGridActions3D(env, distance=0.03)
+    # env = NanoGridActions3D(env, distance=0.03)
     
     env = ResizeImage(env, height=84, width=84)
     env = GrayscaleImage(env)
