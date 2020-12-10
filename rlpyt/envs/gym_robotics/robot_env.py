@@ -66,6 +66,7 @@ class RobotEnv(gym.Env):
             # TODO: Make this scale with action discretation
             # TODO: Make 3D also
             self.visitation_heatmap = np.zeros((int(self.heatmap_edge//self.heatmap_spacing),)*2, dtype=np.int64)
+        self.ep = 0
 
     @property
     def dt(self):
@@ -94,7 +95,7 @@ class RobotEnv(gym.Env):
         self.time_elapsed += 1
         if self.time_elapsed == self.time_limit:
             done = True
-            if self.use_heatmap:
+            if self.use_heatmap and self.ep % 200:
                 # Save visitation heatmap to file
                 timestamp = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S') 
                 np.save(f"heatmaps/heatmap_data_{timestamp}.npy", self.visitation_heatmap)
@@ -125,6 +126,8 @@ class RobotEnv(gym.Env):
         self.goal = self._sample_goal().copy()
         state_obs = self._get_state_obs()
         img_obs = self._get_img_obs()
+        self.visitation_heatmap = np.zeros((int(self.heatmap_edge//self.heatmap_spacing),)*2, dtype=np.int64)
+        self.ep += 1
 
         self.time_elapsed = 0
         if self.obs_type == 'state':
