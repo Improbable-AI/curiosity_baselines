@@ -6,7 +6,7 @@ def get_args(args_in=sys.argv[1:]):
 
     # main args
     parser.add_argument('-alg', type=str, choices=['ppo', 'sac', 'a2c'], help='Which learning algorithm to run.')
-    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement'], help='Which intrinsic reward algorithm to use.')
+    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement', 'ndigo'], help='Which intrinsic reward algorithm to use.')
     parser.add_argument('-env', type=str, help='Which environment to run on.')
     
     # general args
@@ -73,6 +73,12 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
         parser.add_argument('-prediction_lr_scale', default=10.0, type=float, help='Scale the learning rate of predictor w/ respect to policy network.')
+    elif 'ndigo' in args_in:
+        parser.add_argument('-feature_encoding', default='idf_maze', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
+        parser.add_argument('-pred_horizon', default=1, type=int, help='Number of prediction steps used to calculate intrinsic reward.')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
+        parser.add_argument('-num_predictors', default=10, type=int, help='How many forward models to train.')
+
 
     # switch argument (only used in launch.py in __main__)
     parser.add_argument('-launch_tmux', default='yes', type=str, help='')

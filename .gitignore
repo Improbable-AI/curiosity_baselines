@@ -4,6 +4,9 @@
 mjkey.txt
 log.numbers
 Makefile
+*.dot
+grad_checking
+*.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

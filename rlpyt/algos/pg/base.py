@@ -8,6 +8,9 @@ from rlpyt.algos.utils import discount_return, generalized_advantage_estimation,
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
 OptInfo = namedtuple("OptInfo", ["return_",
+
+                                 "ndigo_intrinsic_rewards",
+
                                  "valpred",
                                  "advantage",
                                  "loss", 
@@ -59,6 +62,11 @@ class PolicyGradientAlgo(RlAlgorithm):
         """
         reward, done, value, bv = (samples.env.reward, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
         done = done.type(reward.dtype)
+
+        if self.curiosity_type == 'ndigo':
+            intrinsic_rewards, _ = self.agent.curiosity_step(samples.env.observation, samples.agent.prev_action, samples.agent.action) # no grad
+            reward += intrinsic_rewards
+            self.ndigo_intrinsic_rewards = intrinsic_rewards.detach().clone().data.numpy() # store for logging
         
         if self.normalize_reward:
             rews = np.array([])

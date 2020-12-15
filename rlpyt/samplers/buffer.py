@@ -3,10 +3,10 @@ from copy import deepcopy
 import multiprocessing as mp
 import numpy as np
 
+from rlpyt.agents.pg.base import AgentInfo, NdigoInfo, IcmInfo, AgentInfoRnn
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 from rlpyt.agents.base import AgentInputs, AgentCuriosityInputs
-from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv,
-    EnvSamples)
+from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv, EnvSamples)
 
 
 def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
@@ -32,11 +32,13 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
     prev_action = all_action[:-1]  # Writing to action will populate prev_action.
     agent_info = buffer_from_example(examples["agent_info"], (T, B), agent_shared)
     reward_int = buffer_from_example(examples["reward_int"], (T, B), agent_shared)
+    agent_curiosity_info = buffer_from_example(examples["agent_curiosity_info"], (T, B), agent_shared)
     agent_buffer = AgentSamples(
         action=action,
         reward_int=reward_int,
         prev_action=prev_action,
         agent_info=agent_info,
+        agent_curiosity_info=agent_curiosity_info
     )
     if bootstrap_value:
         bv = buffer_from_example(examples["agent_info"].value, (1, B), agent_shared)
@@ -82,14 +84,18 @@ def get_example_outputs(agent, env, examples, subprocess=False):
     o, r, d, env_info = env.step(action)
     r = np.asarray(r, dtype="float32")  # Must match torch float dtype here.
     agent.reset()
-    agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, o))
     agent_inputs = torchify_buffer(AgentInputs(o, a, r))
     a, agent_info = agent.step(*agent_inputs)
 
     r_int = 0.0
-    curiosity_info = dict()
-    if agent.model_kwargs['curiosity_kwargs']['curiosity_alg'] != 'none':
-        r_int = agent.curiosity_step(*agent_curiosity_inputs)
+    if agent.curiosity_type != 'none':
+        if agent.curiosity_type in {'icm', 'disagreement'}:
+            agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, o))
+            r_int, agent_curiosity_info = agent.curiosity_step(*agent_curiosity_inputs)
+        elif agent.curiosity_type == 'ndigo':
+            # agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, a))
+            agent_curiosity_info = NdigoInfo(prev_gru_state=None)
+            r_int = 0.0
 
     if "prev_rnn_state" in agent_info:
         # Agent leaves B dimension in, strip it: [B,N,H] --> [N,H]
@@ -103,4 +109,5 @@ def get_example_outputs(agent, env, examples, subprocess=False):
     examples["env_info"] = env_info
     examples["action"] = a  # OK to put torch tensor here, could numpify.
     examples["agent_info"] = agent_info
+    examples["agent_curiosity_info"] = agent_curiosity_info
 

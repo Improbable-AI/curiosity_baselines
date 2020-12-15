@@ -34,8 +34,7 @@ class GymEnvWrapper(Wrapper):
     see whether to add the field ``timeout`` to env info.   
     """
 
-    def __init__(self, env,
-            act_null_value=0, obs_null_value=0, force_float32=True):
+    def __init__(self, env, act_null_value=0, obs_null_value=0, force_float32=True):
         super().__init__(env)
         o = self.env.reset()
         o, r, d, info = self.env.step(self.env.action_space.sample())
@@ -238,7 +237,7 @@ def deepmind_make(*args, info_example=None, **kwargs):
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
     if info_example is None:
-        env = GymEnvWrapper(env)
+        env = GymEnvWrapper(env, act_null_value=env.act_null_value)
     else:
         env = GymEnvWrapper(EnvInfoWrapper(env))
 

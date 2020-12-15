@@ -42,6 +42,12 @@ class ResForward(nn.Module):
         return x
 
 class ICM(nn.Module):
+    """Curiosity model for intrinsically motivated agents: two neural networks, one
+    forward model that predicts the next state, and one inverse model that predicts 
+    the action given two states. The forward model uses the prediction error to
+    compute an intrinsic reward. The inverse model trains features that are invariant
+    to distracting environment stochasticity.
+    """
 
     def __init__(
             self, 
@@ -106,7 +112,7 @@ class ICM(nn.Module):
         if self.feature_encoding != 'none':
             phi1 = self.encoder(img1.view(T * B, *img_shape))
             phi2 = self.encoder(img2.view(T * B, *img_shape))
-            phi1 = phi1.view(T, B, -1) # make sure you're not mixing data up here
+            phi1 = phi1.view(T, B, -1)
             phi2 = phi2.view(T, B, -1)
 
         predicted_action = self.inverse_model(torch.cat([phi1, phi2], 2))

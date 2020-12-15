@@ -10,6 +10,7 @@ from rlpyt.models.conv2d import Conv2dHeadModel
 from rlpyt.models.curiosity.encoders import UniverseHead, BurdaHead, MazeHead
 from rlpyt.models.curiosity.disagreement import Disagreement
 from rlpyt.models.curiosity.icm import ICM
+from rlpyt.models.curiosity.ndigo import NDIGO
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -40,7 +41,7 @@ class AtariLstmModel(torch.nn.Module):
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
 
-        if curiosity_kwargs['curiosity_alg'] in {'icm', 'disagreement'}:
+        if curiosity_kwargs['curiosity_alg'] in {'icm', 'disagreement', 'ndigo'}:
             if curiosity_kwargs['curiosity_alg'] == 'icm':
                 self.curiosity_model = ICM(image_shape=image_shape,
                                            action_size=output_size,
@@ -50,11 +51,21 @@ class AtariLstmModel(torch.nn.Module):
                                            obs_stats=self.obs_stats)
             elif curiosity_kwargs['curiosity_alg'] == 'disagreement':
                 self.curiosity_model = Disagreement(image_shape=image_shape,
-                                           action_size=output_size,
-                                           feature_encoding=curiosity_kwargs['feature_encoding'],
-                                           batch_norm=curiosity_kwargs['batch_norm'],
-                                           prediction_beta=curiosity_kwargs['prediction_beta'],
-                                           obs_stats=self.obs_stats)
+                                                    action_size=output_size,
+                                                    feature_encoding=curiosity_kwargs['feature_encoding'],
+                                                    batch_norm=curiosity_kwargs['batch_norm'],
+                                                    prediction_beta=curiosity_kwargs['prediction_beta'],
+                                                    obs_stats=self.obs_stats)
+            elif curiosity_kwargs['curiosity_alg'] == 'ndigo':
+                self.curiosity_model = NDIGO(image_shape=image_shape,
+                                             action_size=output_size,
+                                             obs_stats=self.obs_stats,
+                                             horizon=curiosity_kwargs['pred_horizon'],
+                                             feature_encoding=curiosity_kwargs['feature_encoding'],
+                                             batch_norm=curiosity_kwargs['batch_norm'],
+                                             num_predictors=curiosity_kwargs['num_predictors']
+                                             )
+
             if curiosity_kwargs['feature_encoding'] == 'idf':
                 self.conv = UniverseHead(image_shape=image_shape,
                                          batch_norm=curiosity_kwargs['batch_norm'])
@@ -79,7 +90,7 @@ class AtariLstmModel(torch.nn.Module):
                 hidden_sizes=fc_sizes, # Applies nonlinearity at end.
             )
 
-        self.lstm = torch.nn.LSTM(self.conv.output_size + output_size + 1, lstm_size)
+        self.lstm = torch.nn.LSTM(self.conv.output_size + output_size, lstm_size)
         self.pi = torch.nn.Linear(lstm_size, output_size)
         self.value = torch.nn.Linear(lstm_size, 1)
 
@@ -107,7 +118,6 @@ class AtariLstmModel(torch.nn.Module):
         lstm_input = torch.cat([
             fc_out.view(T, B, -1),
             prev_action.view(T, B, -1),  # Assumed onehot.
-            prev_reward.view(T, B, 1),
             ], dim=2)
         init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
         lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state)

@@ -42,6 +42,10 @@ class ResForward(nn.Module):
         return x
 
 class Disagreement(nn.Module):
+    """Curiosity model for intrinsically motivated agents: similar to ICM
+    except there is an ensemble of forward models that each make predictions.
+    The intrinsic reward is defined as the variance between these predictions.
+    """
 
     def __init__(
             self, 
