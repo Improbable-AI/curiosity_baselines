@@ -26,6 +26,7 @@ class MinibatchRlBase(BaseRunner):
         seed (int): Random seed to use, if ``None`` will generate randomly.
         affinity (dict): Hardware component assignments for sampler and algorithm.
         log_interval_steps (int): Number of environment steps between logging to csv.
+        starting_itr (int): The iteration you're starting at (if restarting training).
     """
 
     _eval = False
@@ -39,7 +40,8 @@ class MinibatchRlBase(BaseRunner):
             seed=None,
             affinity=None,
             log_interval_steps=1e5,
-            log_dir=None
+            log_dir=None,
+            pretrain=None
             ):
         n_steps = int(n_steps)
         log_interval_steps = int(log_interval_steps)
@@ -55,8 +57,7 @@ class MinibatchRlBase(BaseRunner):
         """
         p = psutil.Process()
         try:
-            if (self.affinity.get("master_cpus", None) is not None and
-                    self.affinity.get("set_affinity", True)):
+            if (self.affinity.get("master_cpus", None) is not None and self.affinity.get("set_affinity", True)):
                 p.cpu_affinity(self.affinity["master_cpus"])
             cpu_affin = p.cpu_affinity()
         except AttributeError:
@@ -72,6 +73,7 @@ class MinibatchRlBase(BaseRunner):
         set_seed(self.seed)
         self.rank = rank = getattr(self, "rank", 0)
         self.world_size = world_size = getattr(self, "world_size", 1)
+
         examples = self.sampler.initialize(
             agent=self.agent,  # Agent gets initialized in sampler.
             affinity=self.affinity,
@@ -83,6 +85,7 @@ class MinibatchRlBase(BaseRunner):
         )
         self.itr_batch_size = self.sampler.batch_spec.size * world_size
         n_itr = self.get_n_itr()
+        print("CUDA: ", self.affinity.get("cuda_idx", None))
         self.agent.to_device(self.affinity.get("cuda_idx", None))
         if world_size > 1:
             self.agent.data_parallel()
@@ -150,10 +153,10 @@ class MinibatchRlBase(BaseRunner):
         Calls the logger to save training checkpoint/snapshot (logger itself
         may or may not save, depending on mode selected).
         """
-        logger.log("saving pytorch checkpoint...")
+        logger.log("Saving pytorch checkpoint.")
         params = self.get_itr_snapshot(itr)
         logger.save_itr_params(itr, params)
-        logger.log("model saved")
+        logger.log("Pytorch checkpoint saved.")
 
     def store_diagnostics(self, itr, traj_infos, opt_info):
         """
@@ -178,23 +181,17 @@ class MinibatchRlBase(BaseRunner):
         self._cum_time = new_time - self._start_time
         train_time_elapsed = new_time - self._last_time - eval_time
         new_updates = self.algo.update_counter - self._last_update_counter
-        new_samples = (self.sampler.batch_size * self.world_size *
-            self.log_interval_itrs)
-        updates_per_second = (float('nan') if itr == 0 else
-            new_updates / train_time_elapsed)
-        samples_per_second = (float('nan') if itr == 0 else
-            new_samples / train_time_elapsed)
-        replay_ratio = (new_updates * self.algo.batch_size * self.world_size /
-            new_samples)
-        cum_replay_ratio = (self.algo.batch_size * self.algo.update_counter /
-            ((itr + 1) * self.sampler.batch_size))  # world_size cancels.
+        new_samples = (self.sampler.batch_size * self.world_size * self.log_interval_itrs)
+        updates_per_second = (float('nan') if itr == 0 else new_updates / train_time_elapsed)
+        samples_per_second = (float('nan') if itr == 0 else new_samples / train_time_elapsed)
+        replay_ratio = (new_updates * self.algo.batch_size * self.world_size / new_samples)
+        cum_replay_ratio = (self.algo.batch_size * self.algo.update_counter / ((itr + 1) * self.sampler.batch_size))  # world_size cancels.
         cum_steps = (itr + 1) * self.sampler.batch_size * self.world_size
 
         # Add summaries etc
         with logger.tabular_prefix(prefix):
             if self._eval:
-                logger.record_tabular('CumTrainTime',
-                    self._cum_time - self._cum_eval_time)  # Already added new eval_time.
+                logger.record_tabular('CumTrainTime', self._cum_time - self._cum_eval_time)  # Already added new eval_time.
             logger.record_tabular('Iteration', itr)
             logger.record_tabular('CumTime (s)', self._cum_time)
             logger.record_tabular('CumSteps', cum_steps)
@@ -252,16 +249,24 @@ class MinibatchRl(MinibatchRlBase):
         diagnostics at the specified interval.
         """
         n_itr = self.startup()
-        for itr in range(n_itr):
-            logger.set_iteration(itr)
-            with logger.prefix(f"itr #{itr} "):
-                self.agent.sample_mode(itr)  # Might not be this agent sampling.
-                samples, traj_infos = self.sampler.obtain_samples(itr)
-                self.agent.train_mode(itr)
-                opt_info = self.algo.optimize_agent(itr, samples)
-                self.store_diagnostics(itr, traj_infos, opt_info)
-                if (itr + 1) % self.log_interval_itrs == 0:
-                    self.log_diagnostics(itr)
+        if self.pretrain != 'None':
+            status_file_read = open(self.log_dir + '/last_itr.txt', 'r')
+            starting_itr = int(status_file_read.read().split('\n')[-2])
+        else:
+            starting_itr = 0
+        with open(self.log_dir + '/last_itr.txt', 'a') as status_file: # for restart purposes
+            for itr in range(starting_itr, n_itr):
+                logger.set_iteration(itr)
+                with logger.prefix(f"itr #{itr} "):
+                    self.agent.sample_mode(itr)  # Might not be this agent sampling.
+                    samples, traj_infos = self.sampler.obtain_samples(itr)
+                    self.agent.train_mode(itr)
+                    opt_info, layer_info = self.algo.optimize_agent(itr, samples)
+                    self.store_diagnostics(itr, traj_infos, opt_info)
+                    if (itr + 1) % self.log_interval_itrs == 0:
+                        status_file.write(str(itr) + '\n')
+                        self.log_diagnostics(itr)
+                        self.log_weights(layer_info)
         self.shutdown()
 
     def initialize_logging(self):
@@ -284,6 +289,13 @@ class MinibatchRl(MinibatchRlBase):
         super().log_diagnostics(itr, prefix=prefix)
         self._new_completed_trajs = 0
 
+    def log_weights(self, layer_info):
+        """
+        Writes layer weight info to tensorboard.
+        """
+        for k, v in layer_info.items():
+            logger.record_histogram(k, v)
+
 
 class MinibatchRlEval(MinibatchRlBase):
     """
@@ -304,17 +316,27 @@ class MinibatchRlEval(MinibatchRlBase):
         with logger.prefix(f"itr #0 "):
             eval_traj_infos, eval_time = self.evaluate_agent(0)
             self.log_diagnostics(0, eval_traj_infos, eval_time)
-        for itr in range(n_itr):
-            logger.set_iteration(itr)
-            with logger.prefix(f"itr #{itr} "):
-                self.agent.sample_mode(itr)
-                samples, traj_infos = self.sampler.obtain_samples(itr)
-                self.agent.train_mode(itr)
-                opt_info = self.algo.optimize_agent(itr, samples)
-                self.store_diagnostics(itr, traj_infos, opt_info)
-                if (itr + 1) % self.log_interval_itrs == 0:
-                    eval_traj_infos, eval_time = self.evaluate_agent(itr)
-                    self.log_diagnostics(itr, eval_traj_infos, eval_time)
+        if self.pretrain != 'None':
+            status_file_read = open(self.log_dir + '/last_itr.txt', 'r')
+            starting_itr = int(status_file_read.read().split('\n')[-2])
+        else:
+            starting_itr = 0
+        with open(self.log_dir + '/last_itr.txt', 'a') as status_file: # for restart purposes
+            if self.pretrain != 'None':
+                starting_itr = int(status_file.read().split('\n')[-2])
+            else:
+                starting_itr = 0
+            for itr in range(starting_itr, n_itr):
+                logger.set_iteration(itr)
+                with logger.prefix(f"itr #{itr} "):
+                    self.agent.sample_mode(itr)
+                    samples, traj_infos = self.sampler.obtain_samples(itr)
+                    self.agent.train_mode(itr)
+                    opt_info = self.algo.optimize_agent(itr, samples)
+                    self.store_diagnostics(itr, traj_infos, opt_info)
+                    if (itr + 1) % self.log_interval_itrs == 0:
+                        eval_traj_infos, eval_time = self.evaluate_agent(itr)
+                        self.log_diagnostics(itr, eval_traj_infos, eval_time)
         self.shutdown()
 
     def evaluate_agent(self, itr):

@@ -125,7 +125,7 @@ def torchify_buffer(buffer_):
     if buffer_ is None:
         return
     if isinstance(buffer_, np.ndarray):
-        return torch.from_numpy(buffer_.copy())
+        return torch.from_numpy(buffer_)
     elif isinstance(buffer_, torch.Tensor):
         return buffer_
     contents = tuple(torchify_buffer(b) for b in buffer_)

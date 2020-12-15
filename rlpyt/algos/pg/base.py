@@ -1,13 +1,29 @@
 
-# import torch
+import numpy as np
+import torch
 from collections import namedtuple
 
 from rlpyt.algos.base import RlAlgorithm
-from rlpyt.algos.utils import (discount_return, generalized_advantage_estimation,
-    valid_from_done)
+from rlpyt.algos.utils import discount_return, generalized_advantage_estimation, valid_from_done
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
-OptInfo = namedtuple("OptInfo", ["loss", "gradNorm", "entropy", "perplexity"])
+OptInfo = namedtuple("OptInfo", ["return_",
+
+                                 "ndigo_intrinsic_rewards",
+
+                                 "valpred",
+                                 "advantage",
+                                 "loss", 
+                                 "pi_loss",
+                                 "value_loss",
+                                 "entropy_loss",
+                                 "inv_loss", 
+                                 "forward_loss",
+                                 "reward_total_std", 
+                                 "curiosity_loss", 
+                                 "gradNorm", 
+                                 "entropy", 
+                                 "perplexity"])
 AgentTrain = namedtuple("AgentTrain", ["dist_info", "value"])
 
 
@@ -44,16 +60,26 @@ class PolicyGradientAlgo(RlAlgorithm):
         according to ``mid_batch_reset`` or for recurrent agent.  Optionally,
         normalize advantages.
         """
-        reward, done, value, bv = (samples.env.reward, samples.env.done,
-            samples.agent.agent_info.value, samples.agent.bootstrap_value)
+        reward, done, value, bv = (samples.env.reward, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
         done = done.type(reward.dtype)
+
+        if self.curiosity_type == 'ndigo':
+            intrinsic_rewards, _ = self.agent.curiosity_step(samples.env.observation, samples.agent.prev_action, samples.agent.action) # no grad
+            reward += intrinsic_rewards
+            self.ndigo_intrinsic_rewards = intrinsic_rewards.detach().clone().data.numpy() # store for logging
+        
+        if self.normalize_reward:
+            rews = np.array([])
+            for rew in reward.clone().detach().data.numpy():
+                rews = np.concatenate((rews, self.reward_ff.update(rew)))
+            self.reward_rms.update_from_moments(np.mean(rews), np.var(rews), len(rews))
+            reward = reward / (self.reward_rms.var)**0.5
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)
             advantage = return_ - value
         else:
-            advantage, return_ = generalized_advantage_estimation(
-                reward, value, done, bv, self.discount, self.gae_lambda)
+            advantage, return_ = generalized_advantage_estimation(reward, value, done, bv, self.discount, self.gae_lambda)
 
         if not self.mid_batch_reset or self.agent.recurrent:
             valid = valid_from_done(done)  # Recurrent: no reset during training.
@@ -69,5 +95,8 @@ class PolicyGradientAlgo(RlAlgorithm):
                 adv_mean = advantage.mean()
                 adv_std = advantage.std()
             advantage[:] = (advantage - adv_mean) / max(adv_std, 1e-6)
+        
+        if self.kernel_params is not None: # apply advantage kernel
+            advantage[:] = torch.tensor(np.piecewise(advantage.data.numpy(), [abs(advantage.data.numpy()) < self.mu, abs(advantage.data.numpy()) >= self.mu], [self.kernel_line, self.kernel_gauss]))
 
         return return_, advantage, valid

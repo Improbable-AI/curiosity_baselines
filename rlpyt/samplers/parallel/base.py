@@ -10,6 +10,8 @@ from rlpyt.utils.logging import logger
 from rlpyt.utils.collections import AttrDict
 from rlpyt.utils.synchronize import drain_queue
 
+from rlpyt.utils.averages import generate_observation_stats
+
 
 EVAL_TRAJ_CHECK = 0.1  # seconds.
 
@@ -73,8 +75,14 @@ class ParallelSamplerBase(BaseSampler):
             self.eval_max_T = eval_max_T = int(self.eval_max_steps // eval_n_envs)
 
         env = self.EnvCls(**self.env_kwargs)
-        self._agent_init(agent, env, global_B=global_B,
-            env_ranks=env_ranks)
+
+        if self.env_kwargs['normalize_obs']:
+            obs_mean, obs_std = generate_observation_stats(env, nsteps=self.env_kwargs['normalize_obs_steps'])
+            self.obs_stats = (obs_mean, obs_std)
+        else:
+            self.obs_stats = None
+
+        self._agent_init(agent, env, global_B=global_B, env_ranks=env_ranks)
         examples = self._build_buffers(env, bootstrap_value)
         env.close()
         del env
@@ -173,8 +181,7 @@ class ParallelSamplerBase(BaseSampler):
         return n_envs_list
 
     def _agent_init(self, agent, env, global_B=1, env_ranks=None):
-        agent.initialize(env.spaces, share_memory=True,
-            global_B=global_B, env_ranks=env_ranks)
+        agent.initialize(env.spaces, share_memory=True, global_B=global_B, obs_stats=self.obs_stats, env_ranks=env_ranks)
         self.agent = agent
 
     def _build_buffers(self, env, bootstrap_value):
@@ -209,7 +216,9 @@ class ParallelSamplerBase(BaseSampler):
             torch_threads=affinity.get("worker_torch_threads", 1),
             global_B=global_B,
             record_freq=self.record_freq,
-            log_dir=self.log_dir
+            log_dir=self.log_dir,
+            curiosity_alg=self.agent.model_kwargs['curiosity_kwargs']['curiosity_alg'],
+            no_extrinsic=self.env_kwargs['no_extrinsic']
         )
         if self.eval_n_envs > 0:
             common_kwargs.update(dict(
@@ -234,8 +243,7 @@ class ParallelSamplerBase(BaseSampler):
                 rank=rank,
                 env_ranks=env_ranks,
                 seed=seed + rank,
-                cpus=(affinity["workers_cpus"][rank]
-                    if affinity.get("set_affinity", True) else None),
+                cpus=(affinity["workers_cpus"][rank] if affinity.get("set_affinity", True) else None),
                 n_envs=n_envs,
                 samples_np=self.samples_np[:, slice_B],
                 sync=self.sync,  # Only for eval, on CPU.

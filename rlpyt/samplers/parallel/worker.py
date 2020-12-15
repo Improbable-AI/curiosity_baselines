@@ -1,4 +1,6 @@
 
+import os
+import json
 import psutil
 import time
 import torch
@@ -9,6 +11,9 @@ from rlpyt.utils.seed import set_seed, set_envs_seeds
 
 from gym.wrappers import Monitor
 
+with open('/curiosity_baselines/global.json') as global_params_file:
+    global_params = json.load(global_params_file)
+    ATARI_ENVS = global_params['envs']['atari_envs']
 
 def initialize_worker(rank, seed=None, cpu=None, torch_threads=None):
     """Assign CPU affinity, set random seed, set torch_threads if needed to
@@ -24,8 +29,7 @@ def initialize_worker(rank, seed=None, cpu=None, torch_threads=None):
     except AttributeError:
         cpu_affin = "UNAVAILABLE MacOS"
     log_str += f", CPU affinity {cpu_affin}"
-    torch_threads = (1 if torch_threads is None and cpu is not None else
-        torch_threads)  # Default to 1 to avoid possible MKL hang.
+    torch_threads = (1 if torch_threads is None and cpu is not None else torch_threads)  # Default to 1 to avoid possible MKL hang.
     if torch_threads is not None:
         torch.set_num_threads(torch_threads)
     log_str += f", Torch threads {torch.get_num_threads()}"
@@ -50,6 +54,12 @@ def sampling_process(common_kwargs, worker_kwargs):
     c, w = AttrDict(**common_kwargs), AttrDict(**worker_kwargs)
     initialize_worker(w.rank, w.seed, w.cpus, c.torch_threads)
     envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
+    if c.record_freq > 0:
+        if c.env_kwargs['game'] in ATARI_ENVS:
+            envs[0].record_env = True
+            os.makedirs(os.path.join(c.log_dir, 'videos/frames'))
+        elif c.get("eval_n_envs", 0) == 0: # only record workers if no evaluation processes are performed
+            envs[0] = Monitor(envs[0], c.log_dir + '/videos', video_callable=lambda episode_id: episode_id%c.record_freq==0)
 
     set_envs_seeds(envs, w.seed)
 
@@ -64,8 +74,10 @@ def sampling_process(common_kwargs, worker_kwargs):
         step_buffer_np=w.get("step_buffer_np", None),
         global_B=c.get("global_B", 1),
         env_ranks=w.get("env_ranks", None),
+        curiosity_alg=c.curiosity_alg,
+        no_extrinsic=c.no_extrinsic
     )
-    agent_inputs, traj_infos = collector.start_envs(c.max_decorrelation_steps)
+    agent_inputs, agent_curiosity_inputs, traj_infos = collector.start_envs(c.max_decorrelation_steps)
     collector.start_agent()
 
     if c.get("eval_n_envs", 0) > 0:
@@ -89,15 +101,14 @@ def sampling_process(common_kwargs, worker_kwargs):
     ctrl = c.ctrl
     ctrl.barrier_out.wait()
     while True:
-        collector.reset_if_needed(agent_inputs)  # Outside barrier?
+        collector.reset_if_needed(agent_inputs, agent_curiosity_inputs)  # Outside barrier?
         ctrl.barrier_in.wait()
         if ctrl.quit.value:
             break
         if ctrl.do_eval.value:
             eval_collector.collect_evaluation(ctrl.itr.value)  # Traj_infos to queue inside.
         else:
-            agent_inputs, traj_infos, completed_infos = collector.collect_batch(
-                agent_inputs, traj_infos, ctrl.itr.value)
+            agent_inputs, agent_curiosity_inputs, traj_infos, completed_infos = collector.collect_batch(agent_inputs, agent_curiosity_inputs, traj_infos, ctrl.itr.value)
             for info in completed_infos:
                 c.traj_infos_queue.put(info)
         ctrl.barrier_out.wait()

@@ -215,6 +215,11 @@ def record_tabular(key, val, *args, **kwargs):
     if _tf_summary_writer is not None:
         _tf_summary_writer.add_scalar(key, val, _iteration)
 
+def record_histogram(key, val, *args, **kwargs):
+    # if not _disabled and not _tabular_disabled:
+    key = _tabular_prefix_str + str(key)
+    if _tf_summary_writer is not None:
+        _tf_summary_writer.add_histogram(key, val, _iteration)
 
 def push_tabular_prefix(key):
     _tabular_prefixes.append(key)
@@ -453,6 +458,7 @@ def record_tabular_misc_stat(key, values, placement='back'):
         suffix = ""
         if _tf_summary_writer is not None:
             prefix += "/"  # Group stats together in Tensorboard.
+
     if len(values) > 0:
         record_tabular(prefix + "Average" + suffix, np.average(values))
         record_tabular(prefix + "Std" + suffix, np.std(values))
@@ -465,3 +471,6 @@ def record_tabular_misc_stat(key, values, placement='back'):
         record_tabular(prefix + "Median" + suffix, np.nan)
         record_tabular(prefix + "Min" + suffix, np.nan)
         record_tabular(prefix + "Max" + suffix, np.nan)
+
+
+

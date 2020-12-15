@@ -80,10 +80,66 @@ class FrameStack(gym.Wrapper):
         return LazyFrames(list(self.frames))
 
 
+class BufferedObsEnv(gym.ObservationWrapper):
+    """Buffer observations and stack e.g. for frame skipping. 
+
+    n is the length of the buffer, and number of observations stacked.
+    skip is the number of steps between buffered observations (min=1).
+
+    n.b. first obs is the oldest, last obs is the newest.
+         the buffer is zeroed out on reset.
+         *must* call reset() for init!
+    """
+    def __init__(self, env=None, n=4, skip=4, shape=(84, 84),
+                    channel_last=False, maxFrames=True):
+        super(BufferedObsEnv, self).__init__(env)
+        self.obs_shape = shape
+        # most recent raw observations (for max pooling across time steps)
+        self.obs_buffer = deque(maxlen=2)
+        self.maxFrames = maxFrames
+        self.n = n
+        self.skip = skip
+        self.buffer = deque(maxlen=self.n)
+        self.counter = 0  # init and reset should agree on this
+    
+        self.ch_axis = -1 if channel_last else 0 # should be 0 if (c, h, w) after applying PyTorchImage wrapper
+        shape = shape + (n,) if channel_last else (n,) + shape
+        self.observation_space = spaces.Box(0.0, 255.0, shape)
+        self.observation_space.high[...] = 1.0
+        self.scale = 1.0 / 255
+
+    def observation(self, obs):
+        obs = self._max_recent(obs) # take max between last two frames
+        self.counter += 1
+        if self.counter % self.skip == 0:
+            self.buffer.append(obs)
+        obsNew = np.stack(self.buffer, axis=self.ch_axis)
+        return obsNew.astype(np.float32) * self.scale
+
+    def reset(self):
+        """Clear buffer and re-fill by duplicating the first observation."""
+        self.obs_buffer.clear()
+        obs = self._max_recent(self.env.reset())
+        self.buffer.clear()
+        self.counter = 0
+        for _ in range(self.n - 1):
+            self.buffer.append(np.zeros_like(obs))
+        self.buffer.append(obs)
+        obsNew = np.stack(self.buffer, axis=self.ch_axis)
+        return obsNew.astype(np.float32) * self.scale
+
+    def _max_recent(self, obs):
+        self.obs_buffer.append(obs)
+        if self.maxFrames:
+            max_frame = np.max(np.stack(self.obs_buffer), axis=0)
+        else:
+            max_frame = obs
+        return max_frame
+
 class PytorchImage(gym.ObservationWrapper):
     """
     Switch image observation from (h, w, c) to (c, h, w) 
-    which is required for the PyTorch framework.
+    which is required for the CNNs and other Pytorch things.
     """
     def __init__(self, env):
         super(PytorchImage, self).__init__(env)
@@ -91,7 +147,7 @@ class PytorchImage(gym.ObservationWrapper):
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(current_shape[-1], current_shape[0], current_shape[1]))
 
     def observation(self, observation):
-        return np.swapaxes(observation, 2, 0)
+        return np.transpose(observation, (2, 0, 1))
 
 class NoExtrinsicReward(gym.RewardWrapper):
     """

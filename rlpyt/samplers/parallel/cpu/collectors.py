@@ -1,9 +1,11 @@
-
+import torch
+torch.set_printoptions(precision=10)
+from copy import deepcopy
 import numpy as np
 
 from rlpyt.samplers.collectors import (DecorrelatingStartCollector,
     BaseEvalCollector)
-from rlpyt.agents.base import AgentInputs
+from rlpyt.agents.base import AgentInputs, AgentCuriosityInputs
 from rlpyt.utils.buffer import (torchify_buffer, numpify_buffer, buffer_from_example,
     buffer_method)
 
@@ -89,67 +91,137 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
         super().__init__(*args, **kwargs)
         self.need_reset = np.zeros(len(self.envs), dtype=np.bool)
         self.done = np.zeros(len(self.envs), dtype=np.bool)
-        self.temp_observation = buffer_method(
-            self.samples_np.env.observation[0, :len(self.envs)], "copy")
+        self.temp_prev_observation = buffer_method(self.samples_np.env.prev_observation[0, :len(self.envs)], "copy")
+        self.temp_observation = buffer_method(self.samples_np.env.observation[0, :len(self.envs)], "copy")
 
-    def collect_batch(self, agent_inputs, traj_infos, itr):
+    def collect_batch(self, agent_inputs, agent_curiosity_inputs, traj_infos, itr):
         # Numpy arrays can be written to from numpy arrays or torch tensors
         # (whereas torch tensors can only be written to from torch tensors).
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
         completed_infos = list()
-        observation, action, reward = agent_inputs
+        
+        prev_observation, _, _ = agent_curiosity_inputs # shares action/observation buffers with agent_inputs
+        observation, action, reward_tot = agent_inputs
+        
         b = np.where(self.done)[0]
-        observation[b] = self.temp_observation[b]
+        # prev_observation[b] = self.temp_prev_observation[b]
+        # observation[b] = self.temp_observation[b]
         self.done[:] = False  # Did resets between batches.
-        obs_pyt, act_pyt, rew_pyt = torchify_buffer(agent_inputs)
-        agent_buf.prev_action[0] = action  # Leading prev_action.
-        env_buf.prev_reward[0] = reward
+        
+        # torchifying syncs components of agent_inputs (observation, action, reward_tot)
+        # with obs_pyt, act_pyt, rew_tot_pyt. Pytorch tensors point to the original numpy 
+        # array so updating observation will update obs_pyt etc.
+        obs_pyt, act_pyt, rew_tot_pyt = torchify_buffer(agent_inputs)
+        
+        agent_buf.prev_action[0] = action # Leading prev_action
+        env_buf.prev_reward[0] = reward_tot # Leading previous total reward
         self.agent.sample_mode(itr)
         for t in range(self.batch_T):
+
             env_buf.observation[t] = observation
             # Agent inputs and outputs are torch tensors.
-            act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_pyt)
+            act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_tot_pyt)
             action = numpify_buffer(act_pyt)
             for b, env in enumerate(self.envs):
                 if self.done[b]:
                     action[b] = 0  # Record blank.
-                    reward[b] = 0
+                    reward_tot[b] = 0
                     if agent_info:
                         agent_info[b] = 0
+                    if agent_curiosity_info:
+                        agent_curiosity_info = 0
                     # Leave self.done[b] = True, record that.
                     continue
                 # Environment inputs and outputs are numpy arrays.
-                o, r, d, env_info = env.step(action[b])
-                traj_infos[b].step(observation[b], action[b], r, d, agent_info[b],
-                    env_info)
+                o, r_ext, d, env_info = env.step(action[b])
+
+                r_ext_log = r_ext # to ensure r_ext gets recorded regardless
+                if self.no_extrinsic:
+                    r_ext = 0.0
+
+                #------------------------------------------------------------------------#
+                # DEBUGGING: records observations to curiosity_baselines/images/___.jpg
+                # Stops and sleeps long enough to quit out at the end of an episode. Make sure
+                # frame stacking is turned off.
+                # from PIL import Image
+                # # img = Image.fromarray(np.squeeze(o), 'L')
+                # img = Image.fromarray(env._last_painted, 'RGB')
+                # img.save('images/{}_act_{}.jpg'.format(t, action[b]))
+                # # o = np.expand_dims(o, 0)
+                # if d:
+                #     import time
+                #     print("DONE! {}".format(t))
+                #     time.sleep(100)
+
+                # FRAME STACKING:
+                # from PIL import Image
+                # import os
+                # os.mkdir('images/{}'.format(t))
+                # for i in range(4):
+                #     img = Image.fromarray(np.squeeze(o[i]), 'L')
+                #     img.save('images/{}/{}.jpg'.format(t, i))
+                #     o[i] = np.expand_dims(o[i], 0)
+                # if d:
+                #     import time
+                #     print("DONE!")
+                #     time.sleep(100)
+                #------------------------------------------------------------------------#
+
+                r_int = torch.tensor(0.0)
+                agent_curiosity_info = None
+                if self.curiosity_alg in {'icm', 'disagreement'}:
+                    r_int, agent_curiosity_info = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory
+
+                traj_infos[b].step(observation[b], action[b], r_ext_log, r_int, d, agent_info[b], agent_curiosity_info, env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
                     self.need_reset[b] = True
                 if d:
-                    self.temp_observation[b] = o
+                    # self.temp_prev_observation[b] = observation[b]
+                    # self.temp_observation[b] = o
                     o = 0  # Record blank.
-                observation[b] = o
-                reward[b] = r
                 self.done[b] = d
-                if env_info:
+
+                prev_observation[b] = observation[b]
+                observation[b] = o
+
+                if self.curiosity_alg in {'icm', 'disagreement'}:
+                    reward_tot[b] = r_ext + r_int
+                else:
+                    reward_tot[b] = r_ext
+
+                if env_info: 
                     env_buf.env_info[t, b] = env_info
+
             agent_buf.action[t] = action
-            env_buf.reward[t] = reward
+            # agent_buf.reward_int[t] = r_int
+            env_buf.reward[t] = reward_tot
             env_buf.done[t] = self.done
             if agent_info:
                 agent_buf.agent_info[t] = agent_info
+            if agent_curiosity_info:
+                agent_buf.agent_curiosity_info[t] = agent_curiosity_info
 
         if "bootstrap_value" in agent_buf:
             # agent.value() should not advance rnn state.
-            agent_buf.bootstrap_value[:] = self.agent.value(obs_pyt, act_pyt, rew_pyt)
+            agent_buf.bootstrap_value[:] = self.agent.value(obs_pyt, act_pyt, rew_tot_pyt)
 
-        return AgentInputs(observation, action, reward), traj_infos, completed_infos
+        # AgentInputs = ['observation', 'prev_action', 'prev_reward']
+        # AgentCuriosityInputs = ['observation', 'action', 'next_observation']
+        return AgentInputs(observation, action, reward_tot), AgentCuriosityInputs(prev_observation, action, observation), traj_infos, completed_infos
 
-    def reset_if_needed(self, agent_inputs):
+    def reset_if_needed(self, agent_inputs, agent_curiosity_inputs):
         for b in np.where(self.need_reset)[0]:
+            # wipe all fields
             agent_inputs[b] = 0
-            agent_inputs.observation[b] = self.envs[b].reset()
+            agent_curiosity_inputs[b] = 0
+
+            # fill in first observation
+            o_reset = self.envs[b].reset()
+            agent_curiosity_inputs.observation[b] = o_reset
+            agent_inputs.observation[b] = o_reset
+            agent_curiosity_inputs.next_observation[b] = o_reset
             self.agent.reset_one(idx=b)
         self.need_reset[:] = False
 
@@ -196,3 +268,5 @@ class CpuEvalCollector(BaseEvalCollector):
             if self.sync.stop_eval.value:
                 break
         self.traj_infos_queue.put(None)  # End sentinel.
+
+

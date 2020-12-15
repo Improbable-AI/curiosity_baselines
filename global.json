@@ -1,8 +1,9 @@
 {
-    "container_image": "echen9898/curiosity_baselines:0.1.3",
+    "container_image": "echen9898/curiosity_baselines:0.1.8",
     "container_workdir": "/curiosity_baselines",
     "container_resultsdir": "/curiosity_baselines/results",
     "tb_port": "12345",
+    "tb_port_local": "4000",
     "envs": {
         "atari_envs": [
             "adventure",

@@ -1,17 +1,18 @@
 
+import numpy as np
 import torch
 
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
-from rlpyt.agents.base import AgentInputs, AgentInputsRnn
+from rlpyt.agents.base import AgentInputs, AgentInputsRnn, AgentCuriosityInputs, NdigoAgentCuriosityInputs
 from rlpyt.utils.tensor import valid_mean
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.misc import iterate_mb_idxs
+from rlpyt.utils.averages import RunningMeanStd, RewardForwardFilter
+from rlpyt.utils.grad_utils import plot_grad_flow
 
-LossInputs = namedarraytuple("LossInputs",
-    ["agent_inputs", "action", "return_", "advantage", "valid", "old_dist_info"])
-
+LossInputs = namedarraytuple("LossInputs", ["agent_inputs", "agent_curiosity_inputs", "action", "return_", "advantage", "valid", "old_dist_info"])
 
 class PPO(PolicyGradientAlgo):
     """
@@ -37,11 +38,25 @@ class PPO(PolicyGradientAlgo):
             ratio_clip=0.1,
             linear_lr_schedule=True,
             normalize_advantage=False,
+            normalize_reward=False,
+            kernel_params=None,
+            curiosity_type='none'
             ):
         """Saves input settings."""
         if optim_kwargs is None:
             optim_kwargs = dict()
         save__init__args(locals())
+        if self.normalize_reward:
+            self.reward_ff = RewardForwardFilter(discount)
+            self.reward_rms = RunningMeanStd()
+        
+        if kernel_params is not None:
+            self.mu, self.sigma = self.kernel_params
+            self.kernel_line = lambda x: x
+            self.kernel_gauss = lambda x: np.sign(x)*self.mu*np.exp(-(abs(x)-self.mu)**2/(2*self.sigma**2))
+
+        if self.curiosity_type == 'ndigo':
+            self.ndigo_intrinsic_rewards = None # for logging
 
     def initialize(self, *args, **kwargs):
         """
@@ -69,12 +84,25 @@ class PPO(PolicyGradientAlgo):
             prev_action=samples.agent.prev_action,
             prev_reward=samples.env.prev_reward,
         )
+        if self.curiosity_type == 'ndigo':
+            agent_curiosity_inputs = NdigoAgentCuriosityInputs(
+                observation=samples.env.observation,
+                prev_actions=samples.agent.prev_action,
+                actions=samples.agent.action
+            )
+        else:
+            agent_curiosity_inputs = AgentCuriosityInputs(
+                observation=samples.env.prev_observation,
+                action=samples.agent.action,
+                next_observation=samples.env.observation
+            )
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         if hasattr(self.agent, "update_obs_rms"):
             self.agent.update_obs_rms(agent_inputs.observation)
         return_, advantage, valid = self.process_returns(samples)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
+            agent_curiosity_inputs=agent_curiosity_inputs,
             action=samples.agent.action,
             return_=return_,
             advantage=advantage,
@@ -84,8 +112,10 @@ class PPO(PolicyGradientAlgo):
         if recurrent:
             # Leave in [B,N,H] for slicing to minibatches.
             init_rnn_state = samples.agent.agent_info.prev_rnn_state[0]  # T=0.
+
         T, B = samples.env.reward.shape[:2]
         opt_info = OptInfo(*([] for _ in range(len(OptInfo._fields))))
+
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
         batch_size = B if self.agent.recurrent else T * B
         mb_size = batch_size // self.minibatches
@@ -96,27 +126,52 @@ class PPO(PolicyGradientAlgo):
                 B_idxs = idxs if recurrent else idxs // T
                 self.optimizer.zero_grad()
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
+
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, entropy, perplexity = self.loss(
-                    *loss_inputs[T_idxs, B_idxs], rnn_state)
+                loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
+
                 loss.backward()
-                grad_norm = torch.nn.utils.clip_grad_norm_(
-                    self.agent.parameters(), self.clip_grad_norm)
+                count = 0
+                grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
+                # plot_grad_flow(self.agent.model.named_parameters(), './grad_checking', 'model') # DEBUGGING
                 self.optimizer.step()
 
+                # Tensorboard summaries
                 opt_info.loss.append(loss.item())
-                opt_info.gradNorm.append(grad_norm)
+                opt_info.pi_loss.append(pi_loss.item())
+                opt_info.value_loss.append(value_loss.item())
+                opt_info.entropy_loss.append(entropy_loss.item())
+                opt_info.inv_loss.append(inv_loss.item())
+                opt_info.forward_loss.append(forward_loss.item())
+
+                if self.normalize_reward:
+                    opt_info.reward_total_std.append(self.reward_rms.var**0.5)
+
+                opt_info.gradNorm.append(grad_norm.item())
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
+
+        if self.curiosity_type == 'ndigo':
+            opt_info.ndigo_intrinsic_rewards.append(np.mean(self.ndigo_intrinsic_rewards))
+
+        # opt_info.return_.append(torch.mean(return_).detach().clone().item())
+        # opt_info.advantage.append(torch.mean(advantage).detach().clone().item())
+        # opt_info.valpred.append(torch.mean(samples.agent.agent_info.value).detach().clone().item())
+        opt_info.return_.append(torch.mean(return_.detach()).detach().clone().item())
+        opt_info.advantage.append(torch.mean(advantage.detach()).detach().clone().item())
+        opt_info.valpred.append(torch.mean(samples.agent.agent_info.value.detach()).detach().clone().item())
+
         if self.linear_lr_schedule:
             self.lr_scheduler.step()
             self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
 
-        return opt_info
+        layer_info = dict() # empty dict to store model layer weights for tensorboard visualizations
+        
+        return opt_info, layer_info
 
-    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
-            init_rnn_state=None):
+    def loss(self, agent_inputs, agent_curiosity_inputs, action, return_, advantage, valid, old_dist_info,
+            init_rnn_state=None, init_ndigo_gru=None):
         """
         Compute the training loss: policy_loss + value_loss + entropy_loss
         Policy loss: min(likelhood-ratio * advantage, clip(likelihood_ratio, 1-eps, 1+eps) * advantage)
@@ -131,25 +186,38 @@ class PPO(PolicyGradientAlgo):
             init_rnn_state = buffer_method(init_rnn_state, "contiguous")
             dist_info, value, _rnn_state = self.agent(*agent_inputs, init_rnn_state)
         else:
-            dist_info, value = self.agent(*agent_inputs)
+            dist_info, value = self.agent(*agent_inputs) # uses __call__ instead of step() because rnn state is included here
         dist = self.agent.distribution
 
-        ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info,
-            new_dist_info=dist_info)
+        ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info, new_dist_info=dist_info)
         surr_1 = ratio * advantage
-        clipped_ratio = torch.clamp(ratio, 1. - self.ratio_clip,
-            1. + self.ratio_clip)
+        clipped_ratio = torch.clamp(ratio, 1. - self.ratio_clip, 1. + self.ratio_clip)
         surr_2 = clipped_ratio * advantage
         surrogate = torch.min(surr_1, surr_2)
         pi_loss = - valid_mean(surrogate, valid)
-
         value_error = 0.5 * (value - return_) ** 2
         value_loss = self.value_loss_coeff * valid_mean(value_error, valid)
 
         entropy = dist.mean_entropy(dist_info, valid)
+        perplexity = dist.mean_perplexity(dist_info, valid)
         entropy_loss = - self.entropy_loss_coeff * entropy
 
         loss = pi_loss + value_loss + entropy_loss
 
-        perplexity = dist.mean_perplexity(dist_info, valid)
-        return loss, entropy, perplexity
+        if self.curiosity_type == 'icm':
+            inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
+            loss += inv_loss
+            loss += forward_loss
+        elif self.curiosity_type == 'disagreement':
+            inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
+            loss += inv_loss
+            loss += forward_loss
+        elif self.curiosity_type == 'ndigo':
+            forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
+            loss += forward_loss
+            inv_loss = torch.tensor(0.0)
+        else:
+            inv_loss = torch.tensor(0.0)
+            forward_loss = torch.tensor(0.0)
+
+        return loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, entropy, perplexity

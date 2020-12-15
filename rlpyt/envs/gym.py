@@ -8,10 +8,7 @@ from collections import namedtuple
 from rlpyt.envs.base import EnvSpaces, EnvStep
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import is_namedtuple_class
-
-import gym_super_mario_bros
-from nes_py.wrappers import JoypadSpace
-from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
+from rlpyt.utils.averages import generate_observation_stats
 from rlpyt.envs.wrappers.general_wrappers import *
 from rlpyt.envs.wrappers.mario_wrappers import *
 
@@ -37,8 +34,7 @@ class GymEnvWrapper(Wrapper):
     see whether to add the field ``timeout`` to env info.   
     """
 
-    def __init__(self, env,
-            act_null_value=0, obs_null_value=0, force_float32=True):
+    def __init__(self, env, act_null_value=0, obs_null_value=0, force_float32=True):
         super().__init__(env)
         o = self.env.reset()
         o, r, d, info = self.env.step(self.env.action_space.sample())
@@ -169,35 +165,82 @@ def make(*args, info_example=None, **kwargs):
     rlpyt's ``GymEnvWrapper``, using ``gym.make(*args, **kwargs)``.  If
     ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
     """
+    env = gym.make(kwargs['id'])
+    if kwargs['no_extrinsic']:
+        env = NoExtrinsicReward(env)
+    if kwargs['no_negative_reward']:
+        env = NoNegativeReward(env)
     if info_example is None:
-        return GymEnvWrapper(gym.make(*args, **kwargs))
+        env = GymEnvWrapper(env)
     else:
-        return GymEnvWrapper(EnvInfoWrapper(gym.make(*args, **kwargs), info_example))    
+        env = GymEnvWrapper(EnvInfoWrapper(env, info_example)) 
+
+    if kwargs['normalize_obs']:
+        obs_mean, obs_std = generate_observation_stats(env, kwargs['normalize_steps'])
+    else:
+        obs_mean = 0
+        obs_std = 1
+
+    return env, obs_mean, obs_std
 
 def mario_make(*args, info_example=None, **kwargs):
     """Use as factory function for making instances of SuperMario environments with
     rlpyt's ``GymEnvWrapper``, using ``gym_super_mario_bros.make(*args, **kwargs)``. If
     ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
     """
-    env = gym_super_mario_bros.make('SuperMarioBros-v0')
-    env = JoypadSpace(env, COMPLEX_MOVEMENT)
-    
-    if kwargs['no_extrinsic']:
-        env = NoExtrinsicReward(env)
+    import retro
+    import gym_super_mario_bros
+    from nes_py.wrappers import JoypadSpace
+    from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 
+    env = gym_super_mario_bros.make(kwargs['game'])
+    env = JoypadSpace(env, COMPLEX_MOVEMENT)
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
-    # env = MarioXReward(env)
-
-    env = ProcessFrame84(env, crop=False)
-    env = FrameStack(env, 4)
     env = FrameSkip(env, 4)
+    env = ProcessFrame84(env, crop=True)
+    env = FrameStack(env, 4)
     env = PytorchImage(env) # (h,w,c) -> (c,h,w)
-
     if info_example is None:
         env = GymEnvWrapper(env)
     else:
         env = GymEnvWrapper(EnvInfoWrapper(env))
+    return env
+
+    # env = retro.make('SuperMarioBros-Nes', 'Level1-1')
+    # buttons = env.buttons
+    # env = MarioXReward(env)
+    # if kwargs['no_extrinsic']:
+    #     env = NoExtrinsicReward(env)
+    # if kwargs['no_negative_reward']:
+    #     env = NoNegativeReward(env)
+    # env = FrameSkip(env, 4)
+    # env = ProcessFrame84(env, crop=False)
+    # env = FrameStack(env, 4)
+    # env = LimitedDiscreteActions(env, buttons)
+    # env = PytorchImage(env) # (h,w,c) -> (c,h,w)
+    # if info_example is None:
+    #     env = GymEnvWrapper(env)
+    # else:
+    #     env = GymEnvWrapper(EnvInfoWrapper(env))
+    # return env
+
+def deepmind_make(*args, info_example=None, **kwargs):
+    """Use as factory function for making instances of Pycolab environments with
+    rlpyt's ``GymEnvWrapper``, using ``gym.make(*args, **kwargs)``. If
+    ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
+    """
+    import mazeworld
+
+    env = gym.make(kwargs['game'])
+
+    if kwargs['no_negative_reward']:
+        env = NoNegativeReward(env)
+    if info_example is None:
+        env = GymEnvWrapper(env, act_null_value=env.act_null_value)
+    else:
+        env = GymEnvWrapper(EnvInfoWrapper(env))
+
     return env
 
 

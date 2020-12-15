@@ -4,8 +4,7 @@ import time
 
 
 from rlpyt.samplers.parallel.base import ParallelSamplerBase
-from rlpyt.samplers.parallel.cpu.collectors import (CpuResetCollector,
-    CpuEvalCollector)
+from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector, CpuEvalCollector
 
 
 class CpuSampler(ParallelSamplerBase):
