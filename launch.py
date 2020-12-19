@@ -100,7 +100,10 @@ def launch_tmux(args):
     print('\n')
 
     wrap_print('Run this command? (y/n)')
-    answer = input()
+    if args.skip_input is None:
+        answer = input()
+    else:
+        answer = "y"
 
     # run commands if decided
     if answer == 'y':
@@ -110,25 +113,34 @@ def launch_tmux(args):
         os.system(f'kill -9 $( lsof -i:{_TB_PORT} -t ) > /dev/null 2>&1')
         os.system('tmux kill-session -t experiment')
         os.system('tmux new-session -s experiment -n htop -d bash')
-        i = 0
-        for name, cmd in commands.items():
-            if name != 'htop':
-                os.system(f'tmux new-window -t experiment:{i+1} -n {name} bash')
-            os.system(f'tmux send-keys -t experiment:{name} {shlex_quote(cmd)} Enter')
-            i += 1
-
         # save arguments, and command if needed
         if args.pretrain is None:
-            time.sleep(6) # wait for logdir to be created
+            os.makedirs(log_dir, exist_ok=True)
             args_json = json.dumps(vars(args), indent=4)
             with open(log_dir + '/arguments.json', 'w') as jsonfile:
                 jsonfile.write(args_json)
             with open(log_dir + '/cmd.txt', 'w') as cmd_file:
                 cmd_file.writelines(commands['runner'])
-            with open(log_dir + '/git.txt', 'w') as git_file:
-                branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
-                commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
-                git_file.write('{}/{}'.format(branch, commit))
+            try:
+                with open(log_dir + '/git.txt', 'w') as git_file:
+                    branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
+                    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
+                    git_file.write('{}/{}'.format(branch, commit))
+            except Exception as e:
+                print(e)
+        if args.skip_input:
+            # Run command directly
+            print("Running command")
+            os.system(commands["tb"] + " &")
+            os.system(commands["runner"])
+        else:
+            i = 0
+            for name, cmd in commands.items():
+                if name != 'htop':
+                    os.system(f'tmux new-window -t experiment:{i+1} -n {name} bash')
+                os.system(f'tmux send-keys -t experiment:{name} {shlex_quote(cmd)} Enter')
+                i += 1
+
     else:
         print('Not running commands, exiting.')
 

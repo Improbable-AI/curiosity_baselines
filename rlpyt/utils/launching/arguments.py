@@ -82,6 +82,7 @@ def get_args(args_in=sys.argv[1:]):
 
     # switch argument (only used in launch.py in __main__)
     parser.add_argument('-launch_tmux', default='yes', type=str, help='')
+    parser.add_argument('-skip_input', default=None, action='store_true',  help='')
 
     return parser.parse_args(args=args_in)
 
