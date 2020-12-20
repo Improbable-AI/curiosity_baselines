@@ -99,9 +99,6 @@ def launch_tmux(args):
     print('#'*50)
     print('\n')
 
-    wrap_print('Run this command? (y/n)')
-    answer = input()
-
     commands = {'htop' : 'htop',
                 'runner' : f'python3 launch.py {args_string}',
                 'tb' : f'tensorboard --logdir {log_dir} --port {_TB_PORT} --bind_all'}
