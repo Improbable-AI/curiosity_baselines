@@ -7,6 +7,8 @@ Makefile
 *.dot
 grad_checking
 *.pdf
+aws.py
+plot.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
