@@ -102,35 +102,31 @@ def launch_tmux(args):
     wrap_print('Run this command? (y/n)')
     answer = input()
 
-    # run commands if decided
-    if answer == 'y':
-        commands = {'htop' : 'htop',
-                    'runner' : f'python3 launch.py {args_string}',
-                    'tb' : f'tensorboard --logdir {log_dir} --port {_TB_PORT} --bind_all'}
-        os.system(f'kill -9 $( lsof -i:{_TB_PORT} -t ) > /dev/null 2>&1')
-        os.system('tmux kill-session -t experiment')
-        os.system('tmux new-session -s experiment -n htop -d bash')
-        i = 0
-        for name, cmd in commands.items():
-            if name != 'htop':
-                os.system(f'tmux new-window -t experiment:{i+1} -n {name} bash')
-            os.system(f'tmux send-keys -t experiment:{name} {shlex_quote(cmd)} Enter')
-            i += 1
+    commands = {'htop' : 'htop',
+                'runner' : f'python3 launch.py {args_string}',
+                'tb' : f'tensorboard --logdir {log_dir} --port {_TB_PORT} --bind_all'}
+    os.system(f'kill -9 $( lsof -i:{_TB_PORT} -t ) > /dev/null 2>&1')
+    os.system('tmux kill-session -t experiment')
+    os.system('tmux new-session -s experiment -n htop -d bash')
+    i = 0
+    for name, cmd in commands.items():
+        if name != 'htop':
+            os.system(f'tmux new-window -t experiment:{i+1} -n {name} bash')
+        os.system(f'tmux send-keys -t experiment:{name} {shlex_quote(cmd)} Enter')
+        i += 1
 
-        # save arguments, and command if needed
-        if args.pretrain is None:
-            time.sleep(6) # wait for logdir to be created
-            args_json = json.dumps(vars(args), indent=4)
-            with open(log_dir + '/arguments.json', 'w') as jsonfile:
-                jsonfile.write(args_json)
-            with open(log_dir + '/cmd.txt', 'w') as cmd_file:
-                cmd_file.writelines(commands['runner'])
-            with open(log_dir + '/git.txt', 'w') as git_file:
-                branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
-                commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
-                git_file.write('{}/{}'.format(branch, commit))
-    else:
-        print('Not running commands, exiting.')
+    # save arguments, and command if needed
+    if args.pretrain is None:
+        time.sleep(6) # wait for logdir to be created
+        args_json = json.dumps(vars(args), indent=4)
+        with open(log_dir + '/arguments.json', 'w') as jsonfile:
+            jsonfile.write(args_json)
+        with open(log_dir + '/cmd.txt', 'w') as cmd_file:
+            cmd_file.writelines(commands['runner'])
+        with open(log_dir + '/git.txt', 'w') as git_file:
+            branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
+            commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
+            git_file.write('{}/{}'.format(branch, commit))
 
 
 def start_experiment(args):
