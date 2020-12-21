@@ -208,58 +208,6 @@ class PlayerSprite(prefab_sprites.MazeWalker):
     if actions == 5:    # just quit?
       the_plot.terminate_episode()
 
-class BouncingObject(prefab_sprites.MazeWalker):
-  """Wanders back and forth horizontally."""
-
-  def __init__(self, corner, position, character):
-    """Constructor: list impassables, initialise direction."""
-    super(BouncingObject, self).__init__(
-        corner, position, character, impassable='#')
-    # Choose our initial direction based on our character value.
-    self._moving_east = bool(ord(character) % 2)
-
-  def update(self, actions, board, layers, backdrop, things, the_plot):
-    del actions, backdrop  # Unused.
-
-    # We only move once every two game iterations.
-    if the_plot.frame % 2:
-      self._stay(board, the_plot)
-      return
-
-    # If there is a wall next to us, we ought to switch direction.
-    row, col = self.position
-    if layers['#'][row, col-1]: self._moving_east = True
-    if layers['#'][row, col+1]: self._moving_east = False
-
-    # Make our move. 
-    (self._east if self._moving_east else self._west)(board, the_plot)
-
-class BrownianObject(prefab_sprites.MazeWalker):
-  """Randomly sample direction from left/right/up/down"""
-
-  def __init__(self, corner, position, character):
-    """Constructor: list impassables, initialise direction."""
-    super(BrownianObject, self).__init__(corner, position, character, impassable='#')
-    # Choose our initial direction.
-    self._direction = np.random.choice(4) # 0 = east, 1 = west, 2 = north, 3 = south
-
-  def update(self, actions, board, layers, backdrop, things, the_plot):
-    del actions, backdrop  # Unused.
-
-    # We only move once every two game iterations.
-    if the_plot.frame % 2:
-      self._stay(board, the_plot)
-      return
-
-    # Sample a move
-    self._direction = np.random.choice(4) # 0 = east, 1 = west, 2 = north, 3 = south
-
-    # Make a move
-    if self._direction == 0: self._east(board, the_plot)
-    elif self._direction == 1: self._west(board, the_plot)
-    elif self._direction == 2: self._north(board, the_plot)
-    elif self._direction == 3: self._south(board, the_plot)
-
 class WhiteNoiseObject(prefab_sprites.MazeWalker):
   """Randomly sample direction from left/right/up/down"""
 

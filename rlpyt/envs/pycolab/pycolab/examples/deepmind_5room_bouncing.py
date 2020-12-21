@@ -186,7 +186,7 @@ class PlayerSprite(prefab_sprites.MazeWalker):
   def __init__(self, corner, position, character):
     """Constructor: just tells `MazeWalker` we can't walk through walls or objects."""
     super(PlayerSprite, self).__init__(
-        corner, position, character, impassable='#ab')
+        corner, position, character, impassable='#abc')
 
   def update(self, actions, board, layers, backdrop, things, the_plot):
     del backdrop, layers  # Unused

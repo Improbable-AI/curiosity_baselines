@@ -59,8 +59,8 @@ MAZES_ART = [
 
     # Maze #0: (paper: 5 rooms environment)
     ['###################',
-     '##               ##',
-     '# # a           # #',
+     '##       a       ##',
+     '# #             # #',
      '#  #           #  #',
      '#   #         #   #',
      '#    #### ####    #',
@@ -152,10 +152,10 @@ def make_game(level):
   maze_ascii = MAZES_ART[level]
 
   # change location of fixed object in any of the rooms
-  for row in range(1, 16):
+  new_room = random.randint(1, 3)
+  for row in range(1, 17):
     if 'a' in maze_ascii[row]:
       maze_ascii[row] = maze_ascii[row].replace('a', ' ', 1)
-  new_room = random.randint(1, 3)
   new_coord = random.sample(ROOMS[new_room], 1)[0]
   maze_ascii[new_coord[0]] = maze_ascii[new_coord[0]][:new_coord[1]] + 'a' + maze_ascii[new_coord[0]][new_coord[1]+1:]
 
@@ -240,7 +240,6 @@ class FixedObject(plab_things.Sprite):
 
   def update(self, actions, board, layers, backdrop, things, the_plot):
     del actions, backdrop  # Unused.
-
 
 def main(argv=()):
   level = int(argv[1]) if len(argv) > 1 else 0

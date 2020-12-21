@@ -18,12 +18,6 @@ register(
     kwargs={'level': 0, 'max_iterations': 500})
 
 register(
-    id='DeepmindMaze-v0',
-    entry_point='mazeworld.envs:DeepmindMazeWorld_maze',
-    max_episode_steps=500,
-    kwargs={'level': 0, 'max_iterations': 500})
-
-register(
     id='Deepmind5Room-v0',
     entry_point='mazeworld.envs:DeepmindMazeWorld_5room',
     max_episode_steps=500,
@@ -44,5 +38,11 @@ register(
 register(
     id='Deepmind5RoomBrownian-v0',
     entry_point='mazeworld.envs:DeepmindMazeWorld_5room_brownian',
+    max_episode_steps=500,
+    kwargs={'level': 0, 'max_iterations': 500})
+
+register(
+    id='DeepmindMaze-v0',
+    entry_point='mazeworld.envs:DeepmindMazeWorld_maze',
     max_episode_steps=500,
     kwargs={'level': 0, 'max_iterations': 500})
