@@ -66,8 +66,8 @@ MAZES_ART = [
      '#################   #',
      '#################   #',
      '#          ###   c  #',
-     '#         ###    P  #',
-     '#       ###        ##',
+     '#         ###       #',
+     '#    P  ###        ##',
      '#    #########      #',
      '#    #              #',
      '#   ## a          b #',
@@ -188,7 +188,7 @@ class PlayerSprite(prefab_sprites.MazeWalker):
   """A `Sprite` for our player, the maze explorer."""
 
   def __init__(self, corner, position, character):
-    """Constructor: just tells `MazeWalker` we can't walk through walls."""
+    """Constructor: just tells `MazeWalker` we can't walk through walls or objects."""
     super(PlayerSprite, self).__init__(
         corner, position, character, impassable='#abcde')
 

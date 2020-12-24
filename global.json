@@ -3,7 +3,7 @@
     "container_workdir": "/curiosity_baselines",
     "container_resultsdir": "/curiosity_baselines/results",
     "cpu_trainer_ami": "ami-0bc525f9b0ca472cf",
-    "gpu_trainer_ami": "",
+    "gpu_trainer_ami": "ami-07127bbb2a2de4733",
     "tb_port": "12345",
     "tb_port_local": "4000",
     "envs": {
