@@ -183,8 +183,7 @@ class NDIGO(torch.nn.Module):
         
         # subtract losses to get rewards
         r_int = torch.zeros((T, B))
-        for i in range(1, len(losses)):
-            r_int[i-1] = losses[i-1] - losses[i]
+        r_int[0:len(losses)-1] = losses[0:len(losses)-1] - losses[1:]
 
         return torch.abs(r_int)
 
