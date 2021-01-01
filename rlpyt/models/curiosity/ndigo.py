@@ -181,9 +181,9 @@ class NDIGO(torch.nn.Module):
         losses = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='none')
         losses = torch.sum(losses, dim=-1)/losses.shape[-1] # average of each feature for each environment at each timestep (T, B, ave_loss_over_feature)
         
-        # subtract losses to get rewards
+        # subtract losses to get rewards (r[t+H-1] = losses[t] - losses[t-1])
         r_int = torch.zeros((T, B))
-        r_int[0:len(losses)-1] = losses[0:len(losses)-1] - losses[1:]
+        r_int[self.horizon:len(losses)-1+self.horizon] = losses[1:] - losses[0:len(losses)-1]
 
         return torch.abs(r_int)
 
