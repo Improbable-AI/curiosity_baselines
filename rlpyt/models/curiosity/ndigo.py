@@ -185,7 +185,7 @@ class NDIGO(torch.nn.Module):
         r_int = torch.zeros((T, B))
         r_int[self.horizon:len(losses)-1+self.horizon] = losses[1:] - losses[0:len(losses)-1]
 
-        return torch.abs(r_int)
+        return r_int
 
 
     def compute_loss(self, observations, prev_actions, actions):
