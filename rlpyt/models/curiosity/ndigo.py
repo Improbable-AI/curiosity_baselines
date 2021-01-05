@@ -206,6 +206,11 @@ class NDIGO(torch.nn.Module):
         # subtract losses to get rewards (r[t+H-1] = losses[t-1] - losses[t])
         r_int = torch.zeros((T, B))
         r_int[self.horizon:len(losses_t)+self.horizon-1] = losses_tm1 - losses_t[1:] # time zero reward is set to 0 (L[-1] doesn't exist)
+        # r_int[self.horizon:len(losses_t)+self.horizon-1] = losses_t[1:] - losses_tm1
+        # r_int[1:len(losses_t)] = losses_tm1 - losses_t[1:]
+        # r_int[1:len(losses_t)] = losses_t[1:] - losses_tm1
+
+        # r_int = nn.functional.relu(r_int)
 
         return r_int
 
