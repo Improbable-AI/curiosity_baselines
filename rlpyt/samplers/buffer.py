@@ -5,7 +5,7 @@ import numpy as np
 
 from rlpyt.agents.pg.base import AgentInfo, NdigoInfo, IcmInfo, AgentInfoRnn
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
-from rlpyt.agents.base import AgentInputs, AgentCuriosityInputs
+from rlpyt.agents.base import AgentInputs, IcmAgentCuriosityInputs
 from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv, EnvSamples)
 
 
@@ -90,10 +90,10 @@ def get_example_outputs(agent, env, examples, subprocess=False):
     r_int = 0.0
     if agent.curiosity_type != 'none':
         if agent.curiosity_type in {'icm', 'disagreement'}:
-            agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, o))
-            r_int, agent_curiosity_info = agent.curiosity_step(*agent_curiosity_inputs)
+            agent_curiosity_inputs = torchify_buffer(IcmAgentCuriosityInputs(o_reset, a, o))
+            r_int, agent_curiosity_info = agent.curiosity_step(agent.curiosity_type, *agent_curiosity_inputs)
         elif agent.curiosity_type == 'ndigo':
-            # agent_curiosity_inputs = torchify_buffer(AgentCuriosityInputs(o_reset, a, a))
+            # agent_curiosity_inputs = torchify_buffer(NdigoAgentCuriosityInputs(o_reset, a, a))
             agent_curiosity_info = NdigoInfo(prev_gru_state=None)
             r_int = 0.0
 

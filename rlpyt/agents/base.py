@@ -10,8 +10,8 @@ from rlpyt.utils.logging import logger
 from rlpyt.models.utils import strip_ddp_state_dict
 
 AgentInputs = namedarraytuple("AgentInputs", ["observation", "prev_action", "prev_reward"])
-AgentCuriosityInputs = namedarraytuple("AgentCuriosityInputs", ["observation", "action", "next_observation"])
-NdigoAgentCuriosityInputs = namedarraytuple("AgentCuriosityInputs", ["observation", "prev_actions", "actions"])
+IcmAgentCuriosityInputs = namedarraytuple("IcmAgentCuriosityInputs", ["observation", "action", "next_observation"])
+NdigoAgentCuriosityInputs = namedarraytuple("NdigoAgentCuriosityInputs", ["observation", "prev_actions", "actions"])
 AgentStep = namedarraytuple("AgentStep", ["action", "agent_info"])
 AgentCuriosityStep = namedarraytuple("AgentCuriosityStep", ["r_int", "agent_curiosity_info"])
 
@@ -35,7 +35,7 @@ class BaseAgent:
     recurrent = False
     alternating = False
 
-    def __init__(self, ModelCls=None, model_kwargs=None, initial_model_state_dict=None, no_extrinsic=False, num_envs=None):
+    def __init__(self, ModelCls=None, model_kwargs=None, initial_model_state_dict=None, no_extrinsic=False):
         """
         Arguments are saved but no model initialization occurs.
 
@@ -44,7 +44,6 @@ class BaseAgent:
             model_kwargs (optional): Any keyword arguments to pass when instantiating the model.
             initial_model_state_dict (optional): Initial model parameter values.
             no_extrinsic (optional): Whether or not to use extrinsic reward.
-            num_envs (optional): The number of envs (to initialize ndigo related buffers).
         """
 
         save__init__args(locals())
@@ -315,81 +314,81 @@ class RecurrentAgentMixin:
         super().eval_mode(itr)
 
 
-class RecurrentNdigoAgentMixin(RecurrentAgentMixin):
-    """
-    Mixin class to manage NDIGO agents last loss and recurrent state, and
-    by extension an lstm policies rnn state during sampling (so the sampler 
-    remains agnostic). To be used like ``class MyRecurrentAgent(RecurrentNdigoAgentMixin, MyAgent):``.
-    """
-    recurrent = True
+# class RecurrentNdigoAgentMixin(RecurrentAgentMixin):
+#     """
+#     Mixin class to manage NDIGO agents last loss and recurrent state, and
+#     by extension an lstm policies rnn state during sampling (so the sampler 
+#     remains agnostic). To be used like ``class MyRecurrentAgent(RecurrentNdigoAgentMixin, MyAgent):``.
+#     """
+#     recurrent = True
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._prev_ndigo_gru = None
-        self._sample_ndigo_gru = None
-        self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
-        self._sample_ndigo_loss = [0.0 for _ in range(self.num_envs)]
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self._prev_ndigo_gru = None
+#         self._sample_ndigo_gru = None
+#         self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
+#         self._sample_ndigo_loss = [0.0 for _ in range(self.num_envs)]
 
-    def reset(self):
-        """Sets the recurrent state to ``None``, which built-in PyTorch
-        modules converts to zeros."""
-        self._prev_ndigo_gru = None
-        self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
-        super().reset()
+#     def reset(self):
+#         """Sets the recurrent state to ``None``, which built-in PyTorch
+#         modules converts to zeros."""
+#         self._prev_ndigo_gru = None
+#         self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
+#         super().reset()
 
-    def reset_one(self, idx, env_rank=None, env_ranks=None):
-        """Sets the recurrent state corresponding to one environment instance
-        to zero.  Assumes rnn state is in cudnn-compatible shape: [N,B,H],
-        where B corresponds to environment index. Note, B should always be
-        1 for NDIGO (curiosity steps one environment at a time."""
-        if self._prev_ndigo_gru is not None:
-            self._prev_ndigo_gru[0] = 0
-        if self._prev_ndigo_loss[env_rank] != 0.0:
-            self._prev_ndigo_loss[env_rank] = 0.0
-        super().reset_one(idx)
+#     def reset_one(self, idx, env_rank=None, env_ranks=None):
+#         """Sets the recurrent state corresponding to one environment instance
+#         to zero.  Assumes rnn state is in cudnn-compatible shape: [N,B,H],
+#         where B corresponds to environment index. Note, B should always be
+#         1 for NDIGO (curiosity steps one environment at a time."""
+#         if self._prev_ndigo_gru is not None:
+#             self._prev_ndigo_gru[0] = 0
+#         if self._prev_ndigo_loss[env_rank] != 0.0:
+#             self._prev_ndigo_loss[env_rank] = 0.0
+#         super().reset_one(idx)
 
-    def advance_ndigo_gru(self, new_gru_state):
-        """Sets the recurrent state to the newly computed one (i.e. recurrent agents should
-        call this at the end of their ``curiosity_step()``). """
-        self._prev_ndigo_gru = new_gru_state
+#     def advance_ndigo_gru(self, new_gru_state):
+#         """Sets the recurrent state to the newly computed one (i.e. recurrent agents should
+#         call this at the end of their ``curiosity_step()``). """
+#         self._prev_ndigo_gru = new_gru_state
 
-    def advance_ndigo_loss(self, new_ndigo_loss, rank):
-        """Sets the loss to the newly computed one (i.e. recurrent agents should
-        call this at the end of their ``curiosity_step()``). """
-        self._prev_ndigo_loss[rank] = new_ndigo_loss
+#     def advance_ndigo_loss(self, new_ndigo_loss, rank):
+#         """Sets the loss to the newly computed one (i.e. recurrent agents should
+#         call this at the end of their ``curiosity_step()``). """
+#         self._prev_ndigo_loss[rank] = new_ndigo_loss
 
-    @property
-    def prev_ndigo_gru(self):
-        return self._prev_ndigo_gru
+#     @property
+#     def prev_ndigo_gru(self):
+#         return self._prev_ndigo_gru
 
-    @property
-    def prev_ndigo_loss(self):
-        return self._prev_ndigo_loss
+#     @property
+#     def prev_ndigo_loss(self):
+#         return self._prev_ndigo_loss
     
-    def train_mode(self, itr):
-        """If coming from sample mode, store the gru state/loss elsewhere and clear it."""
-        if self._mode == "sample":
-            self._sample_ndigo_gru = self._prev_ndigo_gru
-            self._sample_ndigo_loss = self._prev_ndigo_loss
-        self._prev_ndigo_gru = None
-        self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
-        super().train_mode(itr)
+#     def train_mode(self, itr):
+#         """If coming from sample mode, store the gru state/loss elsewhere and clear it."""
+#         if self._mode == "sample":
+#             self._sample_ndigo_gru = self._prev_ndigo_gru
+#             self._sample_ndigo_loss = self._prev_ndigo_loss
+#         self._prev_ndigo_gru = None
+#         self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
+#         super().train_mode(itr)
 
-    def sample_mode(self, itr):
-        """If coming from non-sample modes, restore the last sample-mode gru state/loss."""
-        if self._mode != "sample":
-            self._prev_ndigo_gru = self._sample_ndigo_gru
-            self._prev_ndigo_loss = self._sample_ndigo_loss
-        super().sample_mode(itr)
+#     def sample_mode(self, itr):
+#         """If coming from non-sample modes, restore the last sample-mode gru state/loss."""
+#         if self._mode != "sample":
+#             self._prev_ndigo_gru = self._sample_ndigo_gru
+#             self._prev_ndigo_loss = self._sample_ndigo_loss
+#         super().sample_mode(itr)
 
-    def eval_mode(self, itr):
-        """If coming from sample mode, store the gru state/loss elsewhere and clear it."""
-        if self._mode == "sample":
-            self._sample_ndigo_gru = self._prev_ndigo_gru
-            self._sample_ndigo_loss = self._prev_ndigo_loss
-        self._prev_ndigo_gru = None
-        self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
-        super().eval_mode(itr)
+#     def eval_mode(self, itr):
+#         """If coming from sample mode, store the gru state/loss elsewhere and clear it."""
+#         if self._mode == "sample":
+#             self._sample_ndigo_gru = self._prev_ndigo_gru
+#             self._sample_ndigo_loss = self._prev_ndigo_loss
+#         self._prev_ndigo_gru = None
+#         self._prev_ndigo_loss = [0.0 for _ in range(self.num_envs)]
+#         super().eval_mode(itr)
 
 
 class AlternatingRecurrentAgentMixin:
