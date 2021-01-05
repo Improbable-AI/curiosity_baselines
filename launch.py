@@ -11,7 +11,7 @@ import torch
 from rlpyt.runners.minibatch_rl import MinibatchRl, MinibatchRlEval
 
 # Policies
-from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent, AtariNdigoLstmAgent
+from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent
 from rlpyt.agents.pg.mujoco import MujocoFfAgent, MujocoLstmAgent
 
 # Samplers
@@ -172,19 +172,11 @@ def start_experiment(args):
             agent = MujocoFfAgent(initial_model_state_dict=initial_model_state_dict)
     else:
         if args.lstm:
-            if args.curiosity_alg == 'ndigo':
-                agent = AtariNdigoLstmAgent(
-                            initial_model_state_dict=initial_model_state_dict,
-                            model_kwargs=model_args,
-                            no_extrinsic=args.no_extrinsic,
-                            num_envs=args.num_envs
-                            )
-            else:
-                agent = AtariLstmAgent(
-                            initial_model_state_dict=initial_model_state_dict,
-                            model_kwargs=model_args,
-                            no_extrinsic=args.no_extrinsic
-                            )
+            agent = AtariLstmAgent(
+                        initial_model_state_dict=initial_model_state_dict,
+                        model_kwargs=model_args,
+                        no_extrinsic=args.no_extrinsic
+                        )
         else:
             agent = AtariFfAgent(initial_model_state_dict=initial_model_state_dict)
 

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
-from rlpyt.agents.base import AgentInputs, AgentInputsRnn, AgentCuriosityInputs, NdigoAgentCuriosityInputs
+from rlpyt.agents.base import AgentInputs, AgentInputsRnn, IcmAgentCuriosityInputs, NdigoAgentCuriosityInputs
 from rlpyt.utils.tensor import valid_mean
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
@@ -84,17 +84,17 @@ class PPO(PolicyGradientAlgo):
             prev_action=samples.agent.prev_action,
             prev_reward=samples.env.prev_reward,
         )
-        if self.curiosity_type == 'ndigo':
+        if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
+            agent_curiosity_inputs = IcmAgentCuriosityInputs(
+                observation=samples.env.prev_observation,
+                action=samples.agent.action,
+                next_observation=samples.env.observation
+            )
+        elif self.curiosity_type == 'ndigo':
             agent_curiosity_inputs = NdigoAgentCuriosityInputs(
                 observation=samples.env.observation,
                 prev_actions=samples.agent.prev_action,
                 actions=samples.agent.action
-            )
-        else:
-            agent_curiosity_inputs = AgentCuriosityInputs(
-                observation=samples.env.prev_observation,
-                action=samples.agent.action,
-                next_observation=samples.env.observation
             )
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         if hasattr(self.agent, "update_obs_rms"):
@@ -114,6 +114,7 @@ class PPO(PolicyGradientAlgo):
             init_rnn_state = samples.agent.agent_info.prev_rnn_state[0]  # T=0.
 
         T, B = samples.env.reward.shape[:2]
+
         opt_info = OptInfo(*([] for _ in range(len(OptInfo._fields))))
 
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
@@ -128,12 +129,11 @@ class PPO(PolicyGradientAlgo):
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
 
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
+                loss, pi_loss, value_loss, entropy_loss, entropy, perplexity, curiosity_losses = self.loss(*loss_inputs[T_idxs, B_idxs], rnn_state)
 
                 loss.backward()
                 count = 0
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
-                # plot_grad_flow(self.agent.model.named_parameters(), './grad_checking', 'model') # DEBUGGING
                 self.optimizer.step()
 
                 # Tensorboard summaries
@@ -141,8 +141,14 @@ class PPO(PolicyGradientAlgo):
                 opt_info.pi_loss.append(pi_loss.item())
                 opt_info.value_loss.append(value_loss.item())
                 opt_info.entropy_loss.append(entropy_loss.item())
-                opt_info.inv_loss.append(inv_loss.item())
-                opt_info.forward_loss.append(forward_loss.item())
+
+                if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
+                    inv_loss, forward_loss = curiosity_losses
+                    opt_info.inv_loss.append(inv_loss.item())
+                    opt_info.forward_loss.append(forward_loss.item())
+                elif self.curiosity_type == 'ndigo':
+                    forward_loss = curiosity_losses
+                    opt_info.forward_loss.append(forward_loss.item())
 
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
@@ -155,9 +161,6 @@ class PPO(PolicyGradientAlgo):
         if self.curiosity_type == 'ndigo':
             opt_info.ndigo_intrinsic_rewards.append(np.mean(self.ndigo_intrinsic_rewards))
 
-        # opt_info.return_.append(torch.mean(return_).detach().clone().item())
-        # opt_info.advantage.append(torch.mean(advantage).detach().clone().item())
-        # opt_info.valpred.append(torch.mean(samples.agent.agent_info.value).detach().clone().item())
         opt_info.return_.append(torch.mean(return_.detach()).detach().clone().item())
         opt_info.advantage.append(torch.mean(advantage.detach()).detach().clone().item())
         opt_info.valpred.append(torch.mean(samples.agent.agent_info.value.detach()).detach().clone().item())
@@ -171,7 +174,7 @@ class PPO(PolicyGradientAlgo):
         return opt_info, layer_info
 
     def loss(self, agent_inputs, agent_curiosity_inputs, action, return_, advantage, valid, old_dist_info,
-            init_rnn_state=None, init_ndigo_gru=None):
+            init_rnn_state=None):
         """
         Compute the training loss: policy_loss + value_loss + entropy_loss
         Policy loss: min(likelhood-ratio * advantage, clip(likelihood_ratio, 1-eps, 1+eps) * advantage)
@@ -204,20 +207,16 @@ class PPO(PolicyGradientAlgo):
 
         loss = pi_loss + value_loss + entropy_loss
 
-        if self.curiosity_type == 'icm':
-            inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
+        if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
+            inv_loss, forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
             loss += inv_loss
             loss += forward_loss
-        elif self.curiosity_type == 'disagreement':
-            inv_loss, forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
-            loss += inv_loss
-            loss += forward_loss
+            curiosity_losses = (inv_loss, forward_loss)
         elif self.curiosity_type == 'ndigo':
-            forward_loss = self.agent.curiosity_loss(*agent_curiosity_inputs)
+            forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
             loss += forward_loss
-            inv_loss = torch.tensor(0.0)
+            curiosity_losses = (forward_loss)
         else:
-            inv_loss = torch.tensor(0.0)
-            forward_loss = torch.tensor(0.0)
+            curiosity_losses = None
 
-        return loss, pi_loss, value_loss, entropy_loss, inv_loss, forward_loss, entropy, perplexity
+        return loss, pi_loss, value_loss, entropy_loss, entropy, perplexity, curiosity_losses

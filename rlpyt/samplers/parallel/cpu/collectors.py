@@ -5,7 +5,7 @@ import numpy as np
 
 from rlpyt.samplers.collectors import (DecorrelatingStartCollector,
     BaseEvalCollector)
-from rlpyt.agents.base import AgentInputs, AgentCuriosityInputs
+from rlpyt.agents.base import AgentInputs, IcmAgentCuriosityInputs
 from rlpyt.utils.buffer import (torchify_buffer, numpify_buffer, buffer_from_example,
     buffer_method)
 
@@ -170,7 +170,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                 r_int = torch.tensor(0.0)
                 agent_curiosity_info = None
                 if self.curiosity_alg in {'icm', 'disagreement'}:
-                    r_int, agent_curiosity_info = self.agent.curiosity_step(obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory
+                    r_int, agent_curiosity_info = self.agent.curiosity_step(self.curiosity_alg, obs_pyt[b].unsqueeze(0), act_pyt[b], torch.tensor(o).unsqueeze(0)) # torch.Tensor doesn't link memory
 
                 traj_infos[b].step(observation[b], action[b], r_ext_log, r_int, d, agent_info[b], agent_curiosity_info, env_info)
                 if getattr(env_info, "traj_done", d):
@@ -209,7 +209,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
 
         # AgentInputs = ['observation', 'prev_action', 'prev_reward']
         # AgentCuriosityInputs = ['observation', 'action', 'next_observation']
-        return AgentInputs(observation, action, reward_tot), AgentCuriosityInputs(prev_observation, action, observation), traj_infos, completed_infos
+        return AgentInputs(observation, action, reward_tot), IcmAgentCuriosityInputs(prev_observation, action, observation), traj_infos, completed_infos
 
     def reset_if_needed(self, agent_inputs, agent_curiosity_inputs):
         for b in np.where(self.need_reset)[0]:

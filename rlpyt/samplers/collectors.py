@@ -1,7 +1,7 @@
 from copy import deepcopy
 import numpy as np
 
-from rlpyt.agents.base import AgentInputs, AgentCuriosityInputs
+from rlpyt.agents.base import AgentInputs, IcmAgentCuriosityInputs
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer, numpify_buffer
 from rlpyt.utils.logging import logger
 from rlpyt.utils.quick_args import save__init__args
@@ -113,8 +113,8 @@ class DecorrelatingStartCollector(BaseCollector):
                     else:
                         action = a
                     o, r_ext, d, info = env.step(action)
-                    r_int = 0
 
+                    r_int = 0
                     traj_infos[b].step(o, a, r_ext, r_int, d, None, info)
                     if getattr(info, "traj_done", d):
                         o = env.reset()
@@ -122,11 +122,11 @@ class DecorrelatingStartCollector(BaseCollector):
                     if d:
                         a = env.action_space.null_value()
                         r_ext = 0
-                        r_int = 0
                 prev_observation[b] = deepcopy(observation[b])
                 observation[b] = o
                 prev_action[b] = a
-                prev_reward[b] = r_ext + r_int
+                prev_reward[b] = r_ext
+
         # For action-server samplers.
         if hasattr(self, "step_buffer_np") and self.step_buffer_np is not None:
             self.step_buffer_np.prev_observation[:] = prev_observation
@@ -134,10 +134,6 @@ class DecorrelatingStartCollector(BaseCollector):
             self.step_buffer_np.prev_reward[:] = prev_reward
             self.step_buffer_np.observation[:] = observation
 
-        # For NDIGO curiosity agent
-        last_losses = buffer_from_example(0.0, len(self.envs))
-
         # AgentInputs -> ['observation', 'prev_action', 'prev_reward']
-        # AgentCuriosityInputs -> ['observation', 'action', 'next_observation', 'last_losses']
-        return AgentInputs(observation, prev_action, prev_reward), AgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
+        return AgentInputs(observation, prev_action, prev_reward), IcmAgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
 
