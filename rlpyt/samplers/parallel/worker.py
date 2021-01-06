@@ -74,10 +74,9 @@ def sampling_process(common_kwargs, worker_kwargs):
         step_buffer_np=w.get("step_buffer_np", None),
         global_B=c.get("global_B", 1),
         env_ranks=w.get("env_ranks", None),
-        curiosity_alg=c.curiosity_alg,
         no_extrinsic=c.no_extrinsic
     )
-    agent_inputs, agent_curiosity_inputs, traj_infos = collector.start_envs(c.max_decorrelation_steps)
+    agent_inputs, traj_infos = collector.start_envs(c.max_decorrelation_steps)
     collector.start_agent()
 
     if c.get("eval_n_envs", 0) > 0:
@@ -101,14 +100,14 @@ def sampling_process(common_kwargs, worker_kwargs):
     ctrl = c.ctrl
     ctrl.barrier_out.wait()
     while True:
-        collector.reset_if_needed(agent_inputs, agent_curiosity_inputs)  # Outside barrier?
+        collector.reset_if_needed(agent_inputs)  # Outside barrier?
         ctrl.barrier_in.wait()
         if ctrl.quit.value:
             break
         if ctrl.do_eval.value:
             eval_collector.collect_evaluation(ctrl.itr.value)  # Traj_infos to queue inside.
         else:
-            agent_inputs, agent_curiosity_inputs, traj_infos, completed_infos = collector.collect_batch(agent_inputs, agent_curiosity_inputs, traj_infos, ctrl.itr.value)
+            agent_inputs, traj_infos, completed_infos = collector.collect_batch(agent_inputs, traj_infos, ctrl.itr.value)
             for info in completed_infos:
                 c.traj_infos_queue.put(info)
         ctrl.barrier_out.wait()

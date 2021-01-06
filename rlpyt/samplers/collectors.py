@@ -22,7 +22,6 @@ class BaseCollector:
             step_buffer_np=None,
             global_B=1,
             env_ranks=None,
-            curiosity_alg='none',
             no_extrinsic=False
             ):
         save__init__args(locals())
@@ -88,16 +87,12 @@ class DecorrelatingStartCollector(BaseCollector):
 
         prev_action = np.stack([env.action_space.null_value() for env in self.envs]) # noop
         prev_reward = np.zeros(len(self.envs), dtype="float32") # total reward (extrinsic + intrinsic)
-        prev_observations = list()
         observations = list()
         for env in self.envs:
             o = env.reset()
-            prev_observations.append(o) # observation doesn't change
             observations.append(deepcopy(o)) # emulates stepping with noop
-        prev_observation = buffer_from_example(prev_observations[0], len(self.envs))
         observation = buffer_from_example(observations[0], len(self.envs))
         for b, obs in enumerate(observations):
-            prev_observation[b] = prev_observations[b] # numpy array or namedarraytuple
             observation[b] = obs
 
         if self.rank == 0:
@@ -112,28 +107,25 @@ class DecorrelatingStartCollector(BaseCollector):
                         action = int(a)
                     else:
                         action = a
-                    o, r_ext, d, info = env.step(action)
+                    o, r, d, info = env.step(action)
 
-                    r_int = 0
-                    traj_infos[b].step(o, a, r_ext, r_int, d, None, info)
+                    traj_infos[b].step(o, a, r, d, None, info)
                     if getattr(info, "traj_done", d):
                         o = env.reset()
                         traj_infos[b] = self.TrajInfoCls()
                     if d:
                         a = env.action_space.null_value()
-                        r_ext = 0
-                prev_observation[b] = deepcopy(observation[b])
+                        r = 0
                 observation[b] = o
                 prev_action[b] = a
-                prev_reward[b] = r_ext
+                prev_reward[b] = r
 
         # For action-server samplers.
         if hasattr(self, "step_buffer_np") and self.step_buffer_np is not None:
-            self.step_buffer_np.prev_observation[:] = prev_observation
             self.step_buffer_np.prev_action[:] = prev_action
             self.step_buffer_np.prev_reward[:] = prev_reward
             self.step_buffer_np.observation[:] = observation
 
         # AgentInputs -> ['observation', 'prev_action', 'prev_reward']
-        return AgentInputs(observation, prev_action, prev_reward), IcmAgentCuriosityInputs(prev_observation, prev_action, observation), traj_infos
+        return AgentInputs(observation, prev_action, prev_reward), traj_infos
 

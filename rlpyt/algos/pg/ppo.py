@@ -49,14 +49,12 @@ class PPO(PolicyGradientAlgo):
         if self.normalize_reward:
             self.reward_ff = RewardForwardFilter(discount)
             self.reward_rms = RunningMeanStd()
+        self.intrinsic_rewards = None
         
         if kernel_params is not None:
             self.mu, self.sigma = self.kernel_params
             self.kernel_line = lambda x: x
             self.kernel_gauss = lambda x: np.sign(x)*self.mu*np.exp(-(abs(x)-self.mu)**2/(2*self.sigma**2))
-
-        if self.curiosity_type == 'ndigo':
-            self.ndigo_intrinsic_rewards = None # for logging
 
     def initialize(self, *args, **kwargs):
         """
@@ -80,19 +78,18 @@ class PPO(PolicyGradientAlgo):
         """
         recurrent = self.agent.recurrent
         agent_inputs = AgentInputs(  # Move inputs to device once, index there.
-            observation=samples.env.observation,
+            observation=samples.env.observation[:-1],
             prev_action=samples.agent.prev_action,
             prev_reward=samples.env.prev_reward,
         )
         if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
             agent_curiosity_inputs = IcmAgentCuriosityInputs(
-                observation=samples.env.prev_observation,
+                observation=samples.env.observation,
                 action=samples.agent.action,
-                next_observation=samples.env.observation
             )
         elif self.curiosity_type == 'ndigo':
             agent_curiosity_inputs = NdigoAgentCuriosityInputs(
-                observation=samples.env.observation,
+                observation=samples.env.observation[:-1],
                 prev_actions=samples.agent.prev_action,
                 actions=samples.agent.action
             )
@@ -146,9 +143,11 @@ class PPO(PolicyGradientAlgo):
                     inv_loss, forward_loss = curiosity_losses
                     opt_info.inv_loss.append(inv_loss.item())
                     opt_info.forward_loss.append(forward_loss.item())
+                    opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
                 elif self.curiosity_type == 'ndigo':
                     forward_loss = curiosity_losses
                     opt_info.forward_loss.append(forward_loss.item())
+                    opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
 
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
@@ -157,9 +156,6 @@ class PPO(PolicyGradientAlgo):
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
-
-        if self.curiosity_type == 'ndigo':
-            opt_info.ndigo_intrinsic_rewards.append(np.mean(self.ndigo_intrinsic_rewards))
 
         opt_info.return_.append(torch.mean(return_.detach()).detach().clone().item())
         opt_info.advantage.append(torch.mean(advantage.detach()).detach().clone().item())

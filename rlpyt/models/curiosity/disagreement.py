@@ -118,21 +118,25 @@ class Disagreement(nn.Module):
 
         return phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action
 
-    def compute_bonus(self, obs, action, next_obs):
-        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs, next_obs, action)
+    def compute_bonus(self, observations, actions):
+        obs1 = observations.clone()[:-1]
+        obs2 = observations.clone()[1:]
+        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs1, obs2, actions)
         feature_var = torch.var(predicted_phi2_stacked, dim=0) # feature variance across forward models
         reward = torch.mean(feature_var, axis=-1) # mean over feature
-        return self.prediction_beta * reward.item()
+        return self.prediction_beta * reward
 
-    def compute_loss(self, obs, action, next_obs):
+    def compute_loss(self, observations, actions):
+        obs1 = observations.clone()[:-1]
+        obs2 = observations.clone()[1:]
         #------------------------------------------------------------#
         # hacky dimension add for when you have only one environment (debugging)
-        if action.dim() == 2: 
-            action = action.unsqueeze(1)
+        if actions.dim() == 2: 
+            actions = actions.unsqueeze(1)
         #------------------------------------------------------------#
-        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs, next_obs, action)
-        action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
-        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
+        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs1, obs2, actions)
+        actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
+        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach())
         
         forward_loss = torch.tensor(0.0)
         for p_phi2 in predicted_phi2:

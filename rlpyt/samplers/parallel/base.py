@@ -217,7 +217,6 @@ class ParallelSamplerBase(BaseSampler):
             global_B=global_B,
             record_freq=self.record_freq,
             log_dir=self.log_dir,
-            curiosity_alg=self.agent.model_kwargs['curiosity_kwargs']['curiosity_alg'],
             no_extrinsic=self.env_kwargs['no_extrinsic']
         )
         if self.eval_n_envs > 0:

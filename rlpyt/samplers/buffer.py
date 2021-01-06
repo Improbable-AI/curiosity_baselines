@@ -3,9 +3,9 @@ from copy import deepcopy
 import multiprocessing as mp
 import numpy as np
 
-from rlpyt.agents.pg.base import AgentInfo, NdigoInfo, IcmInfo, AgentInfoRnn
+from rlpyt.agents.pg.base import AgentInfo, AgentInfoRnn
 from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
-from rlpyt.agents.base import AgentInputs, IcmAgentCuriosityInputs
+from rlpyt.agents.base import AgentInputs
 from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv, EnvSamples)
 
 
@@ -31,24 +31,16 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
     action = all_action[1:]
     prev_action = all_action[:-1]  # Writing to action will populate prev_action.
     agent_info = buffer_from_example(examples["agent_info"], (T, B), agent_shared)
-    reward_int = buffer_from_example(examples["reward_int"], (T, B), agent_shared)
-    agent_curiosity_info = buffer_from_example(examples["agent_curiosity_info"], (T, B), agent_shared)
     agent_buffer = AgentSamples(
         action=action,
-        reward_int=reward_int,
         prev_action=prev_action,
         agent_info=agent_info,
-        agent_curiosity_info=agent_curiosity_info
     )
     if bootstrap_value:
         bv = buffer_from_example(examples["agent_info"].value, (1, B), agent_shared)
         agent_buffer = AgentSamplesBsv(*agent_buffer, bootstrap_value=bv)
 
-    all_observation = buffer_from_example(examples["observation"], (T + 1, B), env_shared) # all zero arrays, EXCEPT FOR INDEX 0 (see below)
-    all_observation[0] = examples["observation"] # prev_observation at the very start is the same as the reset observation
-    observation = all_observation[1:]
-    prev_observation = all_observation[:-1]  # Writing to observation will populate prev_observation.
-    next_observation = buffer_from_example(examples["observation"], (T, B), env_shared) # to store the final observation
+    observation = buffer_from_example(examples["observation"], (T + 1, B), env_shared) # all zero arrays (except 0th index should equal o_reset)
     all_reward = buffer_from_example(examples["reward"], (T + 1, B), env_shared) # all zero values
     reward = all_reward[1:]
     prev_reward = all_reward[:-1]  # Writing to reward will populate prev_reward.
@@ -56,10 +48,8 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
     env_info = buffer_from_example(examples["env_info"], (T, B), env_shared)
     env_buffer = EnvSamples(
         observation=observation,
-        prev_observation=prev_observation,
-        next_observation=next_observation,
-        reward=reward,
         prev_reward=prev_reward,
+        reward=reward,
         done=done,
         env_info=env_info,
     )
@@ -87,27 +77,14 @@ def get_example_outputs(agent, env, examples, subprocess=False):
     agent_inputs = torchify_buffer(AgentInputs(o, a, r))
     a, agent_info = agent.step(*agent_inputs)
 
-    r_int = 0.0
-    if agent.curiosity_type != 'none':
-        if agent.curiosity_type in {'icm', 'disagreement'}:
-            agent_curiosity_inputs = torchify_buffer(IcmAgentCuriosityInputs(o_reset, a, o))
-            r_int, agent_curiosity_info = agent.curiosity_step(agent.curiosity_type, *agent_curiosity_inputs)
-        elif agent.curiosity_type == 'ndigo':
-            # agent_curiosity_inputs = torchify_buffer(NdigoAgentCuriosityInputs(o_reset, a, a))
-            agent_curiosity_info = NdigoInfo(prev_gru_state=None)
-            r_int = 0.0
-
     if "prev_rnn_state" in agent_info:
         # Agent leaves B dimension in, strip it: [B,N,H] --> [N,H]
         agent_info = agent_info._replace(prev_rnn_state=agent_info.prev_rnn_state[0])
 
-    examples["prev_observation"] = deepcopy(o_reset) # used in gpu sampler step_buffer
     examples["observation"] = o_reset
     examples["reward"] = r
-    examples["reward_int"] = r_int
     examples["done"] = d
     examples["env_info"] = env_info
     examples["action"] = a  # OK to put torch tensor here, could numpify.
     examples["agent_info"] = agent_info
-    examples["agent_curiosity_info"] = agent_curiosity_info
 
