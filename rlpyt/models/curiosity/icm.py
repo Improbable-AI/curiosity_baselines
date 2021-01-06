@@ -42,7 +42,7 @@ class ResForward(nn.Module):
         return x
 
 class ICM(nn.Module):
-    """Curiosity model for intrinsically motivated agents: two neural networks, one
+    """ICM curiosity agent: two neural networks, one
     forward model that predicts the next state, and one inverse model that predicts 
     the action given two states. The forward model uses the prediction error to
     compute an intrinsic reward. The inverse model trains features that are invariant
@@ -83,15 +83,15 @@ class ICM(nn.Module):
             nn.Linear(self.feature_size, action_size)
             )
 
-        # Original 2017 ICM paper
+        # 2019 ICM paper (Burda et al.)
+        self.forward_model = ResForward(feature_size=self.feature_size, action_size=action_size)
+
+        # 2017 ICM paper (Pathak et al.)
         # self.forward_model = nn.Sequential(
         #     nn.Linear(self.feature_size + action_size, 256),
         #     nn.ReLU(),
         #     nn.Linear(256, self.feature_size)
         #     )
-
-        # Modified 2019 ICM paper
-        self.forward_model = ResForward(feature_size=self.feature_size, action_size=action_size)
 
 
     def forward(self, obs1, obs2, action):
@@ -120,20 +120,22 @@ class ICM(nn.Module):
 
         return phi1, phi2, predicted_phi2, predicted_action
 
-    def compute_bonus(self, obs, action, next_obs):
-        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs, next_obs, action)
-        forward_loss = 0.5 * (nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size)
-        return self.prediction_beta * forward_loss.item()
+    def compute_bonus(self, observations, actions):
+        obs1 = observations.clone()[:-1]
+        obs2 = observations.clone()[1:]
+        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs1, obs2, actions)
+        reward = 0.5 * (nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size)
+        return self.prediction_beta * reward
 
-    def compute_loss(self, obs, action, next_obs):
-        #------------------------------------------------------------#
-        # hacky dimension add for when you have only one environment
-        if action.dim() == 2: 
-            action = action.unsqueeze(1)
-        #------------------------------------------------------------#
-        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs, next_obs, action)
-        action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
-        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
+    def compute_loss(self, observations, actions):
+        obs1 = observations.clone()[:-1]
+        obs2 = observations.clone()[1:]
+        # dimension add for when you have only one environment
+        if actions.dim() == 2: actions = actions.unsqueeze(1)
+
+        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs1, obs2, actions)
+        actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # convert action to (T * B, action_size)
+        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach())
         forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2.detach())
         return inverse_loss, forward_loss
 

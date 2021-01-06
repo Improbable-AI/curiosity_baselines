@@ -8,9 +8,7 @@ from rlpyt.algos.utils import discount_return, generalized_advantage_estimation,
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
 OptInfo = namedtuple("OptInfo", ["return_",
-
-                                 "ndigo_intrinsic_rewards",
-
+                                 "intrinsic_rewards",
                                  "valpred",
                                  "advantage",
                                  "loss", 
@@ -63,10 +61,16 @@ class PolicyGradientAlgo(RlAlgorithm):
         reward, done, value, bv = (samples.env.reward, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
         done = done.type(reward.dtype)
 
-        if self.curiosity_type == 'ndigo':
-            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.agent.prev_action, samples.agent.action) # no grad
+        if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
+            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.agent.action)
+            intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
             reward += intrinsic_rewards
-            self.ndigo_intrinsic_rewards = intrinsic_rewards.detach().clone().data.numpy() # store for logging
+            self.intrinsic_rewards = intrinsic_rewards
+        elif self.curiosity_type == 'ndigo':
+            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation[:-1], samples.agent.prev_action, samples.agent.action) # no grad
+            intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
+            reward += intrinsic_rewards
+            self.intrinsic_rewards = intrinsic_rewards
         
         if self.normalize_reward:
             rews = np.array([])

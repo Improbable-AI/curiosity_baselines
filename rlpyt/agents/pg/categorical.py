@@ -83,10 +83,10 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
     @torch.no_grad()
     def curiosity_step(self, curiosity_type, *args):
 
-        if curiosity_type == 'icm' or 'disagreement':
-            observation, actions, next_observation = args
+        if curiosity_type == 'icm' or curiosity_type == 'disagreement':
+            observation, actions = args
             actions = self.distribution.to_onehot(actions)
-            curiosity_agent_inputs = buffer_to((observation, actions, next_observation), device=self.device)
+            curiosity_agent_inputs = buffer_to((observation, actions), device=self.device)
             agent_curiosity_info = IcmInfo()
         elif curiosity_type == 'ndigo':
             observation, prev_actions, actions = args
@@ -96,25 +96,25 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
             agent_curiosity_info = NdigoInfo(prev_gru_state=None)
 
         r_int = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs)
-        # r_int, agent_curiosity_info = buffer_to((r_int, agent_curiosity_info), device="cpu")
+        r_int, agent_curiosity_info = buffer_to((r_int, agent_curiosity_info), device="cpu")
         return AgentCuriosityStep(r_int=r_int, agent_curiosity_info=agent_curiosity_info)
 
     def curiosity_loss(self, curiosity_type, *args):
 
         if curiosity_type == 'icm' or curiosity_type == 'disagreement':
-            observation, actions, next_observation = args
+            observations, actions = args
             actions = self.distribution.to_onehot(actions)
-            actions = actions.squeeze() # hacky way to fix action passed in as ([batch, 1, size]) instead of ([batch, size])
-            curiosity_agent_inputs = buffer_to((observation, actions, next_observation), device=self.device)
+            actions = actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
+            curiosity_agent_inputs = buffer_to((observations, actions), device=self.device)
             inv_loss, forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
             losses = (inv_loss, forward_loss)
         elif curiosity_type == 'ndigo':
-            observation, prev_actions, actions = args
+            observations, prev_actions, actions = args
             actions = self.distribution.to_onehot(actions)
             prev_actions = self.distribution.to_onehot(prev_actions)
-            actions = actions.squeeze() # hacky way to fix action passed in as ([batch, 1, size]) instead of ([batch, size])
-            prev_actions = prev_actions.squeeze() # hacky way to fix action passed in as ([batch, 1, size]) instead of ([batch, size])
-            curiosity_agent_inputs = buffer_to((observation, prev_actions, actions), device=self.device)
+            actions = actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
+            prev_actions = prev_actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
+            curiosity_agent_inputs = buffer_to((observations, prev_actions, actions), device=self.device)
             forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
             losses = (forward_loss)
 

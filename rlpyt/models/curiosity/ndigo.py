@@ -131,6 +131,7 @@ class NDIGO(torch.nn.Module):
     def compute_bonus(self, observations, prev_actions, actions):
         #------------------------------------------------------------#
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
+
         # hacky dimension add for when you have only one environment
         if prev_actions.dim() == 1: 
             prev_actions = prev_actions.view(1, 1, -1)

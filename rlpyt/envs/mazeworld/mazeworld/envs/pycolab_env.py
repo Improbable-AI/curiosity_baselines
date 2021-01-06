@@ -47,7 +47,7 @@ class PycolabTrajInfo(TrajInfo):
         self.first_visit_g = 500
         self.first_visit_h = 500
 
-    def step(self, observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info):
+    def step(self, observation, action, reward_ext, done, agent_info, env_info):
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
         first_visit_time = getattr(env_info, 'first_time_visit', None)
 
@@ -85,7 +85,7 @@ class PycolabTrajInfo(TrajInfo):
                     self.first_visit_e = self.Length
                 self.visit_freq_e = visitation_frequency[7]
 
-        super().step(observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info)
+        super().step(observation, action, reward_ext, done, agent_info, env_info)
 
 def _repeat_axes(x, factor, axis=[0, 1]):
     """Repeat np.array tiling it by `factor` on all axes.
