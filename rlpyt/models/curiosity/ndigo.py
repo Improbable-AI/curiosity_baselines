@@ -144,66 +144,68 @@ class NDIGO(torch.nn.Module):
 
         # slice beliefs and actions
         belief_states_t = belief_states[:T-self.horizon] # slice off last timesteps
-        belief_states_tm1 = torch.zeros((T-self.horizon, B, self.gru_size))
-        belief_states_tm1[1:] = belief_states_t[:-1]
+        belief_states_tm1 = torch.zeros((T-self.horizon-1, B, self.gru_size))
+        belief_states_tm1[:] = belief_states_t.clone()[:-1]
         
-        action_seqs = torch.zeros((T-self.horizon, B, self.horizon*self.action_size)) # placeholder
+        action_seqs_t = torch.zeros((T-self.horizon, B, self.horizon*self.action_size)) # placeholder
+        action_seqs_tm1 = torch.zeros((T-self.horizon-1, B, (self.horizon+1)*self.action_size)) # placeholder
         for i in range(len(actions)-self.horizon):
-            action_seq = actions[i:i+self.horizon]
-            action_seq = torch.transpose(action_seq, 0, 1)
-            action_seq = torch.reshape(action_seq, (action_seq.shape[0], -1))
-            action_seqs[i] = action_seq
+            if i != len(actions)-self.horizon-1:
+                action_seq_tm1 = actions.clone()[i:i+self.horizon+1]
+                action_seq_tm1 = torch.transpose(action_seq_tm1, 0, 1)
+                action_seq_tm1 = torch.reshape(action_seq_tm1, (action_seq_tm1.shape[0], -1))
+                action_seqs_tm1[i] = action_seq_tm1
+            action_seq_t = actions.clone()[i:i+self.horizon]
+            action_seq_t = torch.transpose(action_seq_t, 0, 1)
+            action_seq_t = torch.reshape(action_seq_t, (action_seq_t.shape[0], -1))
+            action_seqs_t[i] = action_seq_t
         
         # make forward model predictions
         if self.horizon == 1:
-            predicted_states_tm1 = self.forward_model_1(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
-            predicted_states_t = self.forward_model_1(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
+            predicted_states_tm1 = self.forward_model_2(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
+            predicted_states_t = self.forward_model_1(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-1, B, 75)
         elif self.horizon == 2:
-            predicted_states_tm1 = self.forward_model_2(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
-            predicted_states_t = self.forward_model_2(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
+            predicted_states_tm1 = self.forward_model_3(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
+            predicted_states_t = self.forward_model_2(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-2, B, 75)
         elif self.horizon == 3:
-            predicted_states_tm1 = self.forward_model_3(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
-            predicted_states_t = self.forward_model_3(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
+            predicted_states_tm1 = self.forward_model_4(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
+            predicted_states_t = self.forward_model_3(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-3, B, 75)
         elif self.horizon == 4:
-            predicted_states_tm1 = self.forward_model_4(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
-            predicted_states_t = self.forward_model_4(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
+            predicted_states_tm1 = self.forward_model_5(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
+            predicted_states_t = self.forward_model_4(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-4, B, 75)
         elif self.horizon == 5:
-            predicted_states_tm1 = self.forward_model_5(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
-            predicted_states_t = self.forward_model_5(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
+            predicted_states_tm1 = self.forward_model_6(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
+            predicted_states_t = self.forward_model_5(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-5, B, 75)
         elif self.horizon == 6:
-            predicted_states_tm1 = self.forward_model_6(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
-            predicted_states_t = self.forward_model_6(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
+            predicted_states_tm1 = self.forward_model_7(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
+            predicted_states_t = self.forward_model_6(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-6, B, 75)
         elif self.horizon == 7:
-            predicted_states_tm1 = self.forward_model_7(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
-            predicted_states_t = self.forward_model_7(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
+            predicted_states_tm1 = self.forward_model_8(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
+            predicted_states_t = self.forward_model_7(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-7, B, 75)
         elif self.horizon == 8:
-            predicted_states_tm1 = self.forward_model_8(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
-            predicted_states_t = self.forward_model_8(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
+            predicted_states_tm1 = self.forward_model_9(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
+            predicted_states_t = self.forward_model_8(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-8, B, 75)
         elif self.horizon == 9:
-            predicted_states_tm1 = self.forward_model_9(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
-            predicted_states_t = self.forward_model_9(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
+            predicted_states_tm1 = self.forward_model_10(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
+            predicted_states_t = self.forward_model_9(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-9, B, 75)
         elif self.horizon == 10:
-            predicted_states_tm1 = self.forward_model_10(belief_states_tm1, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
-            predicted_states_t = self.forward_model_10(belief_states_t, action_seqs.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
+            predicted_states_tm1 = self.forward_model_11(belief_states_tm1, action_seqs_tm1.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
+            predicted_states_t = self.forward_model_10(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
 
         predicted_states_tm1 = nn.functional.sigmoid(predicted_states_tm1)
+        true_obs_tm1 = observations.clone()[self.horizon:-1].view(-1, *predicted_states_tm1.shape[1:])
         predicted_states_t = nn.functional.sigmoid(predicted_states_t)
-        true_obs = observations[self.horizon:].view(-1, *predicted_states_t.shape[1:])
+        true_obs_t = observations.clone()[self.horizon:].view(-1, *predicted_states_t.shape[1:])
 
         # generate losses
-        losses_tm1 = nn.functional.binary_cross_entropy(predicted_states_tm1, true_obs.detach(), reduction='none')
+        losses_tm1 = nn.functional.binary_cross_entropy(predicted_states_tm1, true_obs_tm1, reduction='none')
         losses_tm1 = torch.sum(losses_tm1, dim=-1)/losses_tm1.shape[-1] # average of each feature for each environment at each timestep (T, B, ave_loss_over_feature)
-        losses_t = nn.functional.binary_cross_entropy(predicted_states_t, true_obs.detach(), reduction='none')
+        losses_t = nn.functional.binary_cross_entropy(predicted_states_t, true_obs_t, reduction='none')
         losses_t = torch.sum(losses_t, dim=-1)/losses_t.shape[-1]
         
         # subtract losses to get rewards (r[t+H-1] = losses[t-1] - losses[t])
         r_int = torch.zeros((T, B))
-        r_int[self.horizon-1:len(losses_t)+self.horizon-1] = losses_tm1 - losses_t 
-        # r_int[self.horizon-1:len(losses_t)+self.horizon-1] = losses_t - losses_tm1
-        # r_int[:len(losses_t)] = losses_tm1 - losses_t
-        # r_int[:len(losses_t)] = losses_t - losses_tm1
-
-        # r_int =  nn.functional.relu(r_int)
+        r_int[self.horizon:len(losses_t)+self.horizon-1] = losses_tm1 - losses_t[1:] # time zero reward is set to 0 (L[-1] doesn't exist)
 
         return r_int
 
