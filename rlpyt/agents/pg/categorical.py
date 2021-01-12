@@ -84,9 +84,9 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
     def curiosity_step(self, curiosity_type, *args):
 
         if curiosity_type == 'icm' or curiosity_type == 'disagreement':
-            observation, actions = args
+            observation, next_observation, actions = args
             actions = self.distribution.to_onehot(actions)
-            curiosity_agent_inputs = buffer_to((observation, actions), device=self.device)
+            curiosity_agent_inputs = buffer_to((observation, next_observation, actions), device=self.device)
             agent_curiosity_info = IcmInfo()
         elif curiosity_type == 'ndigo':
             observation, prev_actions, actions = args
@@ -102,10 +102,10 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
     def curiosity_loss(self, curiosity_type, *args):
 
         if curiosity_type == 'icm' or curiosity_type == 'disagreement':
-            observations, actions = args
+            observation, next_observation, actions = args
             actions = self.distribution.to_onehot(actions)
             actions = actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
-            curiosity_agent_inputs = buffer_to((observations, actions), device=self.device)
+            curiosity_agent_inputs = buffer_to((observation, next_observation, actions), device=self.device)
             inv_loss, forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
             losses = (inv_loss, forward_loss)
         elif curiosity_type == 'ndigo':

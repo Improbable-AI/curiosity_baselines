@@ -118,23 +118,19 @@ class Disagreement(nn.Module):
 
         return phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action
 
-    def compute_bonus(self, observations, actions):
-        obs1 = observations.clone()[:-1]
-        obs2 = observations.clone()[1:]
-        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs1, obs2, actions)
+    def compute_bonus(self, observations, next_observations, actions):
+        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(observations, next_observations, actions)
         feature_var = torch.var(predicted_phi2_stacked, dim=0) # feature variance across forward models
         reward = torch.mean(feature_var, axis=-1) # mean over feature
         return self.prediction_beta * reward
 
-    def compute_loss(self, observations, actions):
-        obs1 = observations.clone()[:-1]
-        obs2 = observations.clone()[1:]
+    def compute_loss(self, observations, next_observations, actions):
         #------------------------------------------------------------#
         # hacky dimension add for when you have only one environment (debugging)
         if actions.dim() == 2: 
             actions = actions.unsqueeze(1)
         #------------------------------------------------------------#
-        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs1, obs2, actions)
+        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(observations, next_observations, actions)
         actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach())
         

@@ -120,20 +120,15 @@ class ICM(nn.Module):
 
         return phi1, phi2, predicted_phi2, predicted_action
 
-    def compute_bonus(self, observations, actions):
-        obs1 = observations.clone()[:-1]
-        obs2 = observations.clone()[1:]
-        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs1, obs2, actions)
+    def compute_bonus(self, observations, next_observations, actions):
+        phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
         reward = 0.5 * (nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size)
         return self.prediction_beta * reward
 
-    def compute_loss(self, observations, actions):
-        obs1 = observations.clone()[:-1]
-        obs2 = observations.clone()[1:]
+    def compute_loss(self, observations, next_observations, actions):
         # dimension add for when you have only one environment
         if actions.dim() == 2: actions = actions.unsqueeze(1)
-
-        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs1, obs2, actions)
+        phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
         actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # convert action to (T * B, action_size)
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach())
         forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2.detach())
