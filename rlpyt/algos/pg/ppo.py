@@ -78,18 +78,19 @@ class PPO(PolicyGradientAlgo):
         """
         recurrent = self.agent.recurrent
         agent_inputs = AgentInputs(  # Move inputs to device once, index there.
-            observation=samples.env.observation[:-1],
+            observation=samples.env.observation,
             prev_action=samples.agent.prev_action,
             prev_reward=samples.env.prev_reward,
         )
         if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
             agent_curiosity_inputs = IcmAgentCuriosityInputs(
                 observation=samples.env.observation,
+                next_observation=samples.env.next_observation,
                 action=samples.agent.action,
             )
         elif self.curiosity_type == 'ndigo':
             agent_curiosity_inputs = NdigoAgentCuriosityInputs(
-                observation=samples.env.observation[:-1],
+                observation=samples.env.observation,
                 prev_actions=samples.agent.prev_action,
                 actions=samples.agent.action
             )

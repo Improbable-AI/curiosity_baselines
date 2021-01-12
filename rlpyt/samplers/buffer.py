@@ -40,7 +40,8 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         bv = buffer_from_example(examples["agent_info"].value, (1, B), agent_shared)
         agent_buffer = AgentSamplesBsv(*agent_buffer, bootstrap_value=bv)
 
-    observation = buffer_from_example(examples["observation"], (T + 1, B), env_shared) # all zero arrays (except 0th index should equal o_reset)
+    observation = buffer_from_example(examples["observation"], (T, B), env_shared) # all zero arrays (except 0th index should equal o_reset)
+    next_observation = buffer_from_example(examples["observation"], (T, B), env_shared) 
     all_reward = buffer_from_example(examples["reward"], (T + 1, B), env_shared) # all zero values
     reward = all_reward[1:]
     prev_reward = all_reward[:-1]  # Writing to reward will populate prev_reward.
@@ -48,6 +49,7 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
     env_info = buffer_from_example(examples["env_info"], (T, B), env_shared)
     env_buffer = EnvSamples(
         observation=observation,
+        next_observation=next_observation,
         prev_reward=prev_reward,
         reward=reward,
         done=done,

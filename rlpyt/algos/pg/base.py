@@ -62,12 +62,12 @@ class PolicyGradientAlgo(RlAlgorithm):
         done = done.type(reward.dtype)
 
         if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
-            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.agent.action)
+            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.env.next_observation, samples.agent.action)
             intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
             reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards
         elif self.curiosity_type == 'ndigo':
-            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation[:-1], samples.agent.prev_action, samples.agent.action) # no grad
+            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.agent.prev_action, samples.agent.action) # no grad
             intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
             reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards

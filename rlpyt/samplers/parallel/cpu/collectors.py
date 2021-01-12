@@ -102,7 +102,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
         observation, action, reward_tot = agent_inputs
         
         b = np.where(self.done)[0]
-        # observation[b] = self.temp_observation[b]
+        observation[b] = self.temp_observation[b]
         self.done[:] = False  # Did resets between batches.
         
         # torchifying syncs components of agent_inputs (observation, action, reward_tot)
@@ -115,7 +115,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
         self.agent.sample_mode(itr)
         for t in range(self.batch_T):
 
-            env_buf.observation[t] = observation
+            env_buf.observation[t] = observation # [0 : T]
             # Agent inputs and outputs are torch tensors.
             act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_tot_pyt)
             action = numpify_buffer(act_pyt)
@@ -141,8 +141,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                     traj_infos[b] = self.TrajInfoCls()
                     self.need_reset[b] = True
                 if d:
-                    # self.temp_prev_observation[b] = observation[b]
-                    # self.temp_observation[b] = o
+                    self.temp_observation[b] = o
                     o = 0  # Record blank.
                 self.done[b] = d
 
@@ -154,6 +153,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
 
             agent_buf.action[t] = action
             env_buf.reward[t] = reward_tot
+            env_buf.next_observation[t] = observation # [1 : T+1]
             env_buf.done[t] = self.done
             if agent_info:
                 agent_buf.agent_info[t] = agent_info
@@ -162,7 +162,6 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
             # agent.value() should not advance rnn state.
             agent_buf.bootstrap_value[:] = self.agent.value(obs_pyt, act_pyt, rew_tot_pyt)
 
-        # AgentInputs = ['observation', 'prev_action', 'prev_reward']
         return AgentInputs(observation, action, reward_tot), traj_infos, completed_infos
 
     def reset_if_needed(self, agent_inputs):

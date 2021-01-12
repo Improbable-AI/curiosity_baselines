@@ -126,6 +126,5 @@ class DecorrelatingStartCollector(BaseCollector):
             self.step_buffer_np.prev_reward[:] = prev_reward
             self.step_buffer_np.observation[:] = observation
 
-        # AgentInputs -> ['observation', 'prev_action', 'prev_reward']
         return AgentInputs(observation, prev_action, prev_reward), traj_infos
 
