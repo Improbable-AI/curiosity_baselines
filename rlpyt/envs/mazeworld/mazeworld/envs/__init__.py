@@ -5,3 +5,5 @@ from mazeworld.envs.mazeworld_env import DeepmindMazeWorld_5room
 from mazeworld.envs.mazeworld_env import DeepmindMazeWorld_5room_randomfixed
 from mazeworld.envs.mazeworld_env import DeepmindMazeWorld_5room_bouncing
 from mazeworld.envs.mazeworld_env import DeepmindMazeWorld_5room_brownian
+from mazeworld.envs.mazeworld_env import DeepmindMazeWorld_8room
+from mazeworld.envs.mazeworld_env import DeepmindMazeWorld_5room_moveable

@@ -31,11 +31,17 @@ class PycolabTrajInfo(TrajInfo):
         self.visit_freq_c = 0
         self.visit_freq_d = 0
         self.visit_freq_e = 0
+        self.visit_freq_f = 0
+        self.visit_freq_g = 0
+        self.visit_freq_h = 0
         self.first_visit_a = 500
         self.first_visit_b = 500
         self.first_visit_c = 500
         self.first_visit_d = 500
         self.first_visit_e = 500
+        self.first_visit_f = 500
+        self.first_visit_g = 500
+        self.first_visit_h = 500
 
     def step(self, observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info):
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
@@ -62,6 +68,18 @@ class PycolabTrajInfo(TrajInfo):
                 if first_visit_time[4] == 500 and visitation_frequency[4] == 1:
                     self.first_visit_e = self.Length
                 self.visit_freq_e = visitation_frequency[4]
+            if len(visitation_frequency) >= 6:
+                if first_visit_time[5] == 500 and visitation_frequency[5] == 1:
+                    self.first_visit_e = self.Length
+                self.visit_freq_e = visitation_frequency[5]
+            if len(visitation_frequency) >= 7:
+                if first_visit_time[6] == 500 and visitation_frequency[6] == 1:
+                    self.first_visit_e = self.Length
+                self.visit_freq_e = visitation_frequency[6]
+            if len(visitation_frequency) >= 8:
+                if first_visit_time[7] == 500 and visitation_frequency[7] == 1:
+                    self.first_visit_e = self.Length
+                self.visit_freq_e = visitation_frequency[7]
 
         super().step(observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info)
 
@@ -182,9 +200,13 @@ class PyColabEnv(gym.Env):
                 'c' : (250., 0., 129.),
                 'd' : (0., 250., 71.),
                 'e' : (255., 0., 0.),
+                'f' : (252., 28., 3.),
+                'g' : (136., 3., 252.),
+                'h' : (20., 145., 60.),
                 '#' : (61., 61., 61.),
                 '@' : (255., 255., 0.),
                 ' ' : (0., 0., 0.)}
+
 
     def _paint_board(self, layers):
         """Method to privately paint layers to RGB.

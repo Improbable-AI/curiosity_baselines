@@ -9,7 +9,9 @@ from mazeworld.envs import (MazeWorld,
                             DeepmindMazeWorld_5room, 
                             DeepmindMazeWorld_5room_randomfixed, 
                             DeepmindMazeWorld_5room_bouncing,
-                            DeepmindMazeWorld_5room_brownian)
+                            DeepmindMazeWorld_5room_brownian,
+                            DeepmindMazeWorld_8room,
+                            DeepmindMazeWorld_5room_moveable)
 
 register(
     id='Maze-v0',
@@ -46,3 +48,19 @@ register(
     entry_point='mazeworld.envs:DeepmindMazeWorld_maze',
     max_episode_steps=500,
     kwargs={'level': 0, 'max_iterations': 500})
+
+register(
+    id='Deepmind8Room-v0',
+    entry_point='mazeworld.envs:DeepmindMazeWorld_8room',
+    max_episode_steps=500,
+    kwargs={'level': 0, 'max_iterations': 500})
+
+register(
+    id='Deepmind5RoomMoveable-v0',
+    entry_point='mazeworld.envs:DeepmindMazeWorld_5room_moveable',
+    max_episode_steps=500,
+    kwargs={'level': 0, 'max_iterations': 500})
+
+
+
+
