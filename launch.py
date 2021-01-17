@@ -24,7 +24,7 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 # Environments
 from rlpyt.samplers.collections import TrajInfo
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from mazeworld.envs.pycolab_env import PycolabTrajInfo
+from rlpyt.envs.mazeworld.mazeworld.envs.pycolab_env import PycolabTrajInfo
 from rlpyt.envs.gym import make as gym_make
 from rlpyt.envs.gym import mario_make, deepmind_make
 
@@ -136,7 +136,7 @@ def start_experiment(args):
         os.environ['CUDA_VISIBLE_DEVICES'] = str(0)
     else:
         affinity = dict(workers_cpus=list(range(args.num_cpus)))
-
+    
     # potentially reload models
     initial_optim_state_dict = None
     initial_model_state_dict = None

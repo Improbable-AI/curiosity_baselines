@@ -13,7 +13,7 @@ from pycolab.examples import (better_scrolly_maze,
                               deepmind_5room_bouncing,
                               deepmind_5room_brownian)
 from pycolab import cropping
-from mazeworld.envs import pycolab_env
+from . import pycolab_env
 
 class MazeWorld(pycolab_env.PyColabEnv):
     """Custom maze world game.

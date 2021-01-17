@@ -135,7 +135,7 @@ class PPO(PolicyGradientAlgo):
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.agent.parameters(), self.clip_grad_norm)
                 # plot_grad_flow(self.agent.model.named_parameters(), './grad_checking', 'model') # DEBUGGING
                 self.optimizer.step()
-
+                
                 # Tensorboard summaries
                 opt_info.loss.append(loss.item())
                 opt_info.pi_loss.append(pi_loss.item())
@@ -147,7 +147,7 @@ class PPO(PolicyGradientAlgo):
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
 
-                opt_info.gradNorm.append(grad_norm.item())
+                opt_info.gradNorm.append(grad_norm)
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1

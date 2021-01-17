@@ -2,14 +2,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from gym.envs.registration import register
+import gym
 
-from mazeworld.envs import (MazeWorld, 
+from .envs import (MazeWorld, 
                             DeepmindMazeWorld_maze, 
                             DeepmindMazeWorld_5room, 
                             DeepmindMazeWorld_5room_randomfixed, 
                             DeepmindMazeWorld_5room_bouncing,
                             DeepmindMazeWorld_5room_brownian)
+
+def register(id, entry_point, max_episode_steps, kwargs):
+    env_specs = gym.envs.registry.env_specs
+    if id in env_specs.keys():
+        del env_specs[id]
+    gym.register(id=id, 
+                 entry_point=entry_point, 
+                 max_episode_steps=max_episode_steps, 
+                 kwargs=kwargs)
 
 register(
     id='Maze-v0',
