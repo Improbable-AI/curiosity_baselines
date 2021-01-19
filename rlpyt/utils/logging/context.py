@@ -50,7 +50,7 @@ def logger_context(
     """
     logger.set_snapshot_mode(snapshot_mode)
     logger.set_log_tabular_only(False)
-    _, _, name, run = log_dir.split('/')[1:]
+    name, run = log_dir.split('/')[-2:]
     run_ID = run[-1]
     tabular_log_file = osp.join(log_dir, "progress.csv")
     text_log_file = osp.join(log_dir, "debug.log")
