@@ -3,7 +3,7 @@
 /results/  
 mjkey.txt
 log.numbers
-Makefile
+Makefile*
 *.dot
 grad_checking
 *.pdf

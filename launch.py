@@ -41,8 +41,8 @@ from rlpyt.utils.misc import wrap_print
 
 with open('./global.json') as global_params:
     params = json.load(global_params)
-    _WORK_DIR = params['container_workdir']
-    _RESULTS_DIR = params['container_resultsdir']
+    _WORK_DIR = params['local_workdir']
+    _RESULTS_DIR = params['local_resultsdir']
     _TB_PORT = params['tb_port']
     _ATARI_ENVS = params['envs']['atari_envs']
     _MUJOCO_ENVS = params['envs']['mujoco_envs']
