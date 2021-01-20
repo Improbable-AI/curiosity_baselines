@@ -60,13 +60,10 @@ def sampling_process(common_kwargs, worker_kwargs):
     envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
     
     log_heatmaps = c.env_kwargs.get('log_heatmaps', None)
-    print("LOG: ", log_heatmaps)
+    
     if log_heatmaps is not None and log_heatmaps == True:
         for env in envs[1:]:
             env.log_heatmaps = False
-        for env in envs:
-            print(env.log_heatmaps)
-        print('-'*100)
 
     if c.record_freq > 0:
         if c.env_kwargs['game'] in ATARI_ENVS:
