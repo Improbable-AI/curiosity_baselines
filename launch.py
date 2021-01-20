@@ -24,7 +24,7 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 # Environments
 from rlpyt.samplers.collections import TrajInfo
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from mazeworld.envs.pycolab_env import PycolabTrajInfo
+from rlpyt.envs.mazeworld.mazeworld.envs.pycolab_env import PycolabTrajInfo
 from rlpyt.envs.gym import make as gym_make
 from rlpyt.envs.gym import mario_make, deepmind_make
 
@@ -41,8 +41,8 @@ from rlpyt.utils.misc import wrap_print
 
 with open('./global.json') as global_params:
     params = json.load(global_params)
-    _WORK_DIR = params['container_workdir']
-    _RESULTS_DIR = params['container_resultsdir']
+    _WORK_DIR = params['local_workdir']
+    _RESULTS_DIR = params['local_resultsdir']
     _TB_PORT = params['tb_port']
     _ATARI_ENVS = params['envs']['atari_envs']
     _MUJOCO_ENVS = params['envs']['mujoco_envs']
@@ -136,7 +136,7 @@ def start_experiment(args):
         os.environ['CUDA_VISIBLE_DEVICES'] = str(0)
     else:
         affinity = dict(workers_cpus=list(range(args.num_cpus)))
-
+    
     # potentially reload models
     initial_optim_state_dict = None
     initial_model_state_dict = None
@@ -240,7 +240,9 @@ def start_experiment(args):
             no_extrinsic=args.no_extrinsic,
             no_negative_reward=args.no_negative_reward,
             normalize_obs=args.normalize_obs,
-            normalize_obs_steps=10000
+            normalize_obs_steps=10000,
+            log_heatmaps=args.log_heatmaps,
+            logdir=args.log_dir
             )
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make

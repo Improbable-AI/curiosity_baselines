@@ -11,7 +11,10 @@ from rlpyt.utils.seed import set_seed, set_envs_seeds
 
 from gym.wrappers import Monitor
 
-with open('/curiosity_baselines/global.json') as global_params_file:
+root_path = os.path.abspath(__file__).split('/')[1:]
+root_path = root_path[:root_path.index('curiosity_baselines')+1]
+info_file_path = '/'+ '/'.join(root_path) + '/global.json'
+with open(info_file_path) as global_params_file:
     global_params = json.load(global_params_file)
     ATARI_ENVS = global_params['envs']['atari_envs']
 
@@ -53,7 +56,15 @@ def sampling_process(common_kwargs, worker_kwargs):
     """
     c, w = AttrDict(**common_kwargs), AttrDict(**worker_kwargs)
     initialize_worker(w.rank, w.seed, w.cpus, c.torch_threads)
+
     envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
+    
+    log_heatmaps = c.env_kwargs.get('log_heatmaps', None)
+    
+    if log_heatmaps is not None and log_heatmaps == True:
+        for env in envs[1:]:
+            env.log_heatmaps = False
+
     if c.record_freq > 0:
         if c.env_kwargs['game'] in ATARI_ENVS:
             envs[0].record_env = True

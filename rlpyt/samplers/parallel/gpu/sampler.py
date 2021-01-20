@@ -55,11 +55,6 @@ class GpuSamplerBase(ParallelSamplerBase):
         self.serve_actions(itr)  # Worker step environments here.
         self.ctrl.barrier_out.wait()
 
-        r_int = self.agent.curiosity_step(self.samples_pyt.env.observation, self.samples_pyt.agent.action, self.samples_pyt.env.next_observation)
-        r_int = r_int.to("cpu")
-        self.samples_pyt.env.reward[:] = self.samples_pyt.env.reward + r_int
-
-        record_tabular('EpIntRewAveTrue', r_int.clone().detach().mean().item())
         traj_infos = drain_queue(self.traj_infos_queue)
 
         return self.samples_pyt, traj_infos

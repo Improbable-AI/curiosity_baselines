@@ -230,9 +230,10 @@ def deepmind_make(*args, info_example=None, **kwargs):
     rlpyt's ``GymEnvWrapper``, using ``gym.make(*args, **kwargs)``. If
     ``info_example`` is not ``None``, will include the ``EnvInfoWrapper``.
     """
-    import mazeworld
+    import rlpyt.envs.mazeworld.mazeworld
 
     env = gym.make(kwargs['game'])
+    env.pycolab_init(kwargs['logdir'], kwargs['log_heatmaps'])
 
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)

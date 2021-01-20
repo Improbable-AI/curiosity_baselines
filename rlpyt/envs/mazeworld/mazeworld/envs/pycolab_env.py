@@ -4,6 +4,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
+
 import abc
 import time
 import numbers
@@ -16,6 +19,7 @@ import numpy as np
 from collections import namedtuple
 
 from rlpyt.samplers.collections import TrajInfo
+import matplotlib.pyplot as plt
 
 EnvInfo = namedtuple("EnvInfo", ["visitation_frequency", "first_visit_time", "traj_done"])
 
@@ -31,11 +35,17 @@ class PycolabTrajInfo(TrajInfo):
         self.visit_freq_c = 0
         self.visit_freq_d = 0
         self.visit_freq_e = 0
+        self.visit_freq_f = 0
+        self.visit_freq_g = 0
+        self.visit_freq_h = 0
         self.first_visit_a = 500
         self.first_visit_b = 500
         self.first_visit_c = 500
         self.first_visit_d = 500
         self.first_visit_e = 500
+        self.first_visit_f = 500
+        self.first_visit_g = 500
+        self.first_visit_h = 500
 
     def step(self, observation, action, reward_ext, done, agent_info, env_info):
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
@@ -62,6 +72,18 @@ class PycolabTrajInfo(TrajInfo):
                 if first_visit_time[4] == 500 and visitation_frequency[4] == 1:
                     self.first_visit_e = self.Length
                 self.visit_freq_e = visitation_frequency[4]
+            if len(visitation_frequency) >= 6:
+                if first_visit_time[5] == 500 and visitation_frequency[5] == 1:
+                    self.first_visit_e = self.Length
+                self.visit_freq_e = visitation_frequency[5]
+            if len(visitation_frequency) >= 7:
+                if first_visit_time[6] == 500 and visitation_frequency[6] == 1:
+                    self.first_visit_e = self.Length
+                self.visit_freq_e = visitation_frequency[6]
+            if len(visitation_frequency) >= 8:
+                if first_visit_time[7] == 500 and visitation_frequency[7] == 1:
+                    self.first_visit_e = self.Length
+                self.visit_freq_e = visitation_frequency[7]
 
         super().step(observation, action, reward_ext, done, agent_info, env_info)
 
@@ -159,6 +181,18 @@ class PyColabEnv(gym.Env):
         self.visitation_frequency = {char:0 for char in self.objects}
         self.first_visit_time = {char:500 for char in self.objects}
 
+        # Heatmaps
+        self.episodes = 0 # number of episodes run (to determine when to save heatmaps)
+        self.heatmap_save_freq = 1 # save heatmaps every 3 episodes
+        self.heatmap = np.zeros((5, 5)) # stores counts each episode (5x5 is a placeholder)
+
+    def pycolab_init(self, logdir, log_heatmaps):
+        self.log_heatmaps = log_heatmaps
+        root_path = os.path.abspath(__file__).split('/')[1:]
+        root_path = root_path[:root_path.index('curiosity_baselines')+1]
+        self.heatmap_path = '/' + '/'.join(root_path) + '/' + '/'.join(logdir.split('/')[1:]) + '/heatmaps'
+        if os.path.isdir(self.heatmap_path) == False and log_heatmaps == True:
+            os.makedirs(self.heatmap_path)
 
     @abc.abstractmethod
     def make_game(self):
@@ -182,9 +216,13 @@ class PyColabEnv(gym.Env):
                 'c' : (250., 0., 129.),
                 'd' : (0., 250., 71.),
                 'e' : (255., 0., 0.),
+                'f' : (252., 28., 3.),
+                'g' : (136., 3., 252.),
+                'h' : (20., 145., 60.),
                 '#' : (61., 61., 61.),
                 '@' : (255., 255., 0.),
                 ' ' : (0., 0., 0.)}
+
 
     def _paint_board(self, layers):
         """Method to privately paint layers to RGB.
@@ -233,6 +271,11 @@ class PyColabEnv(gym.Env):
                 self._state.append(mask)
         self._state = np.array(self._state)
 
+        # update heatmap metric
+        if self.log_heatmaps == True:
+            pr, pc = self.current_game.things['P'].position
+            self.heatmap[pr, pc] += 1
+
         # rendering purposes (RGB)
         self._last_observations = observations
         if self.render_mode == 'cropped':
@@ -263,8 +306,17 @@ class PyColabEnv(gym.Env):
         self._last_uncropped_painted = self._paint_board(observations.layers).astype(np.float32)
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
+        # reset trackers
+        self.visitation_frequency = {char:0 for char in self.objects}
+        # save heatmaps and reset
+        if self.log_heatmaps == True and self.episodes % self.heatmap_save_freq == 0:
+            np.save('{}/{}.npy'.format(self.heatmap_path, self.episodes), self.heatmap)
+            heatmap_normed = self.heatmap / np.linalg.norm(self.heatmap)
+            plt.imsave('{}/{}.png'.format(self.heatmap_path, self.episodes), heatmap_normed, cmap='afmhot', vmin=0.0, vmax=1.0)
+        self.episodes += 1
+        self.heatmap = np.zeros(self._last_uncropped_observations.board.shape)
+        # run update
         self._update_for_game_step(observations, reward)
-        self.visitation_frequency = {char:0 for char in self.objects} # reset trackers
         return self._state
 
     def step(self, action):

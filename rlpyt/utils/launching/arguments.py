@@ -55,8 +55,12 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-normalize_advantage', action='store_true', help='Whether or not to normalize advantages.')
 
     # environment specific args
-    if 'SuperMarioBros-v0' or 'SuperMarioBros-v3' in args_in:
+    environment = args_in[args_in.index('-env')+1]
+    if 'mario' in environment.lower():
         parser.add_argument('-mario_level', default='Level1-1', type=str, help='World and level to start at for super mario bros.')
+        parser.add_argument('-normalize_obs', action='store_true', help='Whether or not to normalize the observation each step.')
+    elif 'deepmind' in environment.lower():
+        parser.add_argument('-log_heatmaps', action='store_true', help='Whether or not to store heatmaps.')
         parser.add_argument('-normalize_obs', action='store_true', help='Whether or not to normalize the observation each step.')
 
     # curiosity specific args
