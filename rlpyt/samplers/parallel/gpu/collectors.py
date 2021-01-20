@@ -100,7 +100,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     r_ext = 0.0
                 
                 # intrinsic reward is generated post batch for gpu sampling
-                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, 0.0, d, step.agent_info[b], env_info)
+                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, d, step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate())
                     traj_infos[b] = self.TrajInfoCls()
