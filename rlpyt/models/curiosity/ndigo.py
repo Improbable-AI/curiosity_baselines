@@ -213,8 +213,6 @@ class NDIGO(torch.nn.Module):
 
         # r_int = nn.functional.relu(r_int)
 
-        r_int[self.horizon:len(losses_t)-1+self.horizon] = losses_t[1:] - losses_t[0:len(losses_t)-1]
-
         return r_int
 
 
