@@ -67,23 +67,20 @@ COPY requirements.txt /tmp/
 RUN pip3 install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # -------------------- 
-# Install gym-super-mario-bros locally
-COPY ./rlpyt/envs/gym-super-mario-bros /gym-super-mario-bros
-WORKDIR /gym-super-mario-bros
-RUN pip3 install -e .
-
 # Copy in retro roms
 COPY ./rlpyt/envs/retro_roms /tmp/retro_roms
 RUN python3 -m retro.import /tmp/retro_roms
 RUN rm -r /tmp/retro_roms
 
-# Install pycolab locally
-COPY ./rlpyt/envs/pycolab /pycolab
-WORKDIR /pycolab
+COPY ./rlpyt/envs/gym-super-mario-bros /curiosity_baselines/rlpyt/envs/gym-super-mario-bros
+WORKDIR /curiosity_baselines/rlpyt/envs/gym-super-mario-bros
 RUN pip3 install -e .
 
-# Install mazeworld locally
-COPY ./rlpyt/envs/mazeworld /mazeworld
-WORKDIR /mazeworld
+COPY ./rlpyt/envs/pycolab /curiosity_baselines/rlpyt/envs/pycolab
+WORKDIR /curiosity_baselines/rlpyt/envs/pycolab
+RUN pip3 install -e .
+
+COPY ./rlpyt/envs/mazeworld /curiosity_baselines/rlpyt/envs/mazeworld
+WORKDIR /curiosity_baselines/rlpyt/envs/mazeworld
 RUN pip3 install -e .
 

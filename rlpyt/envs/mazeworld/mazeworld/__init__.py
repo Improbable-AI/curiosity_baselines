@@ -5,15 +5,15 @@ from __future__ import print_function
 import gym
 
 from .envs import (MazeWorld, 
-                            DeepmindMazeWorld_maze, 
-                            DeepmindMazeWorld_5room, 
-                            DeepmindMazeWorld_5room_randomfixed, 
-                            DeepmindMazeWorld_5room_bouncing,
-                            DeepmindMazeWorld_5room_brownian,
-                            DeepmindMazeWorld_8room,
-                            DeepmindMazeWorld_8room_v1,
-                            DeepmindMazeWorld_5room_moveable,
-                            DeepmindMazeWorld_5room_moveable_v1)
+                    DeepmindMazeWorld_maze, 
+                    DeepmindMazeWorld_5room, 
+                    DeepmindMazeWorld_5room_randomfixed, 
+                    DeepmindMazeWorld_5room_bouncing,
+                    DeepmindMazeWorld_5room_brownian,
+                    DeepmindMazeWorld_8room,
+                    DeepmindMazeWorld_8room_v1,
+                    DeepmindMazeWorld_5room_moveable,
+                    DeepmindMazeWorld_5room_moveable_v1)
 
 def register(id, entry_point, max_episode_steps, kwargs):
     env_specs = gym.envs.registry.env_specs

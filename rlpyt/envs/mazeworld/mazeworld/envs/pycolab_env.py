@@ -4,6 +4,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
+
 import abc
 import time
 import numbers
@@ -16,6 +19,7 @@ import numpy as np
 from collections import namedtuple
 
 from rlpyt.samplers.collections import TrajInfo
+import matplotlib.pyplot as plt
 
 EnvInfo = namedtuple("EnvInfo", ["visitation_frequency", "first_visit_time", "traj_done"])
 
@@ -177,6 +181,18 @@ class PyColabEnv(gym.Env):
         self.visitation_frequency = {char:0 for char in self.objects}
         self.first_visit_time = {char:500 for char in self.objects}
 
+        # Heatmaps
+        self.episodes = 0 # number of episodes run (to determine when to save heatmaps)
+        self.heatmap_save_freq = 1 # save heatmaps every 3 episodes
+        self.heatmap = np.zeros((5, 5)) # stores counts each episode (5x5 is a placeholder)
+
+    def pycolab_init(self, logdir, log_heatmaps):
+        self.log_heatmaps = log_heatmaps
+        root_path = os.path.abspath(__file__).split('/')[1:]
+        root_path = root_path[:root_path.index('curiosity_baselines')+1]
+        self.heatmap_path = '/' + '/'.join(root_path) + '/' + '/'.join(logdir.split('/')[1:]) + '/heatmaps'
+        if os.path.isdir(self.heatmap_path) == False and log_heatmaps == True:
+            os.makedirs(self.heatmap_path)
 
     @abc.abstractmethod
     def make_game(self):
@@ -255,6 +271,11 @@ class PyColabEnv(gym.Env):
                 self._state.append(mask)
         self._state = np.array(self._state)
 
+        # update heatmap metric
+        if self.log_heatmaps == True:
+            pr, pc = self.current_game.things['P'].position
+            self.heatmap[pr, pc] += 1
+
         # rendering purposes (RGB)
         self._last_observations = observations
         if self.render_mode == 'cropped':
@@ -285,8 +306,17 @@ class PyColabEnv(gym.Env):
         self._last_uncropped_painted = self._paint_board(observations.layers).astype(np.float32)
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
+        # reset trackers
+        self.visitation_frequency = {char:0 for char in self.objects}
+        # save heatmaps and reset
+        if self.log_heatmaps == True and self.episodes % self.heatmap_save_freq == 0:
+            np.save('{}/{}.npy'.format(self.heatmap_path, self.episodes), self.heatmap)
+            heatmap_normed = self.heatmap / np.linalg.norm(self.heatmap)
+            plt.imsave('{}/{}.png'.format(self.heatmap_path, self.episodes), heatmap_normed, cmap='afmhot', vmin=0.0, vmax=1.0)
+        self.episodes += 1
+        self.heatmap = np.zeros(self._last_uncropped_observations.board.shape)
+        # run update
         self._update_for_game_step(observations, reward)
-        self.visitation_frequency = {char:0 for char in self.objects} # reset trackers
         return self._state
 
     def step(self, action):

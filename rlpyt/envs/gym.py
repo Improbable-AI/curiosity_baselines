@@ -233,6 +233,7 @@ def deepmind_make(*args, info_example=None, **kwargs):
     import rlpyt.envs.mazeworld.mazeworld
 
     env = gym.make(kwargs['game'])
+    env.pycolab_init(kwargs['logdir'], kwargs['log_heatmaps'])
 
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
