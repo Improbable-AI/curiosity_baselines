@@ -183,7 +183,7 @@ class PyColabEnv(gym.Env):
 
         # Heatmaps
         self.episodes = 0 # number of episodes run (to determine when to save heatmaps)
-        self.heatmap_save_freq = 1 # save heatmaps every 3 episodes
+        self.heatmap_save_freq = 3 # save heatmaps every 3 episodes
         self.heatmap = np.zeros((5, 5)) # stores counts each episode (5x5 is a placeholder)
 
     def pycolab_init(self, logdir, log_heatmaps):
