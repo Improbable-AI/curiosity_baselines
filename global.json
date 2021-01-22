@@ -1,5 +1,5 @@
 {
-    "container_image": "echen9898/curiosity_baselines:0.1.9",
+    "container_image": "echen9898/curiosity_baselines:0.1.3_gpu",
     "container_workdir": "/curiosity_baselines",
     "container_resultsdir": "/curiosity_baselines/results",
     "labmachine_resultsdir": "/data/pulkitag/misc/ericrc/curiosity_baselines/results",

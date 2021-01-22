@@ -55,7 +55,8 @@ class AtariLstmModel(torch.nn.Module):
                                                     feature_encoding=curiosity_kwargs['feature_encoding'],
                                                     batch_norm=curiosity_kwargs['batch_norm'],
                                                     prediction_beta=curiosity_kwargs['prediction_beta'],
-                                                    obs_stats=self.obs_stats)
+                                                    obs_stats=self.obs_stats,
+                                                    device=curiosity_kwargs['device'])
             elif curiosity_kwargs['curiosity_alg'] == 'ndigo':
                 self.curiosity_model = NDIGO(image_shape=image_shape,
                                              action_size=output_size,
@@ -63,7 +64,8 @@ class AtariLstmModel(torch.nn.Module):
                                              horizon=curiosity_kwargs['pred_horizon'],
                                              feature_encoding=curiosity_kwargs['feature_encoding'],
                                              batch_norm=curiosity_kwargs['batch_norm'],
-                                             num_predictors=curiosity_kwargs['num_predictors']
+                                             num_predictors=curiosity_kwargs['num_predictors'],
+                                             device=curiosity_kwargs['device'],
                                              )
 
             if curiosity_kwargs['feature_encoding'] == 'idf':

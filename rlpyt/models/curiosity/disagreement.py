@@ -55,7 +55,8 @@ class Disagreement(nn.Module):
             feature_encoding='idf', 
             batch_norm=False,
             prediction_beta=1.0,
-            obs_stats=None
+            obs_stats=None,
+            device="cpu"
             ):
         super(Disagreement, self).__init__()
 
@@ -63,6 +64,7 @@ class Disagreement(nn.Module):
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
+        self.device = torch.device("cuda:0" if device == "gpu" else "cpu")
 
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
@@ -86,7 +88,8 @@ class Disagreement(nn.Module):
         
         self.forward_model = []
         for _ in range(self.ensemble_size):
-            self.forward_model.append(ResForward(feature_size=self.feature_size, action_size=action_size))
+            model = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
+            self.forward_model.append(model)
 
     def forward(self, obs1, obs2, action):
 
@@ -134,7 +137,7 @@ class Disagreement(nn.Module):
         actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach())
         
-        forward_loss = torch.tensor(0.0)
+        forward_loss = torch.tensor(0.0, device=self.device)
         for p_phi2 in predicted_phi2:
             forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
 

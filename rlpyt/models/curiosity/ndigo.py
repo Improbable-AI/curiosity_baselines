@@ -48,7 +48,8 @@ class NDIGO(torch.nn.Module):
             gru_size=128,
             batch_norm=False,
             obs_stats=None,
-            num_predictors=10
+            num_predictors=10,
+            device='cpu',
             ):
         """Instantiate neural net module according to inputs."""
         super(NDIGO, self).__init__()
@@ -62,7 +63,7 @@ class NDIGO(torch.nn.Module):
         self.num_predictors = num_predictors
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
-
+        self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
                 self.feature_size = 288
@@ -145,11 +146,11 @@ class NDIGO(torch.nn.Module):
 
         # slice beliefs and actions
         belief_states_t = belief_states[:T-self.horizon] # slice off last timesteps
-        belief_states_tm1 = torch.zeros((T-self.horizon-1, B, self.gru_size))
+        belief_states_tm1 = torch.zeros((T-self.horizon-1, B, self.gru_size), device=self.device)
         belief_states_tm1[:] = belief_states_t.clone()[:-1]
         
-        action_seqs_t = torch.zeros((T-self.horizon, B, self.horizon*self.action_size)) # placeholder
-        action_seqs_tm1 = torch.zeros((T-self.horizon-1, B, (self.horizon+1)*self.action_size)) # placeholder
+        action_seqs_t = torch.zeros((T-self.horizon, B, self.horizon*self.action_size), device=self.device) # placeholder
+        action_seqs_tm1 = torch.zeros((T-self.horizon-1, B, (self.horizon+1)*self.action_size), device=self.device) # placeholder
         for i in range(len(actions)-self.horizon):
             if i != len(actions)-self.horizon-1:
                 action_seq_tm1 = actions.clone()[i:i+self.horizon+1]
@@ -205,7 +206,7 @@ class NDIGO(torch.nn.Module):
         losses_t = torch.sum(losses_t, dim=-1)/losses_t.shape[-1]
         
         # subtract losses to get rewards (r[t+H-1] = losses[t-1] - losses[t])
-        r_int = torch.zeros((T, B))
+        r_int = torch.zeros((T, B), device=self.device)
         r_int[self.horizon:len(losses_t)+self.horizon-1] = losses_tm1 - losses_t[1:] # time zero reward is set to 0 (L[-1] doesn't exist)
         # r_int[self.horizon:len(losses_t)+self.horizon-1] = losses_t[1:] - losses_tm1
         # r_int[1:len(losses_t)] = losses_tm1 - losses_t[1:]
@@ -231,7 +232,7 @@ class NDIGO(torch.nn.Module):
         self.gru_states = None # only bc we're processing exactly 1 episode per batch
 
         for k in range(1, self.num_predictors+1):
-            action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
+            action_seqs = torch.zeros((T-k, B, k*self.action_size), device=self.device) # placeholder
             for i in range(len(actions)-k):
                 action_seq = actions[i:i+k]
                 action_seq = torch.transpose(action_seq, 0, 1)

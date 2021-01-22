@@ -153,7 +153,7 @@ class PPO(PolicyGradientAlgo):
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
 
-                opt_info.gradNorm.append(grad_norm)
+                opt_info.gradNorm.append(grad_norm.item())
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
