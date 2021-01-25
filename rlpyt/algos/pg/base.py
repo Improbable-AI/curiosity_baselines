@@ -68,12 +68,14 @@ class PolicyGradientAlgo(RlAlgorithm):
             intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.agent.prev_action, samples.agent.action) # no grad
             reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
+
         if self.normalize_reward:
             rews = np.array([])
             for rew in reward.clone().detach().data.numpy():
                 rews = np.concatenate((rews, self.reward_ff.update(rew)))
             self.reward_rms.update_from_moments(np.mean(rews), np.var(rews), len(rews))
             reward = reward / (self.reward_rms.var)**0.5
+
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)
             advantage = return_ - value
@@ -83,6 +85,7 @@ class PolicyGradientAlgo(RlAlgorithm):
             valid = valid_from_done(done)  # Recurrent: no reset during training.
         else:
             valid = None  # OR torch.ones_like(done)
+
         if self.normalize_advantage:
             if valid is not None:
                 valid_mask = valid > 0
@@ -92,6 +95,7 @@ class PolicyGradientAlgo(RlAlgorithm):
                 adv_mean = advantage.mean()
                 adv_std = advantage.std()
             advantage[:] = (advantage - adv_mean) / max(adv_std, 1e-6)
+            
         if self.kernel_params is not None: # apply advantage kernel
             advantage[:] = torch.tensor(np.piecewise(advantage.data.numpy(), [abs(advantage.data.numpy()) < self.mu, abs(advantage.data.numpy()) >= self.mu], [self.kernel_line, self.kernel_gauss]))
 

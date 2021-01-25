@@ -72,7 +72,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         step = self.step_buffer_np
 
         b = np.where(step.done)[0]
-        step.observation[b] = self.temp_observation[b]
+        # step.observation[b] = self.temp_observation[b]
         step.done[:] = False  # Did resets in between batches.
 
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env

@@ -102,7 +102,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
         observation, action, reward_tot = agent_inputs
         
         b = np.where(self.done)[0]
-        observation[b] = self.temp_observation[b]
+        # observation[b] = self.temp_observation[b]
         self.done[:] = False  # Did resets between batches.
         
         # torchifying syncs components of agent_inputs (observation, action, reward_tot)
