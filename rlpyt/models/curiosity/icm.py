@@ -1,8 +1,9 @@
 
 import torch
 from torch import nn
+torch.set_printoptions(precision=10, sci_mode=False)
 
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims, valid_mean
 from rlpyt.models.curiosity.encoders import BurdaHead, MazeHead, UniverseHead
 
 class ResBlock(nn.Module):
@@ -133,13 +134,15 @@ class ICM(nn.Module):
         reward = nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size
         return self.prediction_beta * reward
 
-    def compute_loss(self, observations, next_observations, actions):
+    def compute_loss(self, observations, next_observations, actions, valid):
         # dimension add for when you have only one environment
         if actions.dim() == 2: actions = actions.unsqueeze(1)
         phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
         actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # convert action to (T * B, action_size)
-        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach())
-        forward_loss = nn.functional.mse_loss(predicted_phi2, phi2.detach())
+        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach(), reduction='none').view(phi1.shape[0], phi1.shape[1])
+        forward_loss = nn.functional.mse_loss(predicted_phi2, phi2.detach(), reduction='none').sum(-1)/self.feature_size
+        inverse_loss = valid_mean(inverse_loss, valid)
+        forward_loss = valid_mean(forward_loss, valid)
         return self.inverse_loss_wt*inverse_loss, self.forward_loss_wt*forward_loss
 
 

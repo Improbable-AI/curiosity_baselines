@@ -93,6 +93,7 @@ class PPO(PolicyGradientAlgo):
                 observation=samples.env.observation.clone(),
                 next_observation=samples.env.next_observation.clone(),
                 action=samples.agent.action.clone(),
+                valid=valid
             )
             agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
         elif self.curiosity_type == 'ndigo':
@@ -100,6 +101,7 @@ class PPO(PolicyGradientAlgo):
                 observation=samples.env.observation.clone(),
                 prev_actions=samples.agent.prev_action.clone(),
                 actions=samples.agent.action.clone(),
+                valid=valid
             )
             agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
         loss_inputs = LossInputs(  # So can slice all.

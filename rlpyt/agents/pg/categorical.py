@@ -102,19 +102,19 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
     def curiosity_loss(self, curiosity_type, *args):
 
         if curiosity_type == 'icm' or curiosity_type == 'disagreement':
-            observation, next_observation, actions = args
+            observation, next_observation, actions, valid = args
             actions = self.distribution.to_onehot(actions)
             actions = actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
-            curiosity_agent_inputs = buffer_to((observation, next_observation, actions), device=self.device)
+            curiosity_agent_inputs = buffer_to((observation, next_observation, actions, valid), device=self.device)
             inv_loss, forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
             losses = (inv_loss.to("cpu"), forward_loss.to("cpu"))
         elif curiosity_type == 'ndigo':
-            observations, prev_actions, actions = args
+            observations, prev_actions, actions, valid = args
             actions = self.distribution.to_onehot(actions)
             prev_actions = self.distribution.to_onehot(prev_actions)
             actions = actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
             prev_actions = prev_actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
-            curiosity_agent_inputs = buffer_to((observations, prev_actions, actions), device=self.device)
+            curiosity_agent_inputs = buffer_to((observations, prev_actions, actions, valid), device=self.device)
             forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
             losses = (forward_loss.to("cpu"))
 
