@@ -60,12 +60,13 @@ class PolicyGradientAlgo(RlAlgorithm):
         """
         reward, done, value, bv = (samples.env.reward, samples.env.done, samples.agent.agent_info.value, samples.agent.bootstrap_value)
         done = done.type(reward.dtype)
+
         if self.curiosity_type == 'icm' or self.curiosity_type == 'disagreement':
-            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.env.next_observation, samples.agent.action)
+            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation.clone(), samples.env.next_observation.clone(), samples.agent.action.clone())
             reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
         elif self.curiosity_type == 'ndigo':
-            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation, samples.agent.prev_action, samples.agent.action) # no grad
+            intrinsic_rewards, _ = self.agent.curiosity_step(self.curiosity_type, samples.env.observation.clone(), samples.agent.prev_action.clone(), samples.agent.action.clone()) # no grad
             reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
 
@@ -81,6 +82,7 @@ class PolicyGradientAlgo(RlAlgorithm):
             advantage = return_ - value
         else:
             advantage, return_ = generalized_advantage_estimation(reward, value, done, bv, self.discount, self.gae_lambda)
+        
         if not self.mid_batch_reset or self.agent.recurrent:
             valid = valid_from_done(done)  # Recurrent: no reset during training.
         else:
@@ -95,7 +97,7 @@ class PolicyGradientAlgo(RlAlgorithm):
                 adv_mean = advantage.mean()
                 adv_std = advantage.std()
             advantage[:] = (advantage - adv_mean) / max(adv_std, 1e-6)
-            
+
         if self.kernel_params is not None: # apply advantage kernel
             advantage[:] = torch.tensor(np.piecewise(advantage.data.numpy(), [abs(advantage.data.numpy()) < self.mu, abs(advantage.data.numpy()) >= self.mu], [self.kernel_line, self.kernel_gauss]))
 

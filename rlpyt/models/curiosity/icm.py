@@ -56,7 +56,8 @@ class ICM(nn.Module):
             feature_encoding='idf', 
             batch_norm=False,
             prediction_beta=1.0,
-            obs_stats=None
+            obs_stats=None,
+            forward_loss_wt=0.2
             ):
         super(ICM, self).__init__()
 
@@ -65,6 +66,13 @@ class ICM(nn.Module):
         self.obs_stats = obs_stats
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
+
+        if forward_loss_wt == -1.0:
+            self.forward_loss_wt = 1.0
+            self.inverse_loss_wt = 1.0
+        else:
+            self.forward_loss_wt = forward_loss_wt
+            self.inverse_loss_wt = 1-forward_loss_wt
 
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
@@ -116,13 +124,13 @@ class ICM(nn.Module):
             phi2 = phi2.view(T, B, -1)
 
         predicted_action = self.inverse_model(torch.cat([phi1, phi2], 2))
-        predicted_phi2 = self.forward_model(phi1.detach(), action.view(T, B, -1))
+        predicted_phi2 = self.forward_model(phi1.detach(), action.view(T, B, -1).detach())
 
         return phi1, phi2, predicted_phi2, predicted_action
 
     def compute_bonus(self, observations, next_observations, actions):
         phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
-        reward = 0.5 * (nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size)
+        reward = nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size
         return self.prediction_beta * reward
 
     def compute_loss(self, observations, next_observations, actions):
@@ -131,8 +139,8 @@ class ICM(nn.Module):
         phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
         actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # convert action to (T * B, action_size)
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach())
-        forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2.detach())
-        return inverse_loss, forward_loss
+        forward_loss = nn.functional.mse_loss(predicted_phi2, phi2.detach())
+        return self.inverse_loss_wt*inverse_loss, self.forward_loss_wt*forward_loss
 
 
 

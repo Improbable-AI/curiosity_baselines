@@ -56,7 +56,8 @@ class Disagreement(nn.Module):
             batch_norm=False,
             prediction_beta=1.0,
             obs_stats=None,
-            device="cpu"
+            device="cpu",
+            forward_loss_wt=0.2,
             ):
         super(Disagreement, self).__init__()
 
@@ -68,6 +69,13 @@ class Disagreement(nn.Module):
 
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
+
+        if forward_loss_wt == -1.0:
+            self.forward_loss_wt = 1.0
+            self.inverse_loss_wt = 1.0
+        else:
+            self.forward_loss_wt = forward_loss_wt
+            self.inverse_loss_wt = 1-forward_loss_wt
 
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
@@ -116,8 +124,8 @@ class Disagreement(nn.Module):
 
         predicted_phi2 = []
         for forw_model in self.forward_model:
-            predicted_phi2.append(forw_model(phi1.detach(), action.view(T, B, -1)))
-        predicted_phi2_stacked = torch.stack(predicted_phi2).detach()
+            predicted_phi2.append(forw_model(phi1.detach(), action.view(T, B, -1).detach()))
+        predicted_phi2_stacked = torch.stack(predicted_phi2)
 
         return phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action
 
@@ -139,9 +147,10 @@ class Disagreement(nn.Module):
         
         forward_loss = torch.tensor(0.0, device=self.device)
         for p_phi2 in predicted_phi2:
-            forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
+            forward_loss += nn.functional.dropout(nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
 
-        return inverse_loss, forward_loss
+        return self.inverse_loss_wt*inverse_loss, self.forward_loss_wt*forward_loss
+
 
 
 
