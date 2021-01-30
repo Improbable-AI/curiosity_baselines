@@ -115,9 +115,6 @@ def launch_tmux(args):
     # save arguments, and command if needed
     if args.pretrain is None:
         time.sleep(6) # wait for logdir to be created
-        args_json = json.dumps(vars(args), indent=4)
-        with open(log_dir + '/arguments.json', 'w') as jsonfile:
-            jsonfile.write(args_json)
         with open(log_dir + '/cmd.txt', 'w') as cmd_file:
             cmd_file.writelines(commands['runner'])
         with open(log_dir + '/git.txt', 'w') as git_file:
@@ -127,6 +124,11 @@ def launch_tmux(args):
 
 
 def start_experiment(args):
+
+    args_json = json.dumps(vars(args), indent=4)
+    os.makedirs(args.log_dir)
+    with open(args.log_dir + '/arguments.json', 'w') as jsonfile:
+        jsonfile.write(args_json)
 
     config = dict(env_id=args.env)
     
@@ -165,6 +167,10 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['pred_horizon'] = args.pred_horizon
         model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['num_predictors'] = args.num_predictors
+        model_args['curiosity_kwargs']['device'] = args.sample_mode
+    elif args.curiosity_alg == 'rnd':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
         model_args['curiosity_kwargs']['device'] = args.sample_mode
 
     if args.env in _MUJOCO_ENVS:
@@ -262,7 +268,7 @@ def start_experiment(args):
             game=args.env, 
             no_extrinsic=args.no_extrinsic,
             no_negative_reward=args.no_negative_reward,
-            normalize_obs=False,
+            normalize_obs=args.normalize_obs,
             normalize_obs_steps=10000,
             downsampling_scheme='classical',
             record_freq=args.record_freq,

@@ -2,7 +2,7 @@
 import torch
 
 from rlpyt.agents.base import AgentStep, AgentCuriosityStep, BaseAgent, RecurrentAgentMixin, AlternatingRecurrentAgentMixin
-from rlpyt.agents.pg.base import AgentInfo, NdigoInfo, IcmInfo, AgentInfoRnn
+from rlpyt.agents.pg.base import AgentInfo, NdigoInfo, IcmInfo, RndInfo, AgentInfoRnn
 from rlpyt.distributions.categorical import Categorical, DistInfo
 from rlpyt.utils.buffer import buffer_to, buffer_func, buffer_method
 
@@ -94,6 +94,10 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
             prev_actions = self.distribution.to_onehot(prev_actions)
             curiosity_agent_inputs = buffer_to((observation, prev_actions, actions), device=self.device)
             agent_curiosity_info = NdigoInfo(prev_gru_state=None)
+        elif curiosity_type == 'rnd':
+            next_observation = args
+            curiosity_agent_inputs = buffer_to((next_observation), device=self.device)
+            agent_curiosity_info = RndInfo()
 
         r_int = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs)
         r_int, agent_curiosity_info = buffer_to((r_int, agent_curiosity_info), device="cpu")
@@ -115,6 +119,11 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
             actions = actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
             prev_actions = prev_actions.squeeze() # ([batch, 1, size]) -> ([batch, size])
             curiosity_agent_inputs = buffer_to((observations, prev_actions, actions, valid), device=self.device)
+            forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
+            losses = (forward_loss.to("cpu"))
+        elif curiosity_type == 'rnd':
+            next_observation, valid = args
+            curiosity_agent_inputs = buffer_to((next_observation, valid), device=self.device)
             forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
             losses = (forward_loss.to("cpu"))
 

@@ -11,6 +11,7 @@ from rlpyt.models.curiosity.encoders import UniverseHead, BurdaHead, MazeHead
 from rlpyt.models.curiosity.disagreement import Disagreement
 from rlpyt.models.curiosity.icm import ICM
 from rlpyt.models.curiosity.ndigo import NDIGO
+from rlpyt.models.curiosity.rnd import RND
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -41,7 +42,7 @@ class AtariLstmModel(torch.nn.Module):
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
 
-        if curiosity_kwargs['curiosity_alg'] in {'icm', 'disagreement', 'ndigo'}:
+        if curiosity_kwargs['curiosity_alg'] != 'none':
             if curiosity_kwargs['curiosity_alg'] == 'icm':
                 self.curiosity_model = ICM(image_shape=image_shape,
                                            action_size=output_size,
@@ -69,19 +70,33 @@ class AtariLstmModel(torch.nn.Module):
                                              num_predictors=curiosity_kwargs['num_predictors'],
                                              device=curiosity_kwargs['device'],
                                              )
-
+            elif curiosity_kwargs['curiosity_alg'] == 'rnd':
+                self.curiosity_model = RND(image_shape=image_shape,
+                                           prediction_beta=curiosity_kwargs['prediction_beta'],
+                                           device=curiosity_kwargs['device'])
+            
             if curiosity_kwargs['feature_encoding'] == 'idf':
                 self.conv = UniverseHead(image_shape=image_shape,
                                          batch_norm=curiosity_kwargs['batch_norm'])
+                self.conv.output_size = self.curiosity_model.feature_size
             elif curiosity_kwargs['feature_encoding'] == 'idf_burda':
                 self.conv = BurdaHead(image_shape=image_shape,
                                       output_size=self.curiosity_model.feature_size,
                                       batch_norm=curiosity_kwargs['batch_norm'])
+                self.conv.output_size = self.curiosity_model.feature_size
             elif curiosity_kwargs['feature_encoding'] == 'idf_maze':
                 self.conv = MazeHead(image_shape=image_shape,
                                      output_size=self.curiosity_model.feature_size,
                                      batch_norm=curiosity_kwargs['batch_norm'])
-            self.conv.output_size = self.curiosity_model.feature_size
+                self.conv.output_size = self.curiosity_model.feature_size
+            elif curiosity_kwargs['feature_encoding'] == 'none':
+                self.conv = Conv2dHeadModel(image_shape=image_shape,
+                                            channels=channels or [16, 32],
+                                            kernel_sizes=kernel_sizes or [8, 4],
+                                            strides=strides or [4, 2],
+                                            paddings=paddings or [0, 1],
+                                            use_maxpool=use_maxpool,
+                                            hidden_sizes=fc_sizes) # Applies nonlinearity at end.
 
         else:
             self.conv = Conv2dHeadModel(
