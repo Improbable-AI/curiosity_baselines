@@ -97,13 +97,13 @@ class RND(nn.Module):
         if computing_loss is False:
             self.obs_rms.update(obs_cpu.reshape(T*B, *img_shape))
         
-        if self.device == 'cuda:0':
+        if self.device == torch.device('cuda:0'):
             obs_mean = torch.from_numpy(self.obs_rms.mean).float().cuda()
             obs_var = torch.from_numpy(self.obs_rms.var).float().cuda()
         else:
             obs_mean = torch.from_numpy(self.obs_rms.mean).float()
             obs_var = torch.from_numpy(self.obs_rms.var).float()
-            
+
         obs = (obs - obs_mean) / torch.sqrt(obs_var) 
         obs = torch.clamp(obs, -5, 5)
         obs = obs.type(torch.float) # expect torch.uint8 inputs
