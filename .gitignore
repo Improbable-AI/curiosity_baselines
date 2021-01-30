@@ -9,6 +9,8 @@ grad_checking
 *.pdf
 aws.py
 plot.py
+*.sh
+logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
