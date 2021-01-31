@@ -217,7 +217,7 @@ class NDIGO(torch.nn.Module):
         return r_int
 
 
-    def compute_loss(self, observations, prev_actions, actions):
+    def compute_loss(self, observations, prev_actions, actions, valid):
         #------------------------------------------------------------#
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
         # hacky dimension add for when you have only one environment

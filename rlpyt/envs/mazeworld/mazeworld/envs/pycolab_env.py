@@ -113,19 +113,20 @@ class PyColabEnv(gym.Env):
 
     def __init__(self,
                  max_iterations,
+                 obs_type,
                  default_reward,
                  action_space,
                  act_null_value=4,
                  delay=30,
                  resize_scale=8,
-                 crop_window=[5, 5],
-                 render_mode='uncropped'):
+                 crop_window=[5, 5]):
         """Create an `PyColabEnv` adapter to a `pycolab` game as a `gym.Env`.
 
         You can access the `pycolab.Engine` instance with `env.current_game`.
 
         Args:
             max_iterations: maximum number of steps.
+            obs_type: type of observation to return.
             default_reward: default reward if reward is None returned by the
                 `pycolab` game.
             action_space: the action `Space` of the environment.
@@ -133,7 +134,6 @@ class PyColabEnv(gym.Env):
             resize_scale: number of pixels per observation pixel.
                 Used only by the renderer.
             crop_window: dimensions of observation cropping.
-            render_mode: render board `cropped` or `uncropped`.
         """
         assert max_iterations > 0
         assert isinstance(default_reward, numbers.Number)
@@ -154,27 +154,29 @@ class PyColabEnv(gym.Env):
         self._render_order = list(reversed(not_ordered + test_game.z_order))
 
         # Create the observation space.
-        observation_layers = list(set(layers))
-        self._observation_order = sorted(observation_layers)
-        self.observation_space = spaces.Box(0., 1., [len(self.state_layer_chars)] + crop_window) # don't count empty space layer
+        self.obs_type = obs_type
+
+        if self.obs_type == 'mask':
+            self.observation_space = spaces.Box(0., 1., [len(self.state_layer_chars)] + crop_window) # don't count empty space layer
+        elif self.obs_type == 'rgb':
+            self.observation_space = spaces.Box(0., 255., [crop_window[0]*resize_scale, crop_window[1]*resize_scale] + [3])
         self.action_space = action_space
         self.act_null_value = act_null_value
 
         self.current_game = None
         self._croppers = []
         self._state = None
-        self._last_observations = None
+
         self._last_uncropped_observations = None
-        self._empty_board = None
         self._empty_uncropped_board = None
-        self._last_painted = None
-        self._last_uncropped_painted = None
+        self._last_cropped_observations = None
+        self._empty_cropped_board = None
+
         self._last_reward = None
         self._game_over = False
 
         self.viewer = None
         self.resize_scale = resize_scale
-        self.render_mode = render_mode
         self.delay = delay
 
         # Metrics
@@ -224,20 +226,23 @@ class PyColabEnv(gym.Env):
                 ' ' : (0., 0., 0.)}
 
 
-    def _paint_board(self, layers):
+    def _paint_board(self, layers, cropped=False):
         """Method to privately paint layers to RGB.
 
         Args:
             layers: a dictionary mapping a character to the respective curtain.
+            cropped: whether or not this is being called to paint cropped or
+                     uncropped images.
 
         Returns:
             3D np.array (np.uint32) representing the RGB of the observation
                 layers.
         """
-        if self.render_mode == 'uncropped':
+        if not cropped:
             board_shape = self._last_uncropped_observations.board.shape
-        elif self.render_mode == 'cropped':
-            board_shape = self._last_observations.board.shape
+        else:
+            board_shape = self._last_cropped_observations.board.shape
+
         board = np.zeros(list(board_shape) + [3], np.uint32)
         board_mask = np.zeros(list(board_shape) + [3], np.bool)
 
@@ -262,25 +267,27 @@ class PyColabEnv(gym.Env):
     def _update_for_game_step(self, observations, reward):
         """Update internal state with data from an environment interaction."""
         # disentangled one hot state
-        self._state = []
-        for char in self.state_layer_chars:
-            if char != ' ':
-                mask = observations.layers[char].astype(float)
-                if char in self.objects and 1. in mask:
-                    self.visitation_frequency[char] += 1
-                self._state.append(mask)
-        self._state = np.array(self._state)
+
+        if self.obs_type == 'mask':
+            self._state = []
+            for char in self.state_layer_chars:
+                if char != ' ':
+                    mask = observations.layers[char].astype(float)
+                    if char in self.objects and 1. in mask:
+                        self.visitation_frequency[char] += 1
+                    self._state.append(mask)
+            self._state = np.array(self._state)
+
+        elif self.obs_type == 'rgb':
+            import cv2
+            rgb_img = self._paint_board(observations.layers, cropped=True).astype(float)
+            self._state = self.resize(rgb_img)
+            cv2.imwrite('test.png', self._state)
 
         # update heatmap metric
         if self.log_heatmaps == True:
             pr, pc = self.current_game.things['P'].position
             self.heatmap[pr, pc] += 1
-
-        # rendering purposes (RGB)
-        self._last_observations = observations
-        if self.render_mode == 'cropped':
-            self._empty_board = np.zeros_like(self._last_observations.board)
-            self._last_painted = self._paint_board(observations.layers).astype(np.float32)
 
         self._last_reward = reward if reward is not None else \
             self._default_reward
@@ -300,21 +307,24 @@ class PyColabEnv(gym.Env):
         self._game_over = None
         self._last_observations = None
         self._last_reward = None
+
         observations, reward, _ = self.current_game.its_showtime()
         self._last_uncropped_observations = observations
         self._empty_uncropped_board = np.zeros_like(self._last_uncropped_observations.board)
-        self._last_uncropped_painted = self._paint_board(observations.layers).astype(np.float32)
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
-        # reset trackers
+            self._last_cropped_observations = observations
+            self._empty_cropped_board = np.zeros_like(self._last_cropped_observations)
+
+        # save and reset metrics
         self.visitation_frequency = {char:0 for char in self.objects}
-        # save heatmaps and reset
         if self.log_heatmaps == True and self.episodes % self.heatmap_save_freq == 0:
             np.save('{}/{}.npy'.format(self.heatmap_path, self.episodes), self.heatmap)
             heatmap_normed = self.heatmap / np.linalg.norm(self.heatmap)
             plt.imsave('{}/{}.png'.format(self.heatmap_path, self.episodes), heatmap_normed, cmap='afmhot', vmin=0.0, vmax=1.0)
         self.episodes += 1
         self.heatmap = np.zeros(self._last_uncropped_observations.board.shape)
+        
         # run update
         self._update_for_game_step(observations, reward)
         return self._state
@@ -330,21 +340,23 @@ class PyColabEnv(gym.Env):
         """
         if self.current_game is None:
             logger.warn("Episode has already ended, call `reset` instead..")
-            state = self._last_painted
+            self._state = None
             reward = self._last_reward
             done = self._game_over
-            return state, reward, done, {}
+            return self._state, reward, done, {}
 
         # Execute the action in pycolab.
         self.current_game.the_plot.info = {}
         observations, reward, _ = self.current_game.play(action)
         self._last_uncropped_observations = observations
         self._empty_uncropped_board = np.zeros_like(self._last_uncropped_observations.board)
-        self._last_uncropped_painted = self._paint_board(observations.layers).astype(np.float32)
 
         # Crop and update
         if len(self._croppers) > 0:
             observations = [cropper.crop(observations) for cropper in self._croppers][0]
+            self._last_cropped_observations = observations
+            self._empty_cropped_board = np.zeros_like(self._last_cropped_observations.board)
+
         self._update_for_game_step(observations, reward)
         info = self.current_game.the_plot.info
 
@@ -353,7 +365,6 @@ class PyColabEnv(gym.Env):
         info['first_time_visit'] = self.first_visit_time
 
         # Check the current status of the game.
-        state = self._last_painted # for rendering
         reward = self._last_reward
         done = self._game_over
 
@@ -373,29 +384,16 @@ class PyColabEnv(gym.Env):
         Returns:
             3D np.array (np.uint8) or a `viewer.isopen`.
         """
-        if self.render_mode == 'cropped':
-            img = self._empty_board
-            if self._last_observations:
-                img = self._last_observations.board
-                layers = self._last_observations.layers
-                if self._colors:
-                    img = self._paint_board(layers)
-                else:
-                    assert img is not None, '`board` must not be `None`.'
-        elif self.render_mode == 'uncropped':
-            img = self._empty_uncropped_board
-            if self._last_uncropped_observations:
-                img = self._last_uncropped_observations.board
-                layers = self._last_uncropped_observations.layers
-                if self._colors:
-                    img = self._paint_board(layers)
-                else:
-                    assert img is not None, '`board` must not be `None`.'
+        img = self._empty_uncropped_board
+        if self._last_uncropped_observations:
+            img = self._last_uncropped_observations.board
+            layers = self._last_uncropped_observations.layers
+            if self._colors:
+                img = self._paint_board(layers, cropped=False)
+            else:
+                assert img is not None, '`board` must not be `None`.'
 
-        img = _repeat_axes(img, self.resize_scale, axis=[0, 1])
-        if len(img.shape) != 3:
-            img = np.repeat(img[..., None], 3, axis=-1)
-        img = img.astype(np.uint8)
+        img = self.resize(img)
 
         if mode == 'rgb_array':
             return img
@@ -407,6 +405,12 @@ class PyColabEnv(gym.Env):
             self.viewer.imshow(img)
             time.sleep(self.delay / 1e3)
             return self.viewer.isopen
+
+    def resize(self, img):
+        img = _repeat_axes(img, self.resize_scale, axis=[0, 1])
+        if len(img.shape) != 3:
+            img = np.repeat(img[..., None], 3, axis=-1)
+        return img.astype(np.uint8)
 
     def seed(self, seed=None):
         """Seeds the environment.

@@ -61,7 +61,6 @@ class ICM(nn.Module):
             forward_loss_wt=0.2
             ):
         super(ICM, self).__init__()
-
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats

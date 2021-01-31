@@ -126,7 +126,8 @@ def launch_tmux(args):
 def start_experiment(args):
 
     args_json = json.dumps(vars(args), indent=4)
-    os.makedirs(args.log_dir)
+    if not os.path.isdir(args.log_dir):
+        os.makedirs(args.log_dir)
     with open(args.log_dir + '/arguments.json', 'w') as jsonfile:
         jsonfile.write(args_json)
 
@@ -250,7 +251,8 @@ def start_experiment(args):
             normalize_obs=args.normalize_obs,
             normalize_obs_steps=10000,
             log_heatmaps=args.log_heatmaps,
-            logdir=args.log_dir
+            logdir=args.log_dir,
+            obs_type=args.obs_type
             )
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make
