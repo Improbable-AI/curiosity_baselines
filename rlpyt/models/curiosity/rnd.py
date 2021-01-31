@@ -1,9 +1,9 @@
 import os
 from PIL import Image
 import numpy as np
-np.set_printoptions(threshold=np.inf)
 import torch
 from torch import nn
+torch.set_printoptions(edgeitems=3)
 
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims, valid_mean
 from rlpyt.utils.averages import RunningMeanStd
@@ -29,6 +29,7 @@ class RND(nn.Module):
 
         c, h, w = 1, image_shape[1], image_shape[2] # assuming grayscale inputs
         self.obs_rms = RunningMeanStd(shape=(1, c, h, w)) # (T, B, c, h, w)
+        self.rew_rms = RunningMeanStd()
         self.feature_size = 512
         self.conv_feature_size = 3136
 
@@ -119,11 +120,22 @@ class RND(nn.Module):
     def compute_bonus(self, next_observation):
         phi, predicted_phi = self.forward(next_observation, computing_loss=False)
         rewards = nn.functional.mse_loss(predicted_phi, phi, reduction='none').sum(-1)/self.feature_size
+        
+        rewards_cpu = rewards.clone().cpu().data.numpy()
+        self.rew_rms.update_from_moments(np.mean(rewards_cpu), np.var(rewards_cpu), len(rewards_cpu))
+        if self.device == torch.device('cuda:0'):
+            rew_mean = torch.from_numpy(np.array(self.rew_rms.mean)).float().cuda()
+            rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float().cuda()
+        else:
+            rew_mean = torch.from_numpy(np.array(self.rew_rms.mean)).float()
+            rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float()
+        rewards = rewards/ torch.sqrt(rew_var)
+        
         return self.prediction_beta * rewards
 
     def compute_loss(self, observations, valid):
         phi, predicted_phi = self.forward(observations, computing_loss=True)
-        forward_loss = nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none').sum(-1)/self.feature_size
+        forward_loss = nn.functional.dropout(nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none'), p=0.25).sum(-1)/self.feature_size
         forward_loss = valid_mean(forward_loss, valid)
         return forward_loss
 

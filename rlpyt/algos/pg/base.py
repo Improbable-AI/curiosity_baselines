@@ -71,8 +71,8 @@ class PolicyGradientAlgo(RlAlgorithm):
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
         elif self.curiosity_type == 'rnd':
             intrinsic_rewards, _ = self.agent.curiosity_step (self.curiosity_type, samples.env.next_observation.clone())
-            intrinsic_rewards = 2 * torch.clamp(intrinsic_rewards, -1, 1)
-            reward += intrinsic_rewards
+            reward = torch.clamp(reward, -1, 1)
+            reward += 2*intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
 
         if self.normalize_reward:
@@ -80,7 +80,7 @@ class PolicyGradientAlgo(RlAlgorithm):
             for rew in reward.clone().detach().data.numpy():
                 rews = np.concatenate((rews, self.reward_ff.update(rew)))
             self.reward_rms.update_from_moments(np.mean(rews), np.var(rews), len(rews))
-            reward = reward / (self.reward_rms.var)**0.5
+            reward = reward / np.sqrt(self.reward_rms.var)
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)
