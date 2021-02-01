@@ -279,10 +279,13 @@ class PyColabEnv(gym.Env):
             self._state = np.array(self._state)
 
         elif self.obs_type == 'rgb':
-            import cv2
             rgb_img = self._paint_board(observations.layers, cropped=True).astype(float)
             self._state = self.resize(rgb_img)
-            cv2.imwrite('test.png', self._state)
+            for char in self.state_layer_chars:
+                if char != ' ':
+                    mask = observations.layers[char].astype(float)
+                    if char in self.objects and 1. in mask:
+                        self.visitation_frequency[char] += 1
 
         # update heatmap metric
         if self.log_heatmaps == True:
