@@ -206,7 +206,7 @@ class RND(nn.Module):
         phi, predicted_phi, T, B = self.forward(observations, done=None)
         forward_loss = nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none').sum(-1)/self.feature_size
         mask = torch.rand(forward_loss.shape)
-        mask = (mask < self.drop_probability).type(torch.FloatTensor).to(self.device)
+        mask = (mask > self.drop_probability).type(torch.FloatTensor).to(self.device)
         forward_loss = forward_loss * mask
         forward_loss = valid_mean(forward_loss, valid)
         return forward_loss
