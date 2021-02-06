@@ -193,8 +193,10 @@ class RND(nn.Module):
         self.rew_rms.update_from_moments(np.mean(total_rew_per_env), np.var(total_rew_per_env), mean_length)
         if self.device == torch.device('cuda:0'):
             rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float().cuda()
+            done = torch.from_numpy(np.array(done)).float().cuda()
         else:
             rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float()
+            done = torch.from_numpy(np.array(done)).float()
         rewards /= torch.sqrt(rew_var)
 
         rewards *= done
