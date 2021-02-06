@@ -70,9 +70,8 @@ class PolicyGradientAlgo(RlAlgorithm):
             reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
         elif self.curiosity_type == 'rnd':
-            intrinsic_rewards, _ = self.agent.curiosity_step (self.curiosity_type, samples.env.next_observation.clone())
-            reward = torch.clamp(reward, -1, 1)
-            reward += 2*intrinsic_rewards
+            intrinsic_rewards, _ = self.agent.curiosity_step (self.curiosity_type, samples.env.next_observation.clone(), done.clone())
+            reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
 
         if self.normalize_reward:

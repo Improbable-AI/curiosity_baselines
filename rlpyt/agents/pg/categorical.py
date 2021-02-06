@@ -95,8 +95,8 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
             curiosity_agent_inputs = buffer_to((observation, prev_actions, actions), device=self.device)
             agent_curiosity_info = NdigoInfo(prev_gru_state=None)
         elif curiosity_type == 'rnd':
-            next_observation = args
-            curiosity_agent_inputs = buffer_to((next_observation), device=self.device)
+            next_observation, done = args
+            curiosity_agent_inputs = buffer_to((next_observation, done), device=self.device)
             agent_curiosity_info = RndInfo()
 
         r_int = self.model.curiosity_model.compute_bonus(*curiosity_agent_inputs)

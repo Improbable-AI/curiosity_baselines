@@ -172,6 +172,8 @@ def start_experiment(args):
     elif args.curiosity_alg == 'rnd':
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
         model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
+        model_args['curiosity_kwargs']['drop_probability'] = args.drop_probability
+        model_args['curiosity_kwargs']['gamma'] = args.discount
         model_args['curiosity_kwargs']['device'] = args.sample_mode
 
     if args.env in _MUJOCO_ENVS:
@@ -252,7 +254,8 @@ def start_experiment(args):
             normalize_obs_steps=10000,
             log_heatmaps=args.log_heatmaps,
             logdir=args.log_dir,
-            obs_type=args.obs_type
+            obs_type=args.obs_type,
+            max_steps_per_episode=args.max_episode_steps
             )
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make
@@ -274,7 +277,8 @@ def start_experiment(args):
             normalize_obs_steps=10000,
             downsampling_scheme='classical',
             record_freq=args.record_freq,
-            record_dir=args.log_dir
+            record_dir=args.log_dir,
+            horizon=args.max_episode_steps,
             )
 
     if args.sample_mode == 'gpu':

@@ -73,6 +73,8 @@ class AtariLstmModel(torch.nn.Module):
             elif curiosity_kwargs['curiosity_alg'] == 'rnd':
                 self.curiosity_model = RND(image_shape=image_shape,
                                            prediction_beta=curiosity_kwargs['prediction_beta'],
+                                           drop_probability=curiosity_kwargs['drop_probability'],
+                                           gamma=curiosity_kwargs['gamma'],
                                            device=curiosity_kwargs['device'])
             
             if curiosity_kwargs['feature_encoding'] == 'idf':
