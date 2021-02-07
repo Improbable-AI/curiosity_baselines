@@ -110,6 +110,8 @@ class PPO(PolicyGradientAlgo):
                 valid=valid
             )
             agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
+        elif self.curiosity_type == 'none':
+            agent_curiosity_inputs = None
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             agent_curiosity_inputs=agent_curiosity_inputs,

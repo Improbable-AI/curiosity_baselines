@@ -134,7 +134,7 @@ class RND(nn.Module):
         # mean = np.squeeze(self.obs_rms.mean)
         # var = np.squeeze(self.obs_rms.var)
         # std = np.squeeze(np.sqrt(self.obs_rms.var))
-        # cv2.imwrite('images/test.png', img)
+        # cv2.imwrite('images/original.png', img)
         # cv2.imwrite('images/mean.png', mean)
         # cv2.imwrite('images/var.png', var)
         # cv2.imwrite('images/std.png', std)
@@ -174,13 +174,13 @@ class RND(nn.Module):
         phi = self.target_model(obs.clone().detach().view(T * B, *img_shape)).view(T, B, -1)
 
         # make prediction
-        predicted_phi = self.forward_model(obs.clone().detach().view(T * B, *img_shape)).view(T, B, -1)
+        predicted_phi = self.forward_model(obs.detach().view(T * B, *img_shape)).view(T, B, -1)
 
         return phi, predicted_phi, T, B
 
     def compute_bonus(self, next_observation, done):
         phi, predicted_phi, T, _ = self.forward(next_observation, done=done)
-        rewards = nn.functional.mse_loss(predicted_phi, phi, reduction='none').sum(-1)/self.feature_size
+        rewards = nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none').sum(-1)/self.feature_size
         rewards_cpu = rewards.clone().cpu().data.numpy()
         done = torch.abs(done-1).cpu().data.numpy()
         total_rew_per_env = list()
@@ -207,8 +207,8 @@ class RND(nn.Module):
         forward_loss = nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none').sum(-1)/self.feature_size
         mask = torch.rand(forward_loss.shape)
         mask = (mask > self.drop_probability).type(torch.FloatTensor).to(self.device)
-        forward_loss = forward_loss * mask
-        forward_loss = valid_mean(forward_loss, valid)
+        forward_loss = forward_loss * mask.detach()
+        forward_loss = valid_mean(forward_loss, valid.detach())
         return forward_loss
 
 
