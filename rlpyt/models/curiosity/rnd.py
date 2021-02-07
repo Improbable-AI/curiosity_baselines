@@ -180,7 +180,8 @@ class RND(nn.Module):
 
     def compute_bonus(self, next_observation, done):
         phi, predicted_phi, T, _ = self.forward(next_observation, done=done)
-        rewards = nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none').sum(-1)/self.feature_size
+        # rewards = nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none').sum(-1)/self.feature_size
+        rewards = nn.functional.mse_loss(predicted_phi, phi.detach(), reduction='none').sum(-1)/2
         rewards_cpu = rewards.clone().cpu().data.numpy()
         done = torch.abs(done-1).cpu().data.numpy()
         total_rew_per_env = list()
