@@ -93,17 +93,12 @@ class Disagreement(nn.Module):
             nn.ReLU(),
             nn.Linear(self.feature_size, action_size)
             )
-        
-        # self.forward_model = []
-        # for _ in range(self.ensemble_size):
-        #     model = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
-        #     self.forward_model.append(model)
 
         self.forward_model_1 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
         self.forward_model_2 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
         self.forward_model_3 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
         self.forward_model_4 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
-        # self.forward_model_5 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
+        self.forward_model_5 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
 
     def forward(self, obs1, obs2, action):
 
@@ -130,14 +125,11 @@ class Disagreement(nn.Module):
 
         predicted_phi2 = []
 
-        # for forw_model in self.forward_model:
-        #     predicted_phi2.append(forw_model(phi1.detach(), action.view(T, B, -1).detach()))
-
         predicted_phi2.append(self.forward_model_1(phi1.detach(), action.view(T, B, -1).detach()))
         predicted_phi2.append(self.forward_model_2(phi1.detach(), action.view(T, B, -1).detach()))
         predicted_phi2.append(self.forward_model_3(phi1.detach(), action.view(T, B, -1).detach()))
         predicted_phi2.append(self.forward_model_4(phi1.detach(), action.view(T, B, -1).detach()))
-        # predicted_phi2.append(self.forward_model_5(phi1.detach(), action.view(T, B, -1).detach()))
+        predicted_phi2.append(self.forward_model_5(phi1.detach(), action.view(T, B, -1).detach()))
 
         predicted_phi2_stacked = torch.stack(predicted_phi2)
 
@@ -162,10 +154,10 @@ class Disagreement(nn.Module):
         
         forward_loss = torch.tensor(0.0, device=self.device)
         
-        # for p_phi2 in predicted_phi2:
-        #     forward_loss_k = nn.functional.mse_loss(p_phi2, phi2.detach(), reduction='none').sum(-1)/self.feature_size
-        #     forward_loss_k = valid_mean(forward_loss_k, valid)
-        #     forward_loss += nn.functional.dropout(forward_loss_k, p=0.2)
+        for p_phi2 in predicted_phi2:
+            forward_loss_k = nn.functional.mse_loss(p_phi2, phi2.detach(), reduction='none').sum(-1)/self.feature_size
+            forward_loss_k = valid_mean(forward_loss_k, valid)
+            forward_loss += nn.functional.dropout(forward_loss_k, p=0.2)
 
         forward_loss_1 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[0], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
         forward_loss += valid_mean(forward_loss_1, valid)
@@ -179,8 +171,8 @@ class Disagreement(nn.Module):
         forward_loss_4 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[3], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
         forward_loss += valid_mean(forward_loss_4, valid)
 
-        # forward_loss_5 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[4], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
-        # forward_loss += valid_mean(forward_loss_5, valid)
+        forward_loss_5 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[4], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
+        forward_loss += valid_mean(forward_loss_5, valid)
 
         return self.inverse_loss_wt*inverse_loss, self.forward_loss_wt*forward_loss
 

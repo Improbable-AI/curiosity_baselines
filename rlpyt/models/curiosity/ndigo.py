@@ -195,9 +195,9 @@ class NDIGO(torch.nn.Module):
             predicted_states_t = self.forward_model_10(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
 
         predicted_states_tm1 = nn.functional.sigmoid(predicted_states_tm1)
-        true_obs_tm1 = observations.clone()[self.horizon:-1].view(-1, *predicted_states_tm1.shape[1:])
+        true_obs_tm1 = observations.clone()[self.horizon:-1].view(-1, *predicted_states_tm1.shape[1:]).type(torch.float)
         predicted_states_t = nn.functional.sigmoid(predicted_states_t)
-        true_obs_t = observations.clone()[self.horizon:].view(-1, *predicted_states_t.shape[1:])
+        true_obs_t = observations.clone()[self.horizon:].view(-1, *predicted_states_t.shape[1:]).type(torch.float)
 
         # generate losses
         losses_tm1 = nn.functional.binary_cross_entropy(predicted_states_tm1, true_obs_tm1, reduction='none')
@@ -263,12 +263,13 @@ class NDIGO(torch.nn.Module):
 
             # generate losses for this predictor
             predicted_states = nn.functional.sigmoid(predicted_states)
-            true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach()
+            true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach().type(torch.float)
 
+            floss = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
             if k == 1:
-                loss = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
+                loss = floss
             else:
-                loss += nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
+                loss += floss
 
         return loss
 

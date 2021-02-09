@@ -140,8 +140,8 @@ class ICM(nn.Module):
         actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # convert action to (T * B, action_size)
         inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach(), reduction='none').view(phi1.shape[0], phi1.shape[1])
         forward_loss = nn.functional.mse_loss(predicted_phi2, phi2.detach(), reduction='none').sum(-1)/self.feature_size
-        inverse_loss = valid_mean(inverse_loss, valid)
-        forward_loss = valid_mean(forward_loss, valid)
+        inverse_loss = valid_mean(inverse_loss, valid.detach())
+        forward_loss = valid_mean(forward_loss, valid.detach())
         return self.inverse_loss_wt*inverse_loss, self.forward_loss_wt*forward_loss
 
 
