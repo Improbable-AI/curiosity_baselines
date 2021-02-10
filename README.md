@@ -3,7 +3,11 @@
 
 This is a collection of curiosity algorithms implemented in pytorch on top of the [rlpyt](https://github.com/astooke/rlpyt) deep rl codebase. 
 
-### Available Algorithms
+## To-do
+1) Add remaining curiosity models
+2) Update models directory with more environments
+
+### Available Learning Algorithms
 **Policy Gradient** A2C, PPO
 
 **Replay Buffers** (supporting both DQN + QPG) non-sequence and sequence (for recurrent) replay, n-step returns, uniform or prioritized replay, full-observation or frame-based buffer (e.g. for Atari, stores only unique frames to save memory, reconstructs multi-frame observations).
@@ -12,7 +16,12 @@ This is a collection of curiosity algorithms implemented in pytorch on top of th
 
 **Q-Function Policy Gradient** DDPG, TD3, SAC
 
-**Curiosity** ICM, Disagreement, NDIGO
+### Available Curiosity Algorithms
+**Prediction error** ICM, Disagreement
+
+**Count-based** RND
+
+**Learning progress** NDIGO
 
 ### Available Environments
 * Standard gym environments (mujoco, etc.)
@@ -24,26 +33,35 @@ This is a collection of curiosity algorithms implemented in pytorch on top of th
 
 1.  Clone this repo.
 
-2.  If you plan on using mujoco, place mjkey.txt in the same directory as the Makefile.
+2.  If you plan on using mujoco, place your license key "mjkey.txt" in the base directory. This file will be copied in when you start docker
+using the Makefile command.
 
-3.  Make sure you have docker installed to run the [image](https://hub.docker.com/repository/docker/echen9898/curiosity_baselines).
+3.  Make sure you have docker installed to run the [image](https://hub.docker.com/repository/docker/echen9898/curiosity_baselines). We recommend
+running the GPU image which will work even if you are only using CPUs (labeled version_gpu), but a CPU only image is provided as well.
 
-4.  Edit global.json to customize volume mount points, port forwarding, and select a specific docker image from the registry.
+4.  Edit global.json to customize any volume mount points, port forwarding, and docker image versions from the registry. Information from this file
+is read into the Makefile.
 
-4.  The makefile contains some basic commands (we use node to read in the global configuration in global.json, its not used for anything else).
+5.  The makefile contains some basic commands (we use node to read in information from global.json at the top - it's not used for anything else).
 ```
-make start # start the docker container and drop you in a shell
-make stop # stop the docker container
+make start_docker # start the docker container and drop you in a shell
+make start_docker_gpu # start the docker container if running on a machine with GPUs
+make stop_docker # stop the docker container and clean up
 make clean # clean all subdirectories of pycache files etc.
-make view # check results in tensorboard
 ```
 
-5.  Run the launch file from the command line, substituting in your preferences for the correct arguments (see rlpyt/utils/launching/arguments.py for a complete list).
+6.  Before running anything, make sure you create an empty directory titled "results" in the base directory.
+
+7.  Run the launch file from the command line, substituting in your preferences for the correct arguments (see rlpyt/utils/launching/arguments.py for a complete list).
 ```
 python3 launch.py -env SuperMarioBros-v0 -alg ppo -curiosity_alg icm
 ```
 
-6.  This will launch your experiment in a tmux session, along with an htop monitoring process and a tensorboard visualization.
+8.  This will launch your experiment in a tmux session titled "experiment". This session will have 3 windows - a window where your code is running, an htop monitoring process, and a window that serves tensorboard to port 12345 (or the port specified in global.json). 
+
+9.  Results folders will be automatically generated in the results directory created in step 6.
+
+10.  Example runs can be found in the models directory. Model weights and exact hyperparameters can be found there for tested environments.
 
 ## Notes
 
@@ -61,11 +79,9 @@ The class types perform the following roles:
       * **TrajectoryInfo** - Diagnostics logged on a per-trajectory basis.
   * **Agent** - Chooses control action to the `environment` in `sampler`; trained by the `algorithm`.  Interface to `model`.
     * **Model** - Torch neural network module, attached to the `agent`.
+    * **Curiosity Model** - Torch neural network module, attached to the `model` which is attached to the `agent`.
     * **Distribution** - Samples actions for stochastic `agents` and defines related formulas for use in loss function, attached to the `agent`.
   * **Algorithm** - Uses gathered samples to train the `agent` (e.g. defines a loss function and performs gradient descent).
-    * **Optimizer** - Training update rule (e.g. Adam), attached to the `algorithm`.
-    * **OptimizationInfo** - Diagnostics logged on a per-training batch basis.
-  * **Curiosity Algorithm** - Generates an intrinsic reward signal that can be passed directly through the sampler or in batches to the Algorithm.
     * **Optimizer** - Training update rule (e.g. Adam), attached to the `algorithm`.
     * **OptimizationInfo** - Diagnostics logged on a per-training batch basis.
 
