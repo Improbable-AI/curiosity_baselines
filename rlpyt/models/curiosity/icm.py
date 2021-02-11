@@ -1,8 +1,9 @@
 
 import torch
 from torch import nn
+torch.set_printoptions(precision=10, sci_mode=False)
 
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims, valid_mean
 from rlpyt.models.curiosity.encoders import BurdaHead, MazeHead, UniverseHead
 
 class ResBlock(nn.Module):
@@ -42,7 +43,7 @@ class ResForward(nn.Module):
         return x
 
 class ICM(nn.Module):
-    """Curiosity model for intrinsically motivated agents: two neural networks, one
+    """ICM curiosity agent: two neural networks, one
     forward model that predicts the next state, and one inverse model that predicts 
     the action given two states. The forward model uses the prediction error to
     compute an intrinsic reward. The inverse model trains features that are invariant
@@ -56,15 +57,22 @@ class ICM(nn.Module):
             feature_encoding='idf', 
             batch_norm=False,
             prediction_beta=1.0,
-            obs_stats=None
+            obs_stats=None,
+            forward_loss_wt=0.2
             ):
         super(ICM, self).__init__()
-
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
+
+        if forward_loss_wt == -1.0:
+            self.forward_loss_wt = 1.0
+            self.inverse_loss_wt = 1.0
+        else:
+            self.forward_loss_wt = forward_loss_wt
+            self.inverse_loss_wt = 1-forward_loss_wt
 
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
@@ -83,15 +91,15 @@ class ICM(nn.Module):
             nn.Linear(self.feature_size, action_size)
             )
 
-        # Original 2017 ICM paper
+        # 2019 ICM paper (Burda et al.)
+        self.forward_model = ResForward(feature_size=self.feature_size, action_size=action_size)
+
+        # 2017 ICM paper (Pathak et al.)
         # self.forward_model = nn.Sequential(
         #     nn.Linear(self.feature_size + action_size, 256),
         #     nn.ReLU(),
         #     nn.Linear(256, self.feature_size)
         #     )
-
-        # Modified 2019 ICM paper
-        self.forward_model = ResForward(feature_size=self.feature_size, action_size=action_size)
 
 
     def forward(self, obs1, obs2, action):
@@ -116,26 +124,25 @@ class ICM(nn.Module):
             phi2 = phi2.view(T, B, -1)
 
         predicted_action = self.inverse_model(torch.cat([phi1, phi2], 2))
-        predicted_phi2 = self.forward_model(phi1.detach(), action.view(T, B, -1))
+        predicted_phi2 = self.forward_model(phi1.detach(), action.view(T, B, -1).detach())
 
         return phi1, phi2, predicted_phi2, predicted_action
 
-    def compute_bonus(self, obs, action, next_obs):
-        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs, next_obs, action)
-        forward_loss = 0.5 * (nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size)
-        return self.prediction_beta * forward_loss.item()
+    def compute_bonus(self, observations, next_observations, actions):
+        phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
+        reward = nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size
+        return self.prediction_beta * reward
 
-    def compute_loss(self, obs, action, next_obs):
-        #------------------------------------------------------------#
-        # hacky dimension add for when you have only one environment
-        if action.dim() == 2: 
-            action = action.unsqueeze(1)
-        #------------------------------------------------------------#
-        phi1, phi2, predicted_phi2, predicted_action = self.forward(obs, next_obs, action)
-        action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
-        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
-        forward_loss = 0.5 * nn.functional.mse_loss(predicted_phi2, phi2.detach())
-        return inverse_loss, forward_loss
+    def compute_loss(self, observations, next_observations, actions, valid):
+        # dimension add for when you have only one environment
+        if actions.dim() == 2: actions = actions.unsqueeze(1)
+        phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
+        actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # convert action to (T * B, action_size)
+        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach(), reduction='none').view(phi1.shape[0], phi1.shape[1])
+        forward_loss = nn.functional.mse_loss(predicted_phi2, phi2.detach(), reduction='none').sum(-1)/self.feature_size
+        inverse_loss = valid_mean(inverse_loss, valid.detach())
+        forward_loss = valid_mean(forward_loss, valid.detach())
+        return self.inverse_loss_wt*inverse_loss, self.forward_loss_wt*forward_loss
 
 
 

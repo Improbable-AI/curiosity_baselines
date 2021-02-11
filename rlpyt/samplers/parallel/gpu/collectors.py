@@ -66,21 +66,24 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         # e.g. For episodic lives, hold the observation output when done, record
         self.temp_observation = buffer_method(self.step_buffer_np.observation, "copy")
 
-    def collect_batch(self, agent_inputs, agent_curiosity_inputs, traj_infos, itr):
+    def collect_batch(self, agent_inputs, traj_infos, itr):
         """Params agent_inputs and itr unused."""
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
         step = self.step_buffer_np
+
         b = np.where(step.done)[0]
         # step.observation[b] = self.temp_observation[b]
         step.done[:] = False  # Did resets in between batches.
+
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
         agent_buf.prev_action[0] = step.prev_action
         env_buf.prev_reward[0] = step.prev_reward
         obs_ready.release()  # Previous obs already written, ready for new.
+
         completed_infos = list()
         for t in range(self.batch_T):
             
-            env_buf.observation[t] = step.observation
+            env_buf.observation[t] = step.observation # [0 : T]
             act_ready.acquire()  # Need sampled actions from server.
             for b, env in enumerate(self.envs):
                 if step.done[b]:
@@ -91,36 +94,39 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     # Leave step.done[b] = True, record that.
                     continue
                 o, r_ext, d, env_info = env.step(step.prev_action[b])
-                env_buf.next_observation[t][b] = o # will store the final state for icm
 
                 r_ext_log = r_ext
                 if self.no_extrinsic:
                     r_ext = 0.0
                 
                 # intrinsic reward is generated post batch for gpu sampling
-                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, 0.0, d, step.agent_info[b], env_info)
+                traj_infos[b].step(step.observation[b], step.prev_action[b], r_ext_log, d, step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
-                    completed_infos.append(traj_infos[b].terminate(o))
+                    completed_infos.append(traj_infos[b].terminate())
                     traj_infos[b] = self.TrajInfoCls()
                     self.need_reset[b] = True
                 if d:
                     self.temp_observation[b] = o  # Store until start of next batch.
                     o = 0  # Record blank.
+
                 step.observation[b] = o
                 step.prev_reward[b] = r_ext # intrinsic reward is added later
                 step.done[b] = d
+
                 if env_info:
                     env_buf.env_info[t, b] = env_info
+
             agent_buf.action[t] = step.prev_action  # OPTIONAL BY SERVER
             env_buf.reward[t] = step.prev_reward
+            env_buf.next_observation[t] = step.observation # [1: T+1]
             env_buf.done[t] = step.done
             if step.agent_info:
                 agent_buf.agent_info[t] = step.agent_info  # OPTIONAL BY SERVER
             obs_ready.release()  # Ready for server to use/write step buffer.
 
-        return None, None, traj_infos, completed_infos
+        return None, traj_infos, completed_infos
 
-    def reset_if_needed(self, agent_inputs, agent_curiosity_inputs):
+    def reset_if_needed(self, agent_inputs):
         """Param agent_inputs unused, using step_buffer instead."""
         # step.done[:] = 0  # No, turn off in master after it resets agent.
         if np.any(self.need_reset):

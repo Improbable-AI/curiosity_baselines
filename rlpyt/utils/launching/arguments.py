@@ -1,12 +1,18 @@
 import sys
 import argparse
+import json
+
+with open('./global.json') as global_params:
+    params = json.load(global_params)
+    _ATARI_ENVS = params['envs']['atari_envs']
+    _MUJOCO_ENVS = params['envs']['mujoco_envs']
 
 def get_args(args_in=sys.argv[1:]):
     parser = argparse.ArgumentParser()
 
     # main args
     parser.add_argument('-alg', type=str, choices=['ppo', 'sac', 'a2c'], help='Which learning algorithm to run.')
-    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement', 'ndigo'], help='Which intrinsic reward algorithm to use.')
+    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement', 'ndigo', 'rnd'], help='Which intrinsic reward algorithm to use.')
     parser.add_argument('-env', type=str, help='Which environment to run on.')
     
     # general args
@@ -62,26 +68,38 @@ def get_args(args_in=sys.argv[1:]):
     elif 'deepmind' in environment.lower():
         parser.add_argument('-log_heatmaps', action='store_true', help='Whether or not to store heatmaps.')
         parser.add_argument('-normalize_obs', action='store_true', help='Whether or not to normalize the observation each step.')
+        parser.add_argument('-obs_type', default='mask', type=str, choices=['mask', 'rgb'], help='Whether to pass binary mask observations or RGB observations.')
+        parser.add_argument('-max_episode_steps', default=500, type=int, help='How many steps to run before the done flag is raised.')
+    elif environment in _ATARI_ENVS:
+        parser.add_argument('-max_episode_steps', default=27000, type=int, help='How many steps to run before the done flag is raised.')
+        parser.add_argument('-normalize_obs', action='store_true', help='Whether or not to normalize the observation each step.')
 
     # curiosity specific args
-    if 'icm' in args_in:
+    curiosity_alg = args_in[args_in.index('-curiosity_alg')+1]
+    if curiosity_alg == 'icm':
         parser.add_argument('-feature_encoding', default='idf_burda', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
         parser.add_argument('-forward_loss_wt', default=0.2, type=float, help='Forward loss coefficient. Inverse weight is (1 - this).')
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
         parser.add_argument('-prediction_lr_scale', default=10.0, type=float, help='Scale the learning rate of predictor w/ respect to policy network.')
-    elif 'disagreement' in args_in:
+    elif curiosity_alg == 'disagreement':
         parser.add_argument('-feature_encoding', default='idf_burda', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
         parser.add_argument('-forward_loss_wt', default=0.2, type=float, help='Forward loss coefficient. Inverse weight is (1 - this).')
         parser.add_argument('-ensemble_size', default=5, type=int, help='Number of forward models used to compute disagreement reward.')
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
         parser.add_argument('-prediction_lr_scale', default=10.0, type=float, help='Scale the learning rate of predictor w/ respect to policy network.')
-    elif 'ndigo' in args_in:
+    elif curiosity_alg == 'ndigo':
         parser.add_argument('-feature_encoding', default='idf_maze', type=str, choices=['none', 'idf', 'idf_burda', 'idf_maze'], help='Which feature encoding method to use with ICM.')
         parser.add_argument('-pred_horizon', default=1, type=int, help='Number of prediction steps used to calculate intrinsic reward.')
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-num_predictors', default=10, type=int, help='How many forward models to train.')
+    elif curiosity_alg == 'rnd':
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with RND.')
+        parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
+        parser.add_argument('-drop_probability', default=1.0, type=float, help='Decimal percent of experience to drop when training the predictor model.')
+    elif curiosity_alg == 'none':
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
 
 
     # switch argument (only used in launch.py in __main__)

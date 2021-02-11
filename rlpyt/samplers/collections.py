@@ -7,11 +7,11 @@ from rlpyt.utils.collections import namedarraytuple, AttrDict
 Samples = namedarraytuple("Samples", ["agent", "env"])
 
 AgentSamples = namedarraytuple("AgentSamples",
-    ["action", "reward_int", "prev_action", "agent_info", "agent_curiosity_info"])
+    ["action", "prev_action", "agent_info"])
 AgentSamplesBsv = namedarraytuple("AgentSamplesBsv",
-    ["action", "reward_int", "prev_action", "agent_info", "agent_curiosity_info", "bootstrap_value"])
+    ["action", "prev_action", "agent_info", "bootstrap_value"])
 EnvSamples = namedarraytuple("EnvSamples",
-    ["prev_observation", "reward", "prev_reward", "observation", "next_observation", "done", "env_info"])
+    ["reward", "prev_reward", "observation","next_observation", "done", "env_info"])
 
 
 class BatchSpec(namedtuple("BatchSpec", "T B")):
@@ -43,28 +43,19 @@ class TrajInfo(AttrDict):
         self.EpExtrinsicReward = 0
         self.EpNonzeroExtrinsicRewards = 0
         self.EpDiscountedExtrinsicReward = 0
-        self.EpIntrinsicReward = 0
-        self.EpNonzeroIntrinsicRewards = 0
         self._cur_discount = 1
-
         self.EpAveExtrinsicReward = []
-        self.EpAveIntrinsicReward = []
 
-    def step(self, observation, action, reward_ext, reward_int, done, agent_info, agent_curiosity_info, env_info):
+    def step(self, observation, action, reward_ext, done, agent_info, env_info):
         self.Length += 1
         self.EpExtrinsicReward += reward_ext
         self.EpNonzeroExtrinsicRewards += reward_ext != 0
         self.EpDiscountedExtrinsicReward += self._cur_discount * reward_ext
-        self.EpIntrinsicReward += reward_int
-        self.EpNonzeroIntrinsicRewards += reward_int != 0
         self._cur_discount *= self._discount
-
         self.EpAveExtrinsicReward.append(reward_ext)
-        self.EpAveIntrinsicReward.append(reward_int)
 
-    def terminate(self, observation):
+    def terminate(self):
         self.EpAveExtrinsicReward = np.mean(self.EpAveExtrinsicReward)
-        self.EpAveIntrinsicReward = np.mean(self.EpAveIntrinsicReward)
         return self
 
 

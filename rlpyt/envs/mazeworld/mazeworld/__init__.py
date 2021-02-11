@@ -34,7 +34,7 @@ register(
     id='Deepmind5Room-v0',
     entry_point='mazeworld.envs:DeepmindMazeWorld_5room',
     max_episode_steps=500,
-    kwargs={'level': 0, 'max_iterations': 500})
+    kwargs={'level': 0, 'max_iterations': 500, 'obs_type': 'maze'})
 
 register(
     id='Deepmind5RoomRandomFixed-v0',

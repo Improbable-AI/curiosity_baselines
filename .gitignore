@@ -1,16 +1,27 @@
 
-# To store all experiment data locally only.
-/results/  
-mjkey.txt
+# Any custom local files you use 
 log.numbers
 Makefile*
-*.dot
 grad_checking
-*.pdf
 aws.py
 plot.py
 plots
 heatmap*
+images
+
+# Results directory, and mujoco key
+/results/
+mjkey.txt
+
+# HPC Launch files and logs
+*.sh
+logs
+
+# Graph files
+*.dot
+
+# PDFs
+*.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

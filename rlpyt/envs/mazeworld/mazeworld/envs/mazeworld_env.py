@@ -27,17 +27,18 @@ class MazeWorld(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a', 'b', 'c', 'd', 'e', '@']
         self.state_layer_chars = ['P', '#'] + self.objects
         super(MazeWorld, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
             act_null_value=4,
-            resize_scale=8,
-            render_mode='uncropped')
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -53,15 +54,17 @@ class DeepmindMazeWorld_5room(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a', 'b']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_5room, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
-            resize_scale=8)
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -77,15 +80,17 @@ class DeepmindMazeWorld_5room_randomfixed(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a', 'b']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_5room_randomfixed, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
-            resize_scale=8)
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -101,15 +106,17 @@ class DeepmindMazeWorld_5room_bouncing(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a', 'b', 'c']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_5room_bouncing, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
-            resize_scale=8)
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -125,15 +132,17 @@ class DeepmindMazeWorld_5room_brownian(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a', 'b']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_5room_brownian, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
-            resize_scale=8)
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -149,17 +158,18 @@ class DeepmindMazeWorld_maze(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a', 'b', 'c', 'd', 'e']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_maze, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
             act_null_value=4,
-            resize_scale=8,
-            render_mode='uncropped')
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -175,17 +185,18 @@ class DeepmindMazeWorld_8room(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_8room, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
             act_null_value=4,
-            resize_scale=8,
-            render_mode='uncropped')
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -201,17 +212,18 @@ class DeepmindMazeWorld_8room_v1(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['a']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_8room_v1, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
             act_null_value=4,
-            resize_scale=8,
-            render_mode='uncropped')
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -228,17 +240,18 @@ class DeepmindMazeWorld_5room_moveable(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['e', 'b']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_5room_moveable, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
             act_null_value=4,
-            resize_scale=8,
-            render_mode='uncropped')
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()
@@ -255,17 +268,18 @@ class DeepmindMazeWorld_5room_moveable_v1(pycolab_env.PyColabEnv):
     def __init__(self,
                  level=0,
                  max_iterations=500,
+                 obs_type='mask',
                  default_reward=0.):
         self.level = level
         self.objects = ['e', 'b']
         self.state_layer_chars = ['#'] + self.objects # each char will produce a layer in the disentangled state
         super(DeepmindMazeWorld_5room_moveable_v1, self).__init__(
             max_iterations=max_iterations,
+            obs_type=obs_type,
             default_reward=default_reward,
             action_space=spaces.Discrete(4 + 1), # left, right, up, down, no action
             act_null_value=4,
-            resize_scale=8,
-            render_mode='uncropped')
+            resize_scale=17)
 
     def make_game(self):
         self._croppers = self.make_croppers()

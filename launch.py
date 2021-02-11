@@ -11,7 +11,7 @@ import torch
 from rlpyt.runners.minibatch_rl import MinibatchRl, MinibatchRlEval
 
 # Policies
-from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent, AtariNdigoLstmAgent
+from rlpyt.agents.pg.atari import AtariFfAgent, AtariLstmAgent
 from rlpyt.agents.pg.mujoco import MujocoFfAgent, MujocoLstmAgent
 
 # Samplers
@@ -115,9 +115,6 @@ def launch_tmux(args):
     # save arguments, and command if needed
     if args.pretrain is None:
         time.sleep(6) # wait for logdir to be created
-        args_json = json.dumps(vars(args), indent=4)
-        with open(log_dir + '/arguments.json', 'w') as jsonfile:
-            jsonfile.write(args_json)
         with open(log_dir + '/cmd.txt', 'w') as cmd_file:
             cmd_file.writelines(commands['runner'])
         with open(log_dir + '/git.txt', 'w') as git_file:
@@ -127,6 +124,12 @@ def launch_tmux(args):
 
 
 def start_experiment(args):
+
+    args_json = json.dumps(vars(args), indent=4)
+    if not os.path.isdir(args.log_dir):
+        os.makedirs(args.log_dir)
+    with open(args.log_dir + '/arguments.json', 'w') as jsonfile:
+        jsonfile.write(args_json)
 
     config = dict(env_id=args.env)
     
@@ -159,11 +162,19 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
         model_args['curiosity_kwargs']['forward_loss_wt'] = args.forward_loss_wt
+        model_args['curiosity_kwargs']['device'] = args.sample_mode
     elif args.curiosity_alg == 'ndigo':
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
         model_args['curiosity_kwargs']['pred_horizon'] = args.pred_horizon
         model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['num_predictors'] = args.num_predictors
+        model_args['curiosity_kwargs']['device'] = args.sample_mode
+    elif args.curiosity_alg == 'rnd':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
+        model_args['curiosity_kwargs']['drop_probability'] = args.drop_probability
+        model_args['curiosity_kwargs']['gamma'] = args.discount
+        model_args['curiosity_kwargs']['device'] = args.sample_mode
 
     if args.env in _MUJOCO_ENVS:
         if args.lstm:
@@ -172,19 +183,11 @@ def start_experiment(args):
             agent = MujocoFfAgent(initial_model_state_dict=initial_model_state_dict)
     else:
         if args.lstm:
-            if args.curiosity_alg == 'ndigo':
-                agent = AtariNdigoLstmAgent(
-                            initial_model_state_dict=initial_model_state_dict,
-                            model_kwargs=model_args,
-                            no_extrinsic=args.no_extrinsic,
-                            num_envs=args.num_envs
-                            )
-            else:
-                agent = AtariLstmAgent(
-                            initial_model_state_dict=initial_model_state_dict,
-                            model_kwargs=model_args,
-                            no_extrinsic=args.no_extrinsic
-                            )
+            agent = AtariLstmAgent(
+                        initial_model_state_dict=initial_model_state_dict,
+                        model_kwargs=model_args,
+                        no_extrinsic=args.no_extrinsic
+                        )
         else:
             agent = AtariFfAgent(initial_model_state_dict=initial_model_state_dict)
 
@@ -250,7 +253,9 @@ def start_experiment(args):
             normalize_obs=args.normalize_obs,
             normalize_obs_steps=10000,
             log_heatmaps=args.log_heatmaps,
-            logdir=args.log_dir
+            logdir=args.log_dir,
+            obs_type=args.obs_type,
+            max_steps_per_episode=args.max_episode_steps
             )
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make
@@ -268,11 +273,12 @@ def start_experiment(args):
             game=args.env, 
             no_extrinsic=args.no_extrinsic,
             no_negative_reward=args.no_negative_reward,
-            normalize_obs=False,
+            normalize_obs=args.normalize_obs,
             normalize_obs_steps=10000,
             downsampling_scheme='classical',
             record_freq=args.record_freq,
-            record_dir=args.log_dir
+            record_dir=args.log_dir,
+            horizon=args.max_episode_steps,
             )
 
     if args.sample_mode == 'gpu':

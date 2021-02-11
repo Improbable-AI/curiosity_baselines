@@ -8,7 +8,6 @@ from collections import namedtuple
 from rlpyt.envs.base import EnvSpaces, EnvStep
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import is_namedtuple_class
-from rlpyt.utils.averages import generate_observation_stats
 from rlpyt.envs.wrappers.general_wrappers import *
 from rlpyt.envs.wrappers.mario_wrappers import *
 
@@ -175,13 +174,7 @@ def make(*args, info_example=None, **kwargs):
     else:
         env = GymEnvWrapper(EnvInfoWrapper(env, info_example)) 
 
-    if kwargs['normalize_obs']:
-        obs_mean, obs_std = generate_observation_stats(env, kwargs['normalize_steps'])
-    else:
-        obs_mean = 0
-        obs_std = 1
-
-    return env, obs_mean, obs_std
+    return env
 
 def mario_make(*args, info_example=None, **kwargs):
     """Use as factory function for making instances of SuperMario environments with
@@ -232,11 +225,15 @@ def deepmind_make(*args, info_example=None, **kwargs):
     """
     import rlpyt.envs.mazeworld.mazeworld
 
-    env = gym.make(kwargs['game'])
+    env = gym.make(kwargs['game'], obs_type=kwargs['obs_type'], max_iterations=kwargs['max_steps_per_episode'])
     env.pycolab_init(kwargs['logdir'], kwargs['log_heatmaps'])
 
     if kwargs['no_negative_reward']:
         env = NoNegativeReward(env)
+
+    if kwargs['obs_type'] == 'rgb':
+        env = PytorchImage(env)
+
     if info_example is None:
         env = GymEnvWrapper(env, act_null_value=env.act_null_value)
     else:

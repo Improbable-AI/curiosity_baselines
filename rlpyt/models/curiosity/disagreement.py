@@ -2,7 +2,7 @@
 import torch
 from torch import nn
 
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims, valid_mean
 from rlpyt.models.curiosity.encoders import BurdaHead, MazeHead, UniverseHead
 
 class ResBlock(nn.Module):
@@ -55,7 +55,9 @@ class Disagreement(nn.Module):
             feature_encoding='idf', 
             batch_norm=False,
             prediction_beta=1.0,
-            obs_stats=None
+            obs_stats=None,
+            device="cpu",
+            forward_loss_wt=0.2,
             ):
         super(Disagreement, self).__init__()
 
@@ -63,9 +65,17 @@ class Disagreement(nn.Module):
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
+        self.device = torch.device("cuda:0" if device == "gpu" else "cpu")
 
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
+
+        if forward_loss_wt == -1.0:
+            self.forward_loss_wt = 1.0
+            self.inverse_loss_wt = 1.0
+        else:
+            self.forward_loss_wt = forward_loss_wt
+            self.inverse_loss_wt = 1-forward_loss_wt
 
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
@@ -83,10 +93,11 @@ class Disagreement(nn.Module):
             nn.ReLU(),
             nn.Linear(self.feature_size, action_size)
             )
-        
-        self.forward_model = []
-        for _ in range(self.ensemble_size):
-            self.forward_model.append(ResForward(feature_size=self.feature_size, action_size=action_size))
+
+        self.forward_model_1 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
+        self.forward_model_2 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
+        self.forward_model_3 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
+        self.forward_model_4 = ResForward(feature_size=self.feature_size, action_size=action_size).to(self.device)
 
     def forward(self, obs1, obs2, action):
 
@@ -112,33 +123,49 @@ class Disagreement(nn.Module):
         predicted_action = self.inverse_model(torch.cat([phi1, phi2], 2))
 
         predicted_phi2 = []
-        for forw_model in self.forward_model:
-            predicted_phi2.append(forw_model(phi1.detach(), action.view(T, B, -1)))
-        predicted_phi2_stacked = torch.stack(predicted_phi2).detach()
+
+        predicted_phi2.append(self.forward_model_1(phi1.detach(), action.view(T, B, -1).detach()))
+        predicted_phi2.append(self.forward_model_2(phi1.detach(), action.view(T, B, -1).detach()))
+        predicted_phi2.append(self.forward_model_3(phi1.detach(), action.view(T, B, -1).detach()))
+        predicted_phi2.append(self.forward_model_4(phi1.detach(), action.view(T, B, -1).detach()))
+
+        predicted_phi2_stacked = torch.stack(predicted_phi2)
 
         return phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action
 
-    def compute_bonus(self, obs, action, next_obs):
-        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs, next_obs, action)
+    def compute_bonus(self, observations, next_observations, actions):
+        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(observations, next_observations, actions)
         feature_var = torch.var(predicted_phi2_stacked, dim=0) # feature variance across forward models
         reward = torch.mean(feature_var, axis=-1) # mean over feature
-        return self.prediction_beta * reward.item()
+        return self.prediction_beta * reward
 
-    def compute_loss(self, obs, action, next_obs):
+    def compute_loss(self, observations, next_observations, actions, valid):
         #------------------------------------------------------------#
         # hacky dimension add for when you have only one environment (debugging)
-        if action.dim() == 2: 
-            action = action.unsqueeze(1)
+        if actions.dim() == 2: 
+            actions = actions.unsqueeze(1)
         #------------------------------------------------------------#
-        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(obs, next_obs, action)
-        action = torch.max(action.view(-1, *action.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
-        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), action.detach())
+        phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(observations, next_observations, actions)
+        actions = torch.max(actions.view(-1, *actions.shape[2:]), 1)[1] # conver action to (T * B, action_size), then get target indexes
+        inverse_loss = nn.functional.cross_entropy(predicted_action.view(-1, *predicted_action.shape[2:]), actions.detach(), reduction='none').view(phi1.shape[0], phi2.shape[1])
+        inverse_loss = valid_mean(inverse_loss, valid)
         
-        forward_loss = torch.tensor(0.0)
-        for p_phi2 in predicted_phi2:
-            forward_loss += nn.functional.dropout(0.5 * nn.functional.mse_loss(p_phi2, phi2.detach()), p=0.2)
+        forward_loss = torch.tensor(0.0, device=self.device)
 
-        return inverse_loss, forward_loss
+        forward_loss_1 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[0], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
+        forward_loss += valid_mean(forward_loss_1, valid)
+
+        forward_loss_2 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[1], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
+        forward_loss += valid_mean(forward_loss_2, valid)
+
+        forward_loss_3 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[2], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
+        forward_loss += valid_mean(forward_loss_3, valid)
+
+        forward_loss_4 = nn.functional.dropout(nn.functional.mse_loss(predicted_phi2[3], phi2.detach(), reduction='none'), p=0.2).sum(-1)/self.feature_size
+        forward_loss += valid_mean(forward_loss_4, valid)
+
+        return self.inverse_loss_wt*inverse_loss, self.forward_loss_wt*forward_loss
+
 
 
 

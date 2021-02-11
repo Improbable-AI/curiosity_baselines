@@ -48,7 +48,8 @@ class NDIGO(torch.nn.Module):
             gru_size=128,
             batch_norm=False,
             obs_stats=None,
-            num_predictors=10
+            num_predictors=10,
+            device='cpu',
             ):
         """Instantiate neural net module according to inputs."""
         super(NDIGO, self).__init__()
@@ -62,7 +63,7 @@ class NDIGO(torch.nn.Module):
         self.num_predictors = num_predictors
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
-
+        self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
         if self.feature_encoding != 'none':
             if self.feature_encoding == 'idf':
                 self.feature_size = 288
@@ -131,6 +132,7 @@ class NDIGO(torch.nn.Module):
     def compute_bonus(self, observations, prev_actions, actions):
         #------------------------------------------------------------#
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
+
         # hacky dimension add for when you have only one environment
         if prev_actions.dim() == 1: 
             prev_actions = prev_actions.view(1, 1, -1)
@@ -144,11 +146,11 @@ class NDIGO(torch.nn.Module):
 
         # slice beliefs and actions
         belief_states_t = belief_states[:T-self.horizon] # slice off last timesteps
-        belief_states_tm1 = torch.zeros((T-self.horizon-1, B, self.gru_size))
+        belief_states_tm1 = torch.zeros((T-self.horizon-1, B, self.gru_size), device=self.device)
         belief_states_tm1[:] = belief_states_t.clone()[:-1]
         
-        action_seqs_t = torch.zeros((T-self.horizon, B, self.horizon*self.action_size)) # placeholder
-        action_seqs_tm1 = torch.zeros((T-self.horizon-1, B, (self.horizon+1)*self.action_size)) # placeholder
+        action_seqs_t = torch.zeros((T-self.horizon, B, self.horizon*self.action_size), device=self.device) # placeholder
+        action_seqs_tm1 = torch.zeros((T-self.horizon-1, B, (self.horizon+1)*self.action_size), device=self.device) # placeholder
         for i in range(len(actions)-self.horizon):
             if i != len(actions)-self.horizon-1:
                 action_seq_tm1 = actions.clone()[i:i+self.horizon+1]
@@ -193,9 +195,9 @@ class NDIGO(torch.nn.Module):
             predicted_states_t = self.forward_model_10(belief_states_t, action_seqs_t.detach()).view(-1, B, img_shape[0]*img_shape[1]*img_shape[2]) # (T-10, B, 75)
 
         predicted_states_tm1 = nn.functional.sigmoid(predicted_states_tm1)
-        true_obs_tm1 = observations.clone()[self.horizon:-1].view(-1, *predicted_states_tm1.shape[1:])
+        true_obs_tm1 = observations.clone()[self.horizon:-1].view(-1, *predicted_states_tm1.shape[1:]).type(torch.float)
         predicted_states_t = nn.functional.sigmoid(predicted_states_t)
-        true_obs_t = observations.clone()[self.horizon:].view(-1, *predicted_states_t.shape[1:])
+        true_obs_t = observations.clone()[self.horizon:].view(-1, *predicted_states_t.shape[1:]).type(torch.float)
 
         # generate losses
         losses_tm1 = nn.functional.binary_cross_entropy(predicted_states_tm1, true_obs_tm1, reduction='none')
@@ -204,13 +206,18 @@ class NDIGO(torch.nn.Module):
         losses_t = torch.sum(losses_t, dim=-1)/losses_t.shape[-1]
         
         # subtract losses to get rewards (r[t+H-1] = losses[t-1] - losses[t])
-        r_int = torch.zeros((T, B))
+        r_int = torch.zeros((T, B), device=self.device)
         r_int[self.horizon:len(losses_t)+self.horizon-1] = losses_tm1 - losses_t[1:] # time zero reward is set to 0 (L[-1] doesn't exist)
+        # r_int[self.horizon:len(losses_t)+self.horizon-1] = losses_t[1:] - losses_tm1
+        # r_int[1:len(losses_t)] = losses_tm1 - losses_t[1:]
+        # r_int[1:len(losses_t)] = losses_t[1:] - losses_tm1
+
+        # r_int = nn.functional.relu(r_int)
 
         return r_int
 
 
-    def compute_loss(self, observations, prev_actions, actions):
+    def compute_loss(self, observations, prev_actions, actions, valid):
         #------------------------------------------------------------#
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
         # hacky dimension add for when you have only one environment
@@ -225,7 +232,7 @@ class NDIGO(torch.nn.Module):
         self.gru_states = None # only bc we're processing exactly 1 episode per batch
 
         for k in range(1, self.num_predictors+1):
-            action_seqs = torch.zeros((T-k, B, k*self.action_size)) # placeholder
+            action_seqs = torch.zeros((T-k, B, k*self.action_size), device=self.device) # placeholder
             for i in range(len(actions)-k):
                 action_seq = actions[i:i+k]
                 action_seq = torch.transpose(action_seq, 0, 1)
@@ -256,12 +263,13 @@ class NDIGO(torch.nn.Module):
 
             # generate losses for this predictor
             predicted_states = nn.functional.sigmoid(predicted_states)
-            true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach()
+            true_obs = observations[k:].view(-1, *predicted_states.shape[1:]).detach().type(torch.float)
 
+            floss = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
             if k == 1:
-                loss = nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
+                loss = floss
             else:
-                loss += nn.functional.binary_cross_entropy(predicted_states, true_obs.detach(), reduction='mean')
+                loss += floss
 
         return loss
 
