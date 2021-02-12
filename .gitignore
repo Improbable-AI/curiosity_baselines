@@ -1,7 +1,6 @@
 
 # Any custom local files you use 
 log.numbers
-Makefile*
 grad_checking
 aws.py
 plot.py
