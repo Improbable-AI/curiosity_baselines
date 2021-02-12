@@ -54,7 +54,7 @@ make clean # clean all subdirectories of pycache files etc.
 
 7.  Run the launch file from the command line, substituting in your preferences for the correct arguments (see rlpyt/utils/launching/arguments.py for a complete list).
 ```
-python3 launch.py -env SuperMarioBros-v0 -alg ppo -curiosity_alg icm
+python3 launch.py -env breakout -alg ppo -curiosity_alg icm -lstm
 ```
 
 8.  This will launch your experiment in a tmux session titled "experiment". This session will have 3 windows - a window where your code is running, an htop monitoring process, and a window that serves tensorboard to port 12345 (or the port specified in global.json). 
