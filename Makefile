@@ -15,9 +15,9 @@ start_docker:
 		--name trainer \
 		-p $(TB_PORT):$(TB_PORT) \
 		--mount src=`pwd`,target=$(WORK_DIR),type=bind \
-		--mount src=`pwd`/mjkey.txt,target=/root/.mujoco/mjkey.txt,type=bind \
 		-w $(WORK_DIR) \
 		$(CONTAINER_IMAGE)
+		# --mount src=`pwd`/mjkey.txt,target=/root/.mujoco/mjkey.txt,type=bind \
 
 # GPU Version
 start_docker_gpu:
@@ -28,9 +28,9 @@ start_docker_gpu:
 		--gpus all \
 		-p $(TB_PORT):$(TB_PORT) \
 		--mount src=`pwd`,target=$(WORK_DIR),type=bind \
-		--mount src=`pwd`/mjkey.txt,target=/root/.mujoco/mjkey.txt,type=bind \
 		-w $(WORK_DIR) \
 		$(CONTAINER_IMAGE)
+		# --mount src=`pwd`/mjkey.txt,target=/root/.mujoco/mjkey.txt,type=bind \
 
 stop_docker: clean
 	@docker stop trainer
