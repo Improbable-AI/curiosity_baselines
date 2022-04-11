@@ -1,3 +1,11 @@
+# 6.484 Project spring 2022 @ MIT
+
+Forked from [curiosity baselines](https://github.com/Improbable-AI/curiosity_baselineas) in order to evaluate the performance of self-organising feature maps as curiosity/exploration bonus backbone.
+
+Project by Odin Aleksander Severinsen, Hjalmar Jacob Vinje and Marius Lindegaard for class 6.484 sensorimotor learning spring 2022 at MIT taught by Prof. Pulkit Agrawal.
+
+
+# Forked README:
 
 ## Overview
 
