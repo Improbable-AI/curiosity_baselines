@@ -9,7 +9,7 @@ heatmap*
 images
 
 # Results directory, and mujoco key
-/results/
+# /results/
 mjkey.txt
 
 # HPC Launch files and logs
