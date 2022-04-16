@@ -8,6 +8,10 @@ plots
 heatmap*
 images
 
+
+# Mac ignores
+**/.DS_Store/*
+
 # Results directory, and mujoco key
 # /results/
 mjkey.txt
