@@ -13,6 +13,7 @@ AgentInputs = namedarraytuple("AgentInputs", ["observation", "prev_action", "pre
 IcmAgentCuriosityInputs = namedarraytuple("IcmAgentCuriosityInputs", ["observation", "next_observation", "action", "valid"])
 NdigoAgentCuriosityInputs = namedarraytuple("NdigoAgentCuriosityInputs", ["observation", "prev_actions", "actions", "valid"])
 RndAgentCuriosityInputs = namedarraytuple("RndAgentCuriosityInputs", ["next_observation", "valid"])
+RandAgentCuriosityInputs = namedarraytuple("RandAgentCuriosityInputs", ["next_observation", "valid"])
 AgentStep = namedarraytuple("AgentStep", ["action", "agent_info"])
 AgentCuriosityStep = namedarraytuple("AgentCuriosityStep", ["r_int", "agent_curiosity_info"])
 

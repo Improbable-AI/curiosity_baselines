@@ -145,7 +145,7 @@ class RND(nn.Module):
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         # lead_dim is just number of leading dimensions: e.g. [T, B] = 2 or [] = 0.
         lead_dim, T, B, img_shape = infer_leading_dims(obs, 3)
-        
+
         # normalize observations and clip (see paper for details)
         if done is not None:
             obs_cpu = obs.clone().cpu().data.numpy()

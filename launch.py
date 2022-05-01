@@ -139,7 +139,7 @@ def start_experiment(args):
         os.environ['CUDA_VISIBLE_DEVICES'] = str(0)
     else:
         affinity = dict(workers_cpus=list(range(args.num_cpus)))
-    
+
     # potentially reload models
     initial_optim_state_dict = None
     initial_model_state_dict = None
@@ -174,6 +174,9 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
         model_args['curiosity_kwargs']['drop_probability'] = args.drop_probability
         model_args['curiosity_kwargs']['gamma'] = args.discount
+        model_args['curiosity_kwargs']['device'] = args.sample_mode
+    elif args.curiosity_alg == 'rand':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
         model_args['curiosity_kwargs']['device'] = args.sample_mode
 
     if args.env in _MUJOCO_ENVS:

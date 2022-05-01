@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
-from rlpyt.agents.base import AgentInputs, AgentInputsRnn, IcmAgentCuriosityInputs, NdigoAgentCuriosityInputs, RndAgentCuriosityInputs
+from rlpyt.agents.base import AgentInputs, AgentInputsRnn, IcmAgentCuriosityInputs, NdigoAgentCuriosityInputs, RndAgentCuriosityInputs, RandAgentCuriosityInputs
 from rlpyt.utils.tensor import valid_mean
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
@@ -110,6 +110,12 @@ class PPO(PolicyGradientAlgo):
                 valid=valid
             )
             agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
+        elif self.curiosity_type == 'rand':
+            agent_curiosity_inputs = RandAgentCuriosityInputs(
+                next_observation=samples.env.next_observation.clone(),
+                valid=valid
+            )
+            agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
         elif self.curiosity_type == 'none':
             agent_curiosity_inputs = None
         loss_inputs = LossInputs(  # So can slice all.
@@ -165,6 +171,10 @@ class PPO(PolicyGradientAlgo):
                     opt_info.forward_loss.append(forward_loss.item())
                     opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
                 elif self.curiosity_type == 'rnd':
+                    forward_loss = curiosity_losses
+                    opt_info.forward_loss.append(forward_loss.item())
+                    opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
+                elif self.curiosity_type == 'rand':
                     forward_loss = curiosity_losses
                     opt_info.forward_loss.append(forward_loss.item())
                     opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
@@ -233,6 +243,10 @@ class PPO(PolicyGradientAlgo):
             loss += forward_loss
             curiosity_losses = (forward_loss)
         elif self.curiosity_type == 'rnd':
+            forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
+            loss += forward_loss
+            curiosity_losses = (forward_loss)
+        elif self.curiosity_type == 'rand':
             forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
             loss += forward_loss
             curiosity_losses = (forward_loss)

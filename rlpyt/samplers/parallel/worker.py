@@ -58,9 +58,9 @@ def sampling_process(common_kwargs, worker_kwargs):
     initialize_worker(w.rank, w.seed, w.cpus, c.torch_threads)
 
     envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
-    
+
     log_heatmaps = c.env_kwargs.get('log_heatmaps', None)
-    
+
     if log_heatmaps is not None and log_heatmaps == True:
         for env in envs[1:]:
             env.log_heatmaps = False

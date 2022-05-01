@@ -1,6 +1,6 @@
 {
     "alg": "ppo",
-    "curiosity_alg": "icm",
+    "curiosity_alg": "rnd",
     "env": "breakout",
     "iterations": 100000000,
     "lstm": true,
@@ -34,10 +34,8 @@
     "kernel_sigma": 0.001,
     "max_episode_steps": 27000,
     "normalize_obs": false,
-    "feature_encoding": "idf_burda",
-    "forward_loss_wt": 0.2,
-    "batch_norm": false,
+    "feature_encoding": "none",
     "prediction_beta": 1.0,
-    "prediction_lr_scale": 10.0,
+    "drop_probability": 1.0,
     "launch_tmux": "no"
 }
