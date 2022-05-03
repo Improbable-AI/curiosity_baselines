@@ -146,8 +146,8 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
         elif curiosity_type == 'rand':
             next_observation, valid = args
             curiosity_agent_inputs = buffer_to((next_observation, valid), device=self.device)
-            forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
-            losses = (forward_loss.to("cpu"))
+            forward_loss, test_output = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
+            losses = (forward_loss.to("cpu"), test_output)
 
         # TODO MARIUS: Define input arguments for computing losses for training the Kohonen curiosity model
         elif curiosity_type == 'kohonen':

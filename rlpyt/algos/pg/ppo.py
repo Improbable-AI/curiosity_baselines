@@ -193,7 +193,8 @@ class PPO(PolicyGradientAlgo):
                     opt_info.forward_loss.append(forward_loss.item())
                     opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
                 elif self.curiosity_type == 'rand':
-                    forward_loss = curiosity_losses
+                    forward_loss, dummy_logging = curiosity_losses
+                    opt_info.rand_dummy_logging.append(dummy_logging)
                     opt_info.forward_loss.append(forward_loss.item())
                     opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
 
@@ -279,9 +280,9 @@ class PPO(PolicyGradientAlgo):
             loss += forward_loss
             curiosity_losses = (forward_loss)
         elif self.curiosity_type == 'rand':
-            forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
+            forward_loss, dummy_rand = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
             loss += forward_loss
-            curiosity_losses = (forward_loss)
+            curiosity_losses = (forward_loss, dummy_rand)
 
         # TODO MARIUS: As we discussed, you might want to make sure that we don't get PPO to optimize something here incorrectly
         elif self.curiosity_type == 'kohonen':

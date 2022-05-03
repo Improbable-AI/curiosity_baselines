@@ -26,6 +26,8 @@ class RandReward(nn.Module):
         self.conv_feature_size = 7*7*64
         self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
 
+        self.dummy_output = 0
+
         # Initialize network with random weigths, just to figure out the dimensions of args
         with torch.no_grad():
             self.network = nn.Sequential(
@@ -76,6 +78,9 @@ class RandReward(nn.Module):
             R = torch.rand_like(predicted_phi)
             forward_loss = (nn.functional.mse_loss(predicted_phi.detach(), R, reduction='none').sum(-1)/self.feature_size).mean(dim=()).detach()
 
-        return forward_loss
+        out = self.dummy_output
+        self.dummy_output += 1
+
+        return forward_loss, out
 
 

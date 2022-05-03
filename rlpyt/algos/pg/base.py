@@ -21,7 +21,14 @@ OptInfo = namedtuple("OptInfo", ["return_",
                                  "curiosity_loss", 
                                  "gradNorm", 
                                  "entropy", 
-                                 "perplexity"])
+                                 "perplexity",
+                                 # Rand: dummy logging parameter
+                                 "rand_dummy_logging",
+                                 # ART: number of classes
+                                 "art_num_classes",
+                                 # Kohonen: Change of weights
+                                 "kohonen_dw"
+                                 ])
 AgentTrain = namedtuple("AgentTrain", ["dist_info", "value"])
 
 
