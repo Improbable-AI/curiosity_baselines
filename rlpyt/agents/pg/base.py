@@ -7,3 +7,9 @@ IcmInfo = namedarraytuple("IcmInfo", [])
 NdigoInfo = namedarraytuple("NdigoInfo", ["prev_gru_state"])
 RndInfo = namedarraytuple("RndInfo", [])
 RandInfo = namedarraytuple("RandInfo", [])
+
+# TODO MARIUS: Define Kohonen algorithm info
+KohonenInfo = namedarraytuple("KohonenInfo", [])
+
+# TODO MARIUS: Define ART algorithm info
+ARTInfo = namedarraytuple("ARTInfo", [])

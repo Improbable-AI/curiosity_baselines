@@ -179,6 +179,16 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
         model_args['curiosity_kwargs']['device'] = args.sample_mode
 
+    # TODO MARIUS: Read input arguments from launch for Kohonen
+    elif args.curiosity_alg == 'kohonen':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['device'] = args.sample_mode
+
+    # TODO MARIUS: Read input arguments from launch for ART
+    elif args.curiosity_alg == 'art':
+        model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['device'] = args.sample_mode
+
     if args.env in _MUJOCO_ENVS:
         if args.lstm:
             agent = MujocoLstmAgent(initial_model_state_dict=initial_model_state_dict)

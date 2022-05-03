@@ -12,7 +12,7 @@ def get_args(args_in=sys.argv[1:]):
 
     # main args
     parser.add_argument('-alg', type=str, choices=['ppo', 'sac', 'a2c'], help='Which learning algorithm to run.')
-    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement', 'ndigo', 'rnd', 'rand'], help='Which intrinsic reward algorithm to use.')
+    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement', 'ndigo', 'rnd', 'rand', 'kohonen', 'art'], help='Which intrinsic reward algorithm to use.')
     parser.add_argument('-env', type=str, help='Which environment to run on.')
     
     # general args
@@ -100,7 +100,13 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-drop_probability', default=1.0, type=float, help='Decimal percent of experience to drop when training the predictor model.')
     elif curiosity_alg == 'rand':
         parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
-    elif curiosity_alg == 'none':
+
+    # TODO MARIUS: Define input arguments from launch for Kohonen
+    elif curiosity_alg == 'kohonen':
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
+
+    # TODO MARIUS: Define input arguments from launch for ART
+    elif curiosity_alg == 'art':
         parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
 
     # switch argument (only used in launch.py in __main__)
