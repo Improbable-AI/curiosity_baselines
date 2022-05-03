@@ -184,7 +184,7 @@ class Kohonen(nn.Module):
     def compute_loss(self, observations, valid):
         # TODO(marius): Verify observations shape
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
-        obs = obs.type(torch.float)
+        observations = observations.type(torch.float)
         obs_feature_mapped = self.feature_encoder.forward(observations.view(T * B, *img_shape))
 
         def get_sample_gen():
