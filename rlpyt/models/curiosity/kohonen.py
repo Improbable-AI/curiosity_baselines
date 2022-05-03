@@ -156,6 +156,7 @@ class Kohonen(nn.Module):
         obs = obs.unsqueeze(2)
 
         lead_dim, T, B, img_shape = infer_leading_dims(obs, 3)
+        obs = obs.type(torch.float)
         obs_feature_mapped = self.feature_encoder.forward(obs.view(T * B, *img_shape))
         rewards = torch.zeros(T*B)
 
@@ -183,12 +184,13 @@ class Kohonen(nn.Module):
     def compute_loss(self, observations, valid):
         # TODO(marius): Verify observations shape
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
+        obs = obs.type(torch.float)
         obs_feature_mapped = self.feature_encoder.forward(observations.view(T * B, *img_shape))
 
         def get_sample_gen():
             while True:
                 rnd_idx = np.random.randint(0, len(observations))
-                obs = observations[rnd_idx]
+                obs = obs_feature_mapped[rnd_idx]
                 # TODO(odin): Do feature mammping on obs
                 yield obs
 
