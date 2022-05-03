@@ -460,17 +460,17 @@ def record_tabular_misc_stat(key, values, placement='back'):
             prefix += "/"  # Group stats together in Tensorboard.
 
     if len(values) > 0:
-        record_tabular(prefix + "Average" + suffix, np.average(values))
-        record_tabular(prefix + "Std" + suffix, np.std(values))
-        record_tabular(prefix + "Median" + suffix, np.median(values))
-        record_tabular(prefix + "Min" + suffix, np.min(values))
-        record_tabular(prefix + "Max" + suffix, np.max(values))
+        record_tabular(prefix + "Average" + suffix, torch.average(values))
+        record_tabular(prefix + "Std" + suffix, torch.std(values))
+        record_tabular(prefix + "Median" + suffix, torch.median(values))
+        record_tabular(prefix + "Min" + suffix, torch.min(values))
+        record_tabular(prefix + "Max" + suffix, torch.max(values))
     else:
-        record_tabular(prefix + "Average" + suffix, np.nan)
-        record_tabular(prefix + "Std" + suffix, np.nan)
-        record_tabular(prefix + "Median" + suffix, np.nan)
-        record_tabular(prefix + "Min" + suffix, np.nan)
-        record_tabular(prefix + "Max" + suffix, np.nan)
+        record_tabular(prefix + "Average" + suffix, torch.nan)
+        record_tabular(prefix + "Std" + suffix, torch.nan)
+        record_tabular(prefix + "Median" + suffix, torch.nan)
+        record_tabular(prefix + "Min" + suffix, torch.nan)
+        record_tabular(prefix + "Max" + suffix, torch.nan)
 
 
 
