@@ -11,8 +11,6 @@ from torch import nn
 torch.set_printoptions(edgeitems=3)
 
 # Kohonen imports
-from tqdm import tqdm
-
 import scipy as scp
 import scipy.stats
 import warnings
@@ -71,7 +69,7 @@ class KohonenSOM:
 
         # Wrap the generator to get no more than max_its samples.
         def sample_enumerator():
-            for idx in tqdm(range(max_its)):
+            for idx in range(max_its):
                 yield idx, next(sample_generator)
 
         # Iterate over samples
@@ -146,7 +144,7 @@ class Kohonen(nn.Module):
         self.lr = 1
         self.train_its_on_batch = 10
 
-        self.feature_encoder = BurdaHead(image_shape, output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm)
+        self.feature_encoder = BurdaHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm)
 
         self.kohonen_map = KohonenSOM(self.encoded_input_dim, node_shape=kohonen_nodes_shape)
         self.neighborhood_fcn = NeighborhoodFcns.gaussian(self.encoded_input_dim, cov=1)
