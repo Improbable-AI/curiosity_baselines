@@ -460,10 +460,7 @@ def record_tabular_misc_stat(key, values, placement='back'):
             prefix += "/"  # Group stats together in Tensorboard.
 
     if len(values) > 0:
-        if type(values) is torch.Tensor:
-            values_np = values.to('cpu').detach().numpy()
-        else:
-            values_np = values
+        values_np = torch.Tensor(values).numpy()  # To ensure List[torch.Tensor] and List[float] gets treated similarly
         record_tabular(prefix + "Average" + suffix, np.average(values_np))
         record_tabular(prefix + "Std" + suffix, np.std(values_np))
         record_tabular(prefix + "Median" + suffix, np.median(values_np))
