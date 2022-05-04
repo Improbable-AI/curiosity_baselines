@@ -76,23 +76,23 @@ class KohonenSOM:
         for idx, sample in sample_enumerator():
             sample = sample.reshape(self.data_shape)  # <- Sample reshaped for broadcasting
 
-            # Find index of best matching weight ((self.W.shape-1) dimensional tuple corresponding to an output unit)
-            # Canonically $i(x) = argmin_j ||x-w_j||
-            best_match_idx = np.unravel_index(
-                np.argmin(
-                    np.linalg.norm(self.W - sample, axis=-1)
-                ), shape=self.shape
-            )
+            # # Find index of best matching weight ((self.W.shape-1) dimensional tuple corresponding to an output unit)
+            # # Canonically $i(x) = argmin_j ||x-w_j||
+            # best_match_idx = np.unravel_index(
+            #     np.argmin(
+            #         np.linalg.norm(self.W - sample, axis=-1)
+            #     ), shape=self.shape
+            # )
 
-            # Get the neighborhood function scaling value for each of the output units. Canonically $h(j, i(x))$
-            neighborhood_scaling = neighborhood_fcn(
-                self.node_grid,
-                np.array(best_match_idx).reshape(self.node_shape)
-            ).T
+            # # Get the neighborhood function scaling value for each of the output units. Canonically $h(j, i(x))$
+            # neighborhood_scaling = neighborhood_fcn(
+            #     self.node_grid,
+            #     np.array(best_match_idx).reshape(self.node_shape)
+            # ).T
 
-            # Get the diff, canonically $w_j += \eta h(j, i(x)) (x - w_j)$
-            dW = lr * np.expand_dims(neighborhood_scaling, -1) * (sample - self.W)
-            self.W = self.W + lr*self.get_dW(sample, neighborhood_fcn) # dW
+            # # Get the diff, canonically $w_j += \eta h(j, i(x)) (x - w_j)$
+            # dW = lr * np.expand_dims(neighborhood_scaling, -1) * (sample - self.W)
+            self.W = self.W + lr*self.get_dW(sample, neighborhood_fcn)  # dW
 
             # Logging:
             self.total_its += 1
@@ -102,6 +102,9 @@ class KohonenSOM:
         return self.W
 
     def get_dW(self, sample: np.ndarray, neighborhood_fcn: Callable[[np.ndarray, np.ndarray], float]) -> np.ndarray:
+        if type(sample) is torch.Tensor:
+            sample = sample.detach().numpy()
+
         best_match_idx = np.unravel_index(
             np.argmin(
                 np.linalg.norm(self.W - sample, axis=-1)
