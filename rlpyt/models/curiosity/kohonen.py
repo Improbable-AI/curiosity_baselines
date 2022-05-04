@@ -150,7 +150,7 @@ class Kohonen(nn.Module):
         self.feature_encoder = BurdaHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm)
 
         self.kohonen_map = KohonenSOM(self.encoded_input_dim, node_shape=kohonen_nodes_shape)
-        self.neighborhood_fcn = NeighborhoodFcns.gaussian(self.encoded_input_dim, cov=1)
+        self.neighborhood_fcn = NeighborhoodFcns.gaussian(len(kohonen_nodes_shape), cov=1)
 
 
     def forward(self, obs, done=None):
@@ -171,7 +171,7 @@ class Kohonen(nn.Module):
         # TODO(marius): Handle being done
         for idx, obs_map in enumerate(obs_feature_mapped):
             weight_update = torch.Tensor(self.kohonen_map.get_dW(obs_map, self.neighborhood_fcn))
-            rewards[idx] = torch.linalg.norm(weight_update)
+            rewards[idx] = torch.norm(weight_update)
         ret = rewards.view(T, B)
 
         return ret, T, B
@@ -182,10 +182,13 @@ class Kohonen(nn.Module):
         # with torch.no_grad():
         #     predicted_phi, T, B = self.forward(next_observation, done)
         #     rewards = predicted_phi.detach().sum(-1)/self.feature_size
-        return self.forward(next_observation, done)
+        return self.forward(next_observation, done)[0]
 
     def compute_loss(self, observations, valid):
         # TODO(marius): Verify observations shape
+        observations = observations[:,:,-1,:,:]
+        observations = observations.unsqueeze(2)
+
         lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
         observations = observations.type(torch.float)
         obs_feature_mapped = self.feature_encoder.forward(observations.view(T * B, *img_shape))
@@ -206,7 +209,7 @@ class Kohonen(nn.Module):
             neighborhood_fcn=self.neighborhood_fcn
         )
 
-        return torch.zeros(1)
+        return torch.zeros(tuple())
 
 
 class NeighborhoodFcns:
