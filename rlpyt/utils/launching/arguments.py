@@ -2,6 +2,15 @@ import sys
 import argparse
 import json
 
+# Stolen from here: https://stackoverflow.com/questions/12116685/how-can-i-require-my-python-scripts-argument-to-be-a-float-in-a-range-using-arg
+class Range:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+    def __eq__(self, other):
+        return self.start <= other <= self.end
+
+
 with open('./global.json') as global_params:
     params = json.load(global_params)
     _ATARI_ENVS = params['envs']['atari_envs']
@@ -12,7 +21,7 @@ def get_args(args_in=sys.argv[1:]):
 
     # main args
     parser.add_argument('-alg', type=str, choices=['ppo', 'sac', 'a2c'], help='Which learning algorithm to run.')
-    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement', 'ndigo', 'rnd'], help='Which intrinsic reward algorithm to use.')
+    parser.add_argument('-curiosity_alg', type=str, choices=['none', 'icm', 'disagreement', 'ndigo', 'rnd', 'rand', 'kohonen', 'art'], help='Which intrinsic reward algorithm to use.')
     parser.add_argument('-env', type=str, help='Which environment to run on.')
     
     # general args
@@ -98,9 +107,19 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with RND.')
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
         parser.add_argument('-drop_probability', default=1.0, type=float, help='Decimal percent of experience to drop when training the predictor model.')
-    elif curiosity_alg == 'none':
+    elif curiosity_alg == 'rand':
         parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
 
+    # TODO MARIUS: Define input arguments from launch for Kohonen
+    elif curiosity_alg == 'kohonen':
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
+
+    # TODO MARIUS: Define input arguments from launch for ART
+    elif curiosity_alg == 'art':
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-rho', default=0.2, type=float, choices=[Range(0.0, 1.0)], help='Vigilance for making new classes in ART')
+        parser.add_argument('-alpha', default=0.1, type=float, choices=[Range(0.0, float('inf'))], help='Large-weight regularizer')
+        parser.add_argument('-beta', default=0.01, type=float, choices=[Range(0.0, float('inf'))], help='Learning rate for learning in ART')
 
     # switch argument (only used in launch.py in __main__)
     parser.add_argument('-launch_tmux', default='yes', type=str, help='')

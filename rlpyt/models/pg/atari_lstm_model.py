@@ -12,6 +12,10 @@ from rlpyt.models.curiosity.disagreement import Disagreement
 from rlpyt.models.curiosity.icm import ICM
 from rlpyt.models.curiosity.ndigo import NDIGO
 from rlpyt.models.curiosity.rnd import RND
+from rlpyt.models.curiosity.rand_reward import RandReward
+from rlpyt.models.curiosity.kohonen import Kohonen
+from rlpyt.models.curiosity.art import ART
+
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
@@ -76,7 +80,23 @@ class AtariLstmModel(torch.nn.Module):
                                            drop_probability=curiosity_kwargs['drop_probability'],
                                            gamma=curiosity_kwargs['gamma'],
                                            device=curiosity_kwargs['device'])
-            
+            elif curiosity_kwargs['curiosity_alg'] == 'rand':
+                self.curiosity_model = RandReward(image_shape=image_shape,
+                                           device=curiosity_kwargs['device'])
+
+            # TODO MARIUS: Initialize Kohonen.
+            elif curiosity_kwargs['curiosity_alg'] == 'kohonen':
+                self.curiosity_model = Kohonen(image_shape=image_shape,
+                                           device=curiosity_kwargs['device'])
+
+            # TODO MARIUS: Initialize ART
+            elif curiosity_kwargs['curiosity_alg'] == 'art':
+                self.curiosity_model = ART(image_shape=image_shape,
+                                            rho=curiosity_kwargs['rho'],
+                                            alpha=curiosity_kwargs['alpha'],
+                                            beta=curiosity_kwargs['beta'],
+                                           device=curiosity_kwargs['device'])
+
             if curiosity_kwargs['feature_encoding'] == 'idf':
                 self.conv = UniverseHead(image_shape=image_shape,
                                          batch_norm=curiosity_kwargs['batch_norm'])
@@ -133,7 +153,7 @@ class AtariLstmModel(torch.nn.Module):
         img = image.type(torch.float)  # Expect torch.uint8 inputs
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
-        lead_dim, T, B, img_shape = infer_leading_dims(img, 3) 
+        lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
 
         fc_out = self.conv(img.view(T * B, *img_shape))
         lstm_input = torch.cat([

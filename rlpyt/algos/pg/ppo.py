@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
-from rlpyt.agents.base import AgentInputs, AgentInputsRnn, IcmAgentCuriosityInputs, NdigoAgentCuriosityInputs, RndAgentCuriosityInputs
+from rlpyt.agents.base import AgentInputs, AgentInputsRnn, IcmAgentCuriosityInputs, NdigoAgentCuriosityInputs, RndAgentCuriosityInputs, RandAgentCuriosityInputs, KohonenAgentCuriosityInputs, ARTAgentCuriosityInputs
 from rlpyt.utils.tensor import valid_mean
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
@@ -110,8 +110,32 @@ class PPO(PolicyGradientAlgo):
                 valid=valid
             )
             agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
+        elif self.curiosity_type == 'rand':
+            agent_curiosity_inputs = RandAgentCuriosityInputs(
+                next_observation=samples.env.next_observation.clone(),
+                valid=valid
+            )
+            agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
+
+        # TODO MARIUS: Define input arguments for computing loss for training curiosity model - Kohonen
+        elif self.curiosity_type == 'kohonen':
+            agent_curiosity_inputs = KohonenAgentCuriosityInputs(
+                next_observation=samples.env.next_observation.clone(),
+                valid=valid
+            )
+            agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
+
+        # TODO MARIUS: Define input arguments for computing loss for training curiosity model - ART
+        elif self.curiosity_type == 'art':
+            agent_curiosity_inputs = ARTAgentCuriosityInputs(
+                next_observation=samples.env.next_observation.clone(),
+                valid=valid
+            )
+            agent_curiosity_inputs = buffer_to(agent_curiosity_inputs, device=self.agent.device)
+
         elif self.curiosity_type == 'none':
             agent_curiosity_inputs = None
+
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             agent_curiosity_inputs=agent_curiosity_inputs,
@@ -168,6 +192,26 @@ class PPO(PolicyGradientAlgo):
                     forward_loss = curiosity_losses
                     opt_info.forward_loss.append(forward_loss.item())
                     opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
+                elif self.curiosity_type == 'rand':
+                    forward_loss, dummy_logging = curiosity_losses
+                    opt_info.rand_dummy_logging.append(dummy_logging)
+                    opt_info.forward_loss.append(forward_loss.item())
+                    opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
+
+                # TODO MARIUS: Store losses from curiosity model
+                elif self.curiosity_type == 'kohonen':
+                    forward_loss = curiosity_losses
+                    opt_info.inv_loss.append(0)
+                    opt_info.forward_loss.append(forward_loss.item())
+                    opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
+
+                # TODO MARIUS: Store losses from curiosity model
+                elif self.curiosity_type == 'art':
+                    forward_loss, num_classes = curiosity_losses
+                    opt_info.inv_loss.append(0)
+                    opt_info.forward_loss.append(forward_loss.item())
+                    opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
+                    opt_info.art_num_classes.append(num_classes)
 
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
@@ -236,6 +280,23 @@ class PPO(PolicyGradientAlgo):
             forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
             loss += forward_loss
             curiosity_losses = (forward_loss)
+        elif self.curiosity_type == 'rand':
+            forward_loss, dummy_rand = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
+            loss += forward_loss
+            curiosity_losses = (forward_loss, dummy_rand)
+
+        # TODO MARIUS: As we discussed, you might want to make sure that we don't get PPO to optimize something here incorrectly
+        elif self.curiosity_type == 'kohonen':
+            forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
+            loss += forward_loss
+            curiosity_losses = (forward_loss)
+
+        # TODO MARIUS: As we discussed, you might want to make sure that we don't get PPO to optimize something here incorrectly
+        elif self.curiosity_type == 'art':
+            forward_loss, num_classes = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
+            loss += forward_loss
+            curiosity_losses = (forward_loss, num_classes)
+
         else:
             curiosity_losses = None
 

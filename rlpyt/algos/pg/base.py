@@ -21,7 +21,14 @@ OptInfo = namedtuple("OptInfo", ["return_",
                                  "curiosity_loss", 
                                  "gradNorm", 
                                  "entropy", 
-                                 "perplexity"])
+                                 "perplexity",
+                                 # Rand: dummy logging parameter
+                                 "rand_dummy_logging",
+                                 # ART: number of classes
+                                 "art_num_classes",
+                                 # Kohonen: Change of weights
+                                 "kohonen_dw"
+                                 ])
 AgentTrain = namedtuple("AgentTrain", ["dist_info", "value"])
 
 
@@ -71,6 +78,22 @@ class PolicyGradientAlgo(RlAlgorithm):
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
         elif self.curiosity_type == 'rnd':
             intrinsic_rewards, _ = self.agent.curiosity_step (self.curiosity_type, samples.env.next_observation.clone(), done.clone())
+            reward += intrinsic_rewards
+            self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
+        elif self.curiosity_type == 'rand':
+            intrinsic_rewards, _ = self.agent.curiosity_step (self.curiosity_type, samples.env.next_observation.clone(), done.clone())
+            reward += intrinsic_rewards
+            self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
+
+        # TODO MARIUS: Compute intrinsic rewards for Kohonen. Note that this passes the arguments to the agent, who passes it on to the curiosity model internally  
+        elif self.curiosity_type == 'kohonen':
+            intrinsic_rewards, kohonen_info = self.agent.curiosity_step (self.curiosity_type, samples.env.next_observation.clone(), done.clone())
+            reward += intrinsic_rewards
+            self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
+
+        # TODO MARIUS: Compute intrinsic rewards for ART. Note that this passes the arguments to the agent, who passes it on to the curiosity model internally
+        elif self.curiosity_type == 'art':
+            intrinsic_rewards, art_info = self.agent.curiosity_step (self.curiosity_type, samples.env.next_observation.clone(), done.clone())
             reward += intrinsic_rewards
             self.intrinsic_rewards = intrinsic_rewards.clone().data.numpy()
 
