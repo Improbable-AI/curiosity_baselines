@@ -19,6 +19,7 @@ import collections
 from typing import Tuple, Callable, Generator
 
 from rlpyt.models.curiosity.fuzzy_art import FuzzyART
+from rlpyt.models.curiosity.online_fuzzy_art import OnlineFuzzyART
 
 from collections import defaultdict
 
@@ -29,7 +30,7 @@ class ScalingSigmoid(nn.Sigmoid):
         self.scaling = scaling
 
     def forward(self, feature):
-        return super().forward(feature*0.1)
+        return super().forward(feature*self.scaling)
 
 
 class ART(nn.Module):
@@ -58,10 +59,12 @@ class ART(nn.Module):
 
         self.feature_encoder = nn.Sequential(
             BurdaHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm),
-            ScalingSigmoid(scaling=0.1)
+            ScalingSigmoid(scaling=0.5)
         )
 
-        self.fuzzy_art = FuzzyART(rho=rho, alpha=alpha, beta=beta)
+        # self.fuzzy_art = FuzzyART(rho=rho, alpha=alpha, beta=beta)
+        self.fuzzy_art = OnlineFuzzyART(rho=rho, alpha=alpha, beta=beta, num_features=art_input_dim)
+
         self.seen_classes = defaultdict(lambda : 0)
 
 
@@ -83,8 +86,9 @@ class ART(nn.Module):
         # TODO(marius): Handle being done
 
         obs_map = obs_feature_mapped.detach().cpu().numpy()
-        self.fuzzy_art.fit(obs_map)
-        predictions = torch.LongTensor(self.fuzzy_art.predict(obs_map))
+        # self.fuzzy_art.fit(obs_map)
+        # predictions = torch.LongTensor(self.fuzzy_art.predict(obs_map))
+        predictions = torch.LongTensor(self.fuzzy_art.run_online(obs_map, [(0,1)]*obs_map.shape[1])[1])
         self.update_seen_classes(predictions)
         rewards = self.compute_rewards(predictions)
 
@@ -104,7 +108,7 @@ class ART(nn.Module):
 
     def compute_rewards(self, predictions):
         num_seen = torch.tensor([self.seen_classes[prediction.item()] for prediction in predictions])
-        return 1.0 / num_seen.float()
+        return 1.0 / torch.sqrt(num_seen.float())
 
     def compute_bonus(self, next_observation, done):
 
@@ -133,4 +137,4 @@ class ART(nn.Module):
 
         # sample_generator = get_sample_gen()
 
-        return torch.zeros(tuple())
+        return torch.zeros(tuple()), len(self.seen_classes)

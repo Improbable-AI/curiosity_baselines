@@ -98,9 +98,9 @@ class FuzzyART(BaseEstimator, ClusterMixin):
         if self.w_init is not None:
             assert self.w_init.shape[1] == (self.num_features * 2)
 
-        if not self.initialized:
-            self.initialize(inputs)
-        
+        # if not self.initialized:
+        #     self.initialize(inputs)
+        self.w = self.w_init if self.w_init is not None else np.ones((1, self.num_features * 2))
         self.num_clusters = self.w.shape[0]
 
         # complement-code the data
@@ -134,8 +134,9 @@ class FuzzyART(BaseEstimator, ClusterMixin):
         return self.labels
 
     def predict(self, inputs):
-        if not self.initialized:
-            self.initialize(inputs)
+        # assert (inputs >= 0.0).all() and (inputs <= 1.0).all()
+        # if not self.initialized:
+        #     self.initialize(inputs)
         dataset = np.concatenate((inputs, 1 - inputs), axis=1)
         labels = np.array(list(map(self.eval_pattern, dataset)), dtype=np.int32)
         return labels

@@ -92,6 +92,9 @@ class AtariLstmModel(torch.nn.Module):
             # TODO MARIUS: Initialize ART
             elif curiosity_kwargs['curiosity_alg'] == 'art':
                 self.curiosity_model = ART(image_shape=image_shape,
+                                            rho=curiosity_kwargs['rho'],
+                                            alpha=curiosity_kwargs['alpha'],
+                                            beta=curiosity_kwargs['beta'],
                                            device=curiosity_kwargs['device'])
 
             if curiosity_kwargs['feature_encoding'] == 'idf':
@@ -150,7 +153,7 @@ class AtariLstmModel(torch.nn.Module):
         img = image.type(torch.float)  # Expect torch.uint8 inputs
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
-        lead_dim, T, B, img_shape = infer_leading_dims(img, 3) 
+        lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
 
         fc_out = self.conv(img.view(T * B, *img_shape))
         lstm_input = torch.cat([

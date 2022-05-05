@@ -160,8 +160,8 @@ class RecurrentCategoricalPgAgentBase(BaseAgent):
         elif curiosity_type == 'art':
             next_observation, valid = args
             curiosity_agent_inputs = buffer_to((next_observation, valid), device=self.device)
-            forward_loss = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
-            losses = (forward_loss.to("cpu"))
+            forward_loss, num_classes = self.model.curiosity_model.compute_loss(*curiosity_agent_inputs)
+            losses = (forward_loss.to("cpu"), num_classes)
 
         return losses
 

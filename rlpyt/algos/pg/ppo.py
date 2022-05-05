@@ -207,10 +207,11 @@ class PPO(PolicyGradientAlgo):
 
                 # TODO MARIUS: Store losses from curiosity model
                 elif self.curiosity_type == 'art':
-                    forward_loss = curiosity_losses
+                    forward_loss, num_classes = curiosity_losses
                     opt_info.inv_loss.append(0)
                     opt_info.forward_loss.append(forward_loss.item())
                     opt_info.intrinsic_rewards.append(np.mean(self.intrinsic_rewards))
+                    opt_info.art_num_classes.append(num_classes)
 
                 if self.normalize_reward:
                     opt_info.reward_total_std.append(self.reward_rms.var**0.5)
@@ -292,9 +293,9 @@ class PPO(PolicyGradientAlgo):
 
         # TODO MARIUS: As we discussed, you might want to make sure that we don't get PPO to optimize something here incorrectly
         elif self.curiosity_type == 'art':
-            forward_loss = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
+            forward_loss, num_classes = self.agent.curiosity_loss(self.curiosity_type, *agent_curiosity_inputs)
             loss += forward_loss
-            curiosity_losses = (forward_loss)
+            curiosity_losses = (forward_loss, num_classes)
 
         else:
             curiosity_losses = None
