@@ -143,7 +143,7 @@ class Kohonen(nn.Module):
         # TODO(marius): Make into parameters defined externally
         self.encoded_input_dim = 3  # TODO(odin): Fix to whatever is actual
         self.encoding_batch_norm = True
-        kohonen_nodes_shape = (10, 10)
+        kohonen_nodes_shape = (2, 20)
         self.lr = 1
         self.train_its_on_batch = 10
 
