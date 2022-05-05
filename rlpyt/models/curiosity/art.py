@@ -84,7 +84,7 @@ class ART(nn.Module):
 
         obs_map = obs_feature_mapped.detach().cpu().numpy()
         self.fuzzy_art.fit(obs_map)
-        predictions = torch.Tensor(self.fuzzy_art.predict(obs_map))
+        predictions = torch.LongTensor(self.fuzzy_art.predict(obs_map))
         self.update_seen_classes(predictions)
         rewards = self.compute_rewards(predictions)
 
