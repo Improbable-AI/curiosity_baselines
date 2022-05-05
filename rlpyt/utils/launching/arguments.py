@@ -2,6 +2,15 @@ import sys
 import argparse
 import json
 
+# Stolen from here: https://stackoverflow.com/questions/12116685/how-can-i-require-my-python-scripts-argument-to-be-a-float-in-a-range-using-arg
+class Range:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+    def __eq__(self, other):
+        return self.start <= other <= self.end
+
+
 with open('./global.json') as global_params:
     params = json.load(global_params)
     _ATARI_ENVS = params['envs']['atari_envs']
@@ -108,6 +117,9 @@ def get_args(args_in=sys.argv[1:]):
     # TODO MARIUS: Define input arguments from launch for ART
     elif curiosity_alg == 'art':
         parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-rho', default=0.2, type=float, choices=[Range(0.0, 1.0)], help='Vigilance for making new classes in ART')
+        parser.add_argument('-alpha', default=0.1, type=float, choices=[Range(0.0, float('inf'))], help='Large-weight regularizer')
+        parser.add_argument('-beta', default=0.01, type=float, choices=[Range(0.0, float('inf'))], help='Learning rate for learning in ART')
 
     # switch argument (only used in launch.py in __main__)
     parser.add_argument('-launch_tmux', default='yes', type=str, help='')
