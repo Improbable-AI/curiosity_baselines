@@ -21,13 +21,14 @@
 import random
 
 import numpy as np
+import numpy.linalg
 from sklearn.base import BaseEstimator, ClusterMixin
 
 __author__ = 'Islam Elnabarawy'
 
 def max_norm(x):
     # noinspection PyTypeChecker
-    return la.norm(x, ord=1)
+    return np.linalg.norm(x, ord=1)
 
 
 def fuzzy_and(x, y):
@@ -64,6 +65,8 @@ class FuzzyART(BaseEstimator, ClusterMixin):
         self.labels = None
         self.iterations = 0
 
+        self.initialized = False
+
     def set_params(self, **params):
         keys = ['rho', 'alpha', 'beta', 'w_init', 'max_epochs', 'shuffle', 'random_seed']
 
@@ -81,6 +84,13 @@ class FuzzyART(BaseEstimator, ClusterMixin):
             'shuffle': self.shuffle, 'random_seed': self.random_seed
         }
 
+    def initialize(self, inputs):
+        self.num_features = inputs.shape[1]
+        self.w = self.w_init if self.w_init is not None else np.ones((0, self.num_features * 2))
+
+        self.initialized = True
+
+
     def fit(self, inputs, labels=None):
 
         self.num_features = inputs.shape[1]
@@ -88,7 +98,9 @@ class FuzzyART(BaseEstimator, ClusterMixin):
         if self.w_init is not None:
             assert self.w_init.shape[1] == (self.num_features * 2)
 
-        self.w = self.w_init if self.w_init is not None else np.ones((0, self.num_features * 2))
+        if not self.initialized:
+            self.initialize(inputs)
+        
         self.num_clusters = self.w.shape[0]
 
         # complement-code the data
@@ -122,6 +134,8 @@ class FuzzyART(BaseEstimator, ClusterMixin):
         return self.labels
 
     def predict(self, inputs):
+        if not self.initialized:
+            self.initialize(inputs)
         dataset = np.concatenate((inputs, 1 - inputs), axis=1)
         labels = np.array(list(map(self.eval_pattern, dataset)), dtype=np.int32)
         return labels

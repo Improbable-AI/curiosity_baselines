@@ -18,116 +18,28 @@ import warnings
 import collections
 from typing import Tuple, Callable, Generator
 
+from rlpyt.models.curiosity.fuzzy_art import FuzzyART
 
-#### Kohonen implementaion:
+from collections import defaultdict
 
-class KohonenSOM:
-    def __init__(self,
-                 input_dim: int = 2, node_shape: Tuple = (10, 10), init_scaling: float = 1E-3,
-                 ):
-        """A Kohonen Self-Orgranizing Map
 
-        :param input_dim: Dimensions of the input to the map. (Default: 2)
-        :param node_shape: Tuple of dimension (o,) containing ints specifying the output node shape. (Default: (10, 10))
-        :param init_scaling: Initial scaling of weights.
-        """
-        self.input_dim = input_dim  # <- Dimension of input data
-        self.shape = node_shape  # <- Shape of output map of nodes
-        self.ndim = len(node_shape)
+class ScalingSigmoid(nn.Sigmoid):
+    def __init__(self, scaling=1.0):
+        super().__init__()
+        self.scaling = scaling
 
-        self.W = np.random.random((*self.shape, self.input_dim)) * init_scaling  # <- Weights of the map
-        self.W += np.array((1/2,)*input_dim)  # Centering, assuming a square on [0, 1]^input_dim
-
-        self.node_grid = np.stack(np.meshgrid(*(np.arange(dim) for dim in self.shape)), axis=-1)  # <- A grid of coordinates for the nodes
-
-        #  data_dim = (1, 1, ..., 1, input_dim) to reshape each sample to, ensuring good broadcasting
-        #  node_dim = (1, 1, ..., 1, self.ndim) to reshape each sample to, ensuring good broadcasting
-        self.data_shape = (1,)*(self.W.ndim-1) + (self.input_dim,)  # <- Shape of datapoint to broadcast over self.W
-        self.node_shape = (1,)*(self.node_grid.ndim-1) + (self.ndim,)  # <- Shape of datapoint to broadcast over self.node_grid
-
-        # Logging:
-        self.total_its = 0  # <- Total number of sampling iterations
-        self.W_log = collections.OrderedDict()  # <- Log of W-matrix after 'key' its. Preserves insertion ordering
-        self.W_log[self.total_its] = self.W
-
-    def train(self,
-              lr: float, max_its: int,
-              sample_generator: Generator[np.ndarray, None, None],
-              neighborhood_fcn: Callable[[np.ndarray, np.ndarray], float],
-              log_interval: int = np.inf,
-              ) -> np.ndarray:
-        """'Train' the SOM, letting it self-organize.
-
-        :param lr: Learning rate
-        :param max_its: Samples to train for. Exits early if sample_generator exits early.
-        :param sample_generator: Callable giving samples each time it is called. Samples should be np.ndarrays of shape (input_dim,)
-        :param neighborhood_fcn: Takes (node_to_update_weight_for, best_matching_unit). Should be vectorized.
-        :param log_interval: Interval between logging. np.inf for no logging. (Default: 100)
-        :return: self.W, final weights
-        """
-        self._last_generator = sample_generator
-
-        # Wrap the generator to get no more than max_its samples.
-        def sample_enumerator():
-            for idx in range(max_its):
-                yield idx, next(sample_generator)
-
-        # Iterate over samples
-        for idx, sample in sample_enumerator():
-            sample = sample.reshape(self.data_shape)  # <- Sample reshaped for broadcasting
-
-            # # Find index of best matching weight ((self.W.shape-1) dimensional tuple corresponding to an output unit)
-            # # Canonically $i(x) = argmin_j ||x-w_j||
-            # best_match_idx = np.unravel_index(
-            #     np.argmin(
-            #         np.linalg.norm(self.W - sample, axis=-1)
-            #     ), shape=self.shape
-            # )
-
-            # # Get the neighborhood function scaling value for each of the output units. Canonically $h(j, i(x))$
-            # neighborhood_scaling = neighborhood_fcn(
-            #     self.node_grid,
-            #     np.array(best_match_idx).reshape(self.node_shape)
-            # ).T
-
-            # # Get the diff, canonically $w_j += \eta h(j, i(x)) (x - w_j)$
-            # dW = lr * np.expand_dims(neighborhood_scaling, -1) * (sample - self.W)
-            self.W = self.W + lr*self.get_dW(sample, neighborhood_fcn)  # dW
-
-            # Logging:
-            self.total_its += 1
-            if self.total_its % log_interval == 0:
-                self.W_log[self.total_its] = self.W
-
-        return self.W
-
-    def get_dW(self, sample: np.ndarray, neighborhood_fcn: Callable[[np.ndarray, np.ndarray], float]) -> np.ndarray:
-        if type(sample) is torch.Tensor:
-            sample = sample.detach().numpy()
-
-        best_match_idx = np.unravel_index(
-            np.argmin(
-                np.linalg.norm(self.W - sample, axis=-1)
-            ), shape=self.shape
-        )
-
-        # Get the neighborhood function scaling value for each of the output units. Canonically $h(j, i(x))$
-        neighborhood_scaling = neighborhood_fcn(
-            self.node_grid,
-            np.array(best_match_idx).reshape(self.node_shape)
-        ).T
-
-        # Get the diff, canonically $w_j += \eta h(j, i(x)) (x - w_j)$
-        dW = np.expand_dims(neighborhood_scaling, -1) * (sample - self.W)
-
-        return dW
+    def forward(self, feature):
+        return super().forward(feature*0.1)
 
 
 class ART(nn.Module):
-    art_classifier: KohonenSOM
 
     def __init__(self,
                  image_shape,
+                 rho=0.2,
+                 alpha=0.1,
+                 beta=0.01,
+                 art_input_dim=16,
                  device='cpu'
                  ):
 
@@ -141,16 +53,16 @@ class ART(nn.Module):
 
 
         # TODO(marius): Make into parameters defined externally
-        self.encoded_input_dim = 3  # TODO(odin): Fix to whatever is actual
+        self.encoded_input_dim = art_input_dim  # TODO(odin): Fix to whatever is actual
         self.encoding_batch_norm = True
-        kohonen_nodes_shape = (10, 10)
-        self.lr = 1
-        self.train_its_on_batch = 10
 
-        self.feature_encoder = BurdaHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm)
+        self.feature_encoder = nn.Sequential(
+            BurdaHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm),
+            ScalingSigmoid(scaling=0.1)
+        )
 
-        self.kohonen_map = KohonenSOM(self.encoded_input_dim, node_shape=kohonen_nodes_shape)
-        self.neighborhood_fcn = NeighborhoodFcns.gaussian(len(kohonen_nodes_shape), cov=1)
+        self.fuzzy_art = FuzzyART(rho=rho, alpha=alpha, beta=beta)
+        self.seen_classes = defaultdict(lambda : 0)
 
 
     def forward(self, obs, done=None):
@@ -161,7 +73,7 @@ class ART(nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(obs, 3)
         obs = obs.type(torch.float)
         obs_feature_mapped = self.feature_encoder.forward(obs.view(T * B, *img_shape))
-        rewards = torch.zeros(T*B)
+        # rewards = torch.zeros(T*B)
 
         # assert reduced_dim_sample.shape == (self.encoded_input_dim,)
 
@@ -169,13 +81,30 @@ class ART(nn.Module):
         #     obs = obs.type(torch.float) # expect torch.uint8 inputs
         #     predicted_phi = self.network(obs.detach().view(T * B, *img_shape)).view(T, B, -1)
         # TODO(marius): Handle being done
-        for idx, obs_map in enumerate(obs_feature_mapped):
-            weight_update = torch.Tensor(self.kohonen_map.get_dW(obs_map, self.neighborhood_fcn))
-            rewards[idx] = torch.norm(weight_update)
+
+        obs_map = obs_feature_mapped.detach().cpu().numpy()
+        self.fuzzy_art.fit(obs_map)
+        predictions = torch.Tensor(self.fuzzy_art.predict(obs_map))
+        self.update_seen_classes(predictions)
+        rewards = self.compute_rewards(predictions)
+
+        # for idx, obs_map in enumerate(obs_feature_mapped.detach().cpu().numpy()):
+        #     predictions = int(torch.Tensor(self.fuzzy_art.predict(obs_map[None])).item())
+        #     self.update_seen_classes(predictions)
+        #     rewards[idx] = self.compute_reward(predictions)
+
         ret = rewards.view(T, B)
 
         return ret, T, B
         # return predicted_phi, T, B
+
+    def update_seen_classes(self, predictions):
+        for prediction in predictions:
+            self.seen_classes[prediction.item()] += 1
+
+    def compute_rewards(self, predictions):
+        num_seen = torch.tensor([self.seen_classes[prediction.item()] for prediction in predictions])
+        return 1.0 / num_seen.float()
 
     def compute_bonus(self, next_observation, done):
 
@@ -185,28 +114,23 @@ class ART(nn.Module):
         return self.forward(next_observation, done)[0]
 
     def compute_loss(self, observations, valid):
-        # TODO(marius): Verify observations shape
-        observations = observations[:,:,-1,:,:]
-        observations = observations.unsqueeze(2)
+        # # TODO(marius): Verify observations shape
+        # observations = observations[:,:,-1,:,:]
+        # observations = observations.unsqueeze(2)
 
-        lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
-        observations = observations.type(torch.float)
-        obs_feature_mapped = self.feature_encoder.forward(observations.view(T * B, *img_shape))
+        # lead_dim, T, B, img_shape = infer_leading_dims(observations, 3)
+        # observations = observations.type(torch.float)
+        # obs_feature_mapped = self.feature_encoder.forward(observations.view(T * B, *img_shape))
+        # # Scale input and mapt to [0, 1]
+        # obs_feature_mapped = nn.functional.sigmoid(obs_feature_mapped*0.1)
 
-        def get_sample_gen():
-            while True:
-                rnd_idx = np.random.randint(0, len(observations))
-                obs = obs_feature_mapped[rnd_idx]
-                # TODO(odin): Do feature mammping on obs
-                yield obs
+        # def get_sample_gen():
+        #     while True:
+        #         rnd_idx = np.random.randint(0, len(observations))
+        #         obs = obs_feature_mapped[rnd_idx]
+        #         # TODO(odin): Do feature mammping on obs
+        #         yield obs
 
-        sample_generator = get_sample_gen()
-
-        self.kohonen_map.train(
-            lr=self.lr,
-            max_its=len(observations)*self.train_its_on_batch,
-            sample_generator=sample_generator,
-            neighborhood_fcn=self.neighborhood_fcn
-        )
+        # sample_generator = get_sample_gen()
 
         return torch.zeros(tuple())
