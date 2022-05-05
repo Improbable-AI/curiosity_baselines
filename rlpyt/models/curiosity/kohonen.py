@@ -103,7 +103,7 @@ class KohonenSOM:
 
     def get_dW(self, sample: np.ndarray, neighborhood_fcn: Callable[[np.ndarray, np.ndarray], float]) -> np.ndarray:
         if type(sample) is torch.Tensor:
-            sample = sample.detach().numpy()
+            sample = sample.detach().cpu().numpy()
 
         best_match_idx = np.unravel_index(
             np.argmin(
