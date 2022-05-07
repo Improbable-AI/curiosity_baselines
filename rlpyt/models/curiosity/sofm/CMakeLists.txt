@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-project(art)
+project(sofm)
 
 set (CMAKE_CXX_STANDARD 17)
 
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-
-find_package (glog 0.6.0)
 
 set(CMAKE_CXX_FLAGS "-O2")
 
@@ -17,7 +15,7 @@ include_directories(
 
 
 add_library(online_fuzzy_art
-    src/OnlineFuzzyART.cpp
+    src/sofm/art/OnlineFuzzyART.cpp
 )
 
 target_link_libraries(online_fuzzy_art PRIVATE
@@ -26,18 +24,6 @@ target_link_libraries(online_fuzzy_art PRIVATE
     pybind11::windows_extras
     Eigen3::Eigen
 )
-
-
-add_executable(main
-    main.cpp
-)
-
-target_link_libraries(main
-    glog::glog
-    online_fuzzy_art
-)
-
-set_target_properties(main PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR} )
 
 add_subdirectory(pybind11)
 pybind11_add_module(${PROJECT_NAME} module.cpp)

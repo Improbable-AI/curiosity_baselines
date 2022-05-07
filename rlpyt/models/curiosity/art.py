@@ -19,7 +19,7 @@ import collections
 from typing import Tuple, Callable, Generator
 
 from rlpyt.models.curiosity.fuzzy_art import FuzzyART
-from rlpyt.models.curiosity.online_fuzzy_art import OnlineFuzzyART
+from sofm.art import OnlineFuzzyART
 
 from collections import defaultdict
 
@@ -89,7 +89,7 @@ class ART(nn.Module):
         # self.fuzzy_art.fit(obs_map)
         # predictions = torch.LongTensor(self.fuzzy_art.predict(obs_map))
         predictions = torch.LongTensor(
-            self.fuzzy_art.run_online(obs_map, [(0, 1)]*obs_map.shape[1], max_epochs=20)[1]
+            self.fuzzy_art.run_online(obs_map, max_epochs=20)
         )
         self.update_seen_classes(predictions)
         rewards = self.compute_rewards(predictions)

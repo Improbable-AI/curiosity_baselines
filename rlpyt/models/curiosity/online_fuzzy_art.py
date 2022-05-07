@@ -92,20 +92,20 @@ class OnlineFuzzyART(object):
                 p[i] = scale_range(p[i], data_ranges[i])
 
         # repeat the learning until either convergence or max_epochs
+        indices = list(range(len(data_reader)))
+
         while not np.array_equal(self.w, w_old) and iterations < max_epochs:
-            print("Entered while loop Python!")
-            w_old = self.w
-            indices = list(range(len(data_reader)))
-            # random.shuffle(indices)
+            w_old = self.w.copy()
+            random.shuffle(indices)
             for ix in indices:
                 pattern = np.array(data_reader[ix], dtype=float)
                 normalize(pattern)
                 pattern = np.concatenate((pattern, 1.0 - pattern))
                 choice = self.train_pattern(pattern)
                 cluster_choices[ix] = choice
+
             iterations += 1
 
-        print(f"{self.w}\n")
         # return results
         return iterations, np.array(cluster_choices)
 
@@ -129,8 +129,10 @@ class OnlineFuzzyART(object):
         # calculate the category match values
         for jx in range(self.w.shape[0]):
             matches[jx] = self.choice_fn(pattern, self.w[jx, :], self.alpha)
+
         # pick the winning category
         vigilance_test = self.rho * max_norm(pattern)
+
         match_attempts = 0
         while match_attempts < len(matches):
             # winner-take-all selection
@@ -143,19 +145,5 @@ class OnlineFuzzyART(object):
                 # shut off this category from further testing
                 matches[winner] = 0
                 match_attempts += 1
+
         return len(matches) - 1
-
-
-# def main():
-#     from data import XCSVFileReader
-#     with XCSVFileReader('data/users.csv') as reader:
-#         fa = OnlineFuzzyART(0.95, 0.001, 0.9, reader.num_fields)
-#         data_ranges = [(0, 1), (0, 6)] + [(0, 1)] * 21
-#         iterations, clusters = fa.run_online(reader, data_ranges, 100)
-#     print(iterations, fa.num_clusters)
-#     np.set_printoptions(suppress=True)
-#     print(fa.w)
-
-
-# if __name__ == '__main__':
-#     main()

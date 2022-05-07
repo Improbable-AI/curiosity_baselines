@@ -1,8 +1,8 @@
 #include <Eigen/Core>
-#include "types.h"
+#include "sofm/types.h"
+#include <iostream>
 
-
-namespace art
+namespace sofm
 {
     namespace utils {
 
@@ -11,7 +11,7 @@ namespace art
         return x.lpNorm<1>();
     }
 
-    inline art::Vector fuzzy_and(const VectorConstRef x, const VectorConstRef y)
+    inline Vector fuzzy_and(const VectorConstRef x, const VectorConstRef y)
     {
         return x.cwiseMin(y);
     }
@@ -22,4 +22,4 @@ namespace art
     }
 
     } // namespace utils
-} // namespace art
+} // namespace sofm
