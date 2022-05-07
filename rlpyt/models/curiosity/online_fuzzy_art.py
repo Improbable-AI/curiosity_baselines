@@ -93,9 +93,10 @@ class OnlineFuzzyART(object):
 
         # repeat the learning until either convergence or max_epochs
         while not np.array_equal(self.w, w_old) and iterations < max_epochs:
+            print("Entered while loop Python!")
             w_old = self.w
             indices = list(range(len(data_reader)))
-            random.shuffle(indices)
+            # random.shuffle(indices)
             for ix in indices:
                 pattern = np.array(data_reader[ix], dtype=float)
                 normalize(pattern)
@@ -104,6 +105,7 @@ class OnlineFuzzyART(object):
                 cluster_choices[ix] = choice
             iterations += 1
 
+        print(f"{self.w}\n")
         # return results
         return iterations, np.array(cluster_choices)
 
