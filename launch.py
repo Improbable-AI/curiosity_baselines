@@ -194,6 +194,7 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['rho'] = args.rho
         model_args['curiosity_kwargs']['alpha'] = args.alpha
         model_args['curiosity_kwargs']['beta'] = args.beta
+        model_args['curiosity_kwargs']['headless'] = args.headless
         model_args['curiosity_kwargs']['device'] = args.sample_mode
 
     if args.env in _MUJOCO_ENVS:
@@ -277,6 +278,8 @@ def start_experiment(args):
             obs_type=args.obs_type,
             max_steps_per_episode=args.max_episode_steps
             )
+        # Megahacky, but w/e
+        model_args['curiosity_kwargs']['frame_stacking'] = False
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make
         env_args = dict(
@@ -300,6 +303,8 @@ def start_experiment(args):
             record_dir=args.log_dir,
             horizon=args.max_episode_steps,
             )
+        # Megahacky, but w/e
+        model_args['curiosity_kwargs']['frame_stacking'] = True
 
     if args.sample_mode == 'gpu':
         if args.lstm:

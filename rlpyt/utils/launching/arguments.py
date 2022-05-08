@@ -125,6 +125,7 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-rho', default=0.2, type=float, choices=[Range(0.0, 1.0)], help='Vigilance for making new classes in ART')
         parser.add_argument('-alpha', default=0.1, type=float, choices=[Range(0.0, float('inf'))], help='Large-weight regularizer')
         parser.add_argument('-beta', default=0.01, type=float, choices=[Range(0.0, float('inf'))], help='Learning rate for learning in ART')
+        parser.add_argument('-headless', action='store_true', help='Whether to use a head for ART or the raw features')
 
 
     # switch argument (only used in launch.py in __main__)
