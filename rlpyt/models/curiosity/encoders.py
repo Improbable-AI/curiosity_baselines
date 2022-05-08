@@ -66,8 +66,7 @@ class ARTHead(nn.Module):
         super(ARTHead, self).__init__()
         c, h, w = image_shape
         out_h, out_w = conv2d_output_shape(
-            h, w, kernel_size=kernel_size, stride=stride, padding=stride)
-        out_channels = out_channels
+            h, w, kernel_size=kernel_size, stride=stride, padding=padding)
         conv_output_size = out_channels*out_h*out_w
         with torch.no_grad():
             self.model = nn.Sequential(
