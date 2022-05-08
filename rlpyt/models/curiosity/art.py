@@ -31,13 +31,13 @@ class ART(nn.Module):
                  art_input_dim=16,
                  gamma=0.99,
                  std_rew_scaling=1.0,
+                 frame_stacking=True,
                  device='cpu'
                  ):
 
         super(ART, self).__init__()
 
         # assuming grayscale inputs
-        c, h, w = 1, image_shape[1], image_shape[2]
         self.feature_size = 512
         self.conv_feature_size = 7*7*64
         self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
@@ -50,10 +50,15 @@ class ART(nn.Module):
         # TODO(odin): Fix to whatever is actual
         self.encoded_input_dim = art_input_dim
         self.encoding_batch_norm = True
+        self.frame_stacking = frame_stacking
+
+        if self.frame_stacking:
+            # Set image shape to be without the frames stacked
+            image_shape = (1,) + image_shape[1:]
 
         with torch.no_grad():
             self.feature_encoder = ARTHead(
-                image_shape=(1, h, w),
+                image_shape=image_shape,
                 output_size=self.encoded_input_dim
             )
 
@@ -63,9 +68,10 @@ class ART(nn.Module):
         self.seen_classes = defaultdict(lambda: 0)
 
     def forward(self, obs, done=None):
-        # in case of frame stacking
-        obs = obs[:, :, -1, :, :]
-        obs = obs.unsqueeze(2)
+        if self.frame_stacking:
+            # in case of frame stacking
+            obs = obs[:, :, -1, :, :]
+            obs = obs.unsqueeze(2)
 
         lead_dim, T, B, img_shape = infer_leading_dims(obs, 3)
         obs = obs.type(torch.float)

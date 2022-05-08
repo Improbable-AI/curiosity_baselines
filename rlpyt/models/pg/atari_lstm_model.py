@@ -104,6 +104,7 @@ class AtariLstmModel(torch.nn.Module):
                                             alpha=curiosity_kwargs['alpha'],
                                             beta=curiosity_kwargs['beta'],
                                             std_rew_scaling=curiosity_kwargs['std_rew_scaling'],
+                                            frame_stacking=curiosity_kwargs['frame_stacking'],
                                            device=curiosity_kwargs['device'])
 
             if curiosity_kwargs['feature_encoding'] == 'idf':
