@@ -133,10 +133,8 @@ class ART(nn.Module):
             rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float()
             done = torch.from_numpy(np.array(done)).float()
 
-        rewards = torch.from_numpy(rewards_cpu)
+        rewards = torch.from_numpy(rewards_cpu * done)
         rewards /= torch.sqrt(rew_var)
-
-        rewards *= done
 
         return rewards * self.std_rew_scaling
 
