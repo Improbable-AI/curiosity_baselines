@@ -106,15 +106,17 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-num_predictors', default=10, type=int, help='How many forward models to train.')
     elif curiosity_alg == 'rnd':
-        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with RND.')
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none', 'idf_maze'], help='Which feature encoding method to use with RND.')
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
         parser.add_argument('-drop_probability', default=1.0, type=float, help='Decimal percent of experience to drop when training the predictor model.')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
     elif curiosity_alg == 'rand':
         parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
 
     # TODO MARIUS: Define input arguments from launch for Kohonen
     elif curiosity_alg == 'kohonen':
-        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none', 'idf_maze'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
 
     # TODO MARIUS: Define input arguments from launch for ART
     elif curiosity_alg == 'art':
