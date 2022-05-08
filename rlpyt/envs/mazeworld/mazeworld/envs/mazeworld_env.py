@@ -323,7 +323,9 @@ class OrdealEnv(pycolab_env.PyColabEnv):
                  obs_type='mask',
                  default_reward=0.0,
                  max_iterations=500):
-        self.chapters = ['kansas', 'cavern', 'castle']
+
+        self.objects = ['S', 'D']
+        self.state_layer_chars = ['#', '%', '~', '@', 'w', 'P'] + self.objects
 
         super(OrdealEnv, self).__init__(
             max_iterations=max_iterations,
@@ -333,25 +335,48 @@ class OrdealEnv(pycolab_env.PyColabEnv):
             action_space=spaces.Discrete(4 + 1)
         )
 
-    @property
-    def objects(self):
-        chapter = self.game._current_game.the_plot.this_chapter
-        if chapter == 'kansas':
-            return []
-        elif chapter == 'cavern':
-            return ['S']
-        elif chapter == 'castle':
-            return ['D']
-        else:
-            raise ValueError(f"current plot is {chapter}, must be one of {self.chapters}")
-
-    @property
-    def state_layer_chars(self):
-        return ['#', '%', '~', '@', 'w', 'P'] + self.objects
-
     def make_game(self):
-        self.game = ordeal.make_game()
-        return self.game
+        return ordeal.make_game()
 
     def make_colors(self):
         return ordeal.COLOURS
+
+
+
+# class OrdealEnv(pycolab_env.PyColabEnv):
+#     def __init__(self,
+#                  obs_type='mask',
+#                  default_reward=0.0,
+#                  max_iterations=500):
+#         self.chapters = ['kansas', 'cavern', 'castle']
+
+#         super(OrdealEnv, self).__init__(
+#             max_iterations=max_iterations,
+#             obs_type=obs_type,
+#             default_reward=default_reward,
+#             # left, right, up, down, no action
+#             action_space=spaces.Discrete(4 + 1)
+#         )
+
+#     @property
+#     def objects(self):
+#         chapter = self.game._current_game.the_plot.this_chapter
+#         if chapter == 'kansas':
+#             return []
+#         elif chapter == 'cavern':
+#             return ['S']
+#         elif chapter == 'castle':
+#             return ['D']
+#         else:
+#             raise ValueError(f"current plot is {chapter}, must be one of {self.chapters}")
+
+#     @property
+#     def state_layer_chars(self):
+#         return ['#', '%', '~', '@', 'w', 'P'] + self.objects
+
+#     def make_game(self):
+#         self.game = ordeal.make_game()
+#         return self.game
+
+#     def make_colors(self):
+#         return ordeal.COLOURS
