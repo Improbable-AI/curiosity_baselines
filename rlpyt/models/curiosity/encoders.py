@@ -2,7 +2,7 @@
 import torch
 from torch import nn
 
-from rlpyt.models.utils import Flatten
+from rlpyt.models.utils import Flatten, conv2d_output_shape
 
 class UniverseHead(nn.Module):
     '''
@@ -42,11 +42,17 @@ class MazeHead(nn.Module):
             self, 
             image_shape,
             output_size=256,
-            conv_output_size=256,
+            conv_output_size=None,
             batch_norm=False,
             ):
         super(MazeHead, self).__init__()
         c, h, w = image_shape
+        if conv_output_size is None:
+            out_h, out_w = conv2d_output_shape(
+                *conv2d_output_shape(h, w, 3, 1, 1),
+                3, 2, 2
+            )
+            conv_output_size = 16*out_h*out_w
         self.output_size = output_size
         self.conv_output_size = conv_output_size
         self.model = nn.Sequential(
