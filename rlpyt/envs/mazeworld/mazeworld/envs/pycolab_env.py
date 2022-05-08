@@ -372,7 +372,7 @@ class PyColabEnv(gym.Env):
             self._empty_cropped_board = np.zeros_like(self._last_cropped_observations.board)
 
         self._update_for_game_step(observations, reward)
-        info = self.current_game.the_plot.info
+        info = self.current_game.the_plot.info if hasattr(self.current_game.the_plot, 'info') else {}
 
         # Add custom metrics
         info['visitation_frequency'] = self.visitation_frequency
