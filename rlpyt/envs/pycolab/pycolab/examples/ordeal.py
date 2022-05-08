@@ -101,19 +101,12 @@ def make_game():
 
   # A cropper for cropping the "Kansas" part of the game to the size of the
   # other two games.
-  crop_kansas = cropping.ScrollingCropper(
-      rows=8, cols=15, to_track='P', scroll_margins=(2, 3))
-
-  crop_castle = cropping.ScrollingCropper(
-      rows=8, cols=8, to_track='P', scroll_margins=(2, 3))
-
-  crop_cavern = cropping.ScrollingCropper(
-      rows=8, cols=8, to_track='P', scroll_margins=(2, 3))
-
+  cropper = cropping.ScrollingCropper(
+      rows=5, cols=5, to_track='P', scroll_margins=(None, None))
 
   return storytelling.Story(
       chapters=dict(castle=make_castle, cavern=make_cavern, kansas=make_kansas),
-      croppers=dict(castle=crop_castle, cavern=crop_cavern, kansas=crop_kansas),
+      croppers=dict(castle=cropper, cavern=cropper, kansas=cropper),
       first_chapter='kansas')
 
 
