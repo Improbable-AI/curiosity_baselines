@@ -15,7 +15,8 @@ from pycolab.examples import (better_scrolly_maze,
                               deepmind_8room,
                               deepmind_8room_v1,
                               deepmind_5room_moveable,
-                              deepmind_5room_moveable_v1
+                              deepmind_5room_moveable_v1,
+                              ordeal
                               )
 from pycolab import cropping
 from . import pycolab_env
@@ -289,7 +290,20 @@ class DeepmindMazeWorld_5room_moveable_v1(pycolab_env.PyColabEnv):
         return [cropping.ScrollingCropper(rows=5, cols=5, to_track=['P'], scroll_margins=(None, None), pad_char=' ')]
 
 
+class OrdealEnv(pycolab_env.PyColabEnv):
+    def __init__(self,
+                 obs_type = 'mask',
+                 default_reward = 0.0,
+                 max_iterations = 500):
+      self.crop_kansas = cropping.ScrollingCropper(
+          rows=8, cols=15, to_track='P', scroll_margins=(2, 3))
 
+      super(OrdealEnv, self).__init__(
+            max_iterations=max_iterations,
+            obs_type=obs_type,
+            default_reward=default_reward,
+            action_space=spaces.Discrete(4 + 1) # left, right, up, down, no action
+            )
 
-
-        
+    def make_game(self):
+      return ordeal.make_game()
