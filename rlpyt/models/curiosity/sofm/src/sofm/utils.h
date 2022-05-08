@@ -20,7 +20,7 @@ namespace sofm
 
     inline double category_choice(const VectorConstRef pattern, const VectorConstRef category_w, double alpha)
     {
-        return max_norm(fuzzy_and(pattern, category_w) / (alpha + max_norm(category_w)));
+        return max_norm(fuzzy_and(pattern, category_w)) / (alpha + max_norm(category_w));
     }
 
     } // namespace utils
