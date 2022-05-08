@@ -103,7 +103,7 @@ class KohonenSOM:
 
     def get_dW(self, sample: np.ndarray, neighborhood_fcn: Callable[[np.ndarray, np.ndarray], float]) -> np.ndarray:
         if type(sample) is torch.Tensor:
-            sample = sample.detach().numpy()
+            sample = sample.detach().cpu().numpy()
 
         best_match_idx = np.unravel_index(
             np.argmin(
@@ -143,11 +143,11 @@ class Kohonen(nn.Module):
 
 
         # TODO(marius): Make into parameters defined externally
-        self.encoded_input_dim = 3  # TODO(odin): Fix to whatever is actual
+        self.encoded_input_dim = 4  # TODO(odin): Fix to whatever is actual
         self.encoding_batch_norm = True
-        kohonen_nodes_shape = (2, 20)
+        kohonen_nodes_shape = (2, 40)
         self.lr = 1
-        self.train_its_on_batch = 10
+        self.train_its_on_batch = 5
 
         self.feature_encoder = BurdaHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm)
 
