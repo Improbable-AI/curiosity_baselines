@@ -58,12 +58,14 @@ class ICM(nn.Module):
             batch_norm=False,
             prediction_beta=1.0,
             obs_stats=None,
+            std_rew_scaling=1.0,
             forward_loss_wt=0.2
             ):
         super(ICM, self).__init__()
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
+        self.std_rew_scaling = std_rew_scaling
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
 
@@ -131,7 +133,7 @@ class ICM(nn.Module):
     def compute_bonus(self, observations, next_observations, actions):
         phi1, phi2, predicted_phi2, predicted_action = self.forward(observations, next_observations, actions)
         reward = nn.functional.mse_loss(predicted_phi2, phi2, reduction='none').sum(-1)/self.feature_size
-        return self.prediction_beta * reward
+        return self.prediction_beta * reward * self.std_rew_scaling
 
     def compute_loss(self, observations, next_observations, actions, valid):
         # dimension add for when you have only one environment

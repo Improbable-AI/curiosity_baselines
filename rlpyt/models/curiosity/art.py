@@ -134,11 +134,11 @@ class ART(nn.Module):
             done = torch.from_numpy(np.array(done)).float()
 
         rewards = torch.from_numpy(rewards_cpu)
-        rewards /= (torch.sqrt(rew_var) * self.std_rew_scaling)
+        rewards /= torch.sqrt(rew_var)
 
         rewards *= done
 
-        return rewards
+        return rewards * self.std_rew_scaling
 
     def compute_loss(self, observations, valid):
         # # TODO(marius): Verify observations shape

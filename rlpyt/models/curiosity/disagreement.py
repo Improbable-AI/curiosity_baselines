@@ -56,6 +56,7 @@ class Disagreement(nn.Module):
             batch_norm=False,
             prediction_beta=1.0,
             obs_stats=None,
+            std_rew_scaling=1.0,
             device="cpu",
             forward_loss_wt=0.2,
             ):
@@ -65,6 +66,7 @@ class Disagreement(nn.Module):
         self.prediction_beta = prediction_beta
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
+        self.std_rew_scaling = std_rew_scaling
         self.device = torch.device("cuda:0" if device == "gpu" else "cpu")
 
         if self.obs_stats is not None:
@@ -137,7 +139,7 @@ class Disagreement(nn.Module):
         phi1, phi2, predicted_phi2, predicted_phi2_stacked, predicted_action = self.forward(observations, next_observations, actions)
         feature_var = torch.var(predicted_phi2_stacked, dim=0) # feature variance across forward models
         reward = torch.mean(feature_var, axis=-1) # mean over feature
-        return self.prediction_beta * reward
+        return self.prediction_beta * reward * self.std_rew_scaling
 
     def compute_loss(self, observations, next_observations, actions, valid):
         #------------------------------------------------------------#

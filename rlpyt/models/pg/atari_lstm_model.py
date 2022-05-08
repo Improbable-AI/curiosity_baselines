@@ -54,7 +54,9 @@ class AtariLstmModel(torch.nn.Module):
                                            batch_norm=curiosity_kwargs['batch_norm'],
                                            prediction_beta=curiosity_kwargs['prediction_beta'],
                                            obs_stats=self.obs_stats,
-                                           forward_loss_wt=curiosity_kwargs['forward_loss_wt'])
+                                           forward_loss_wt=curiosity_kwargs['forward_loss_wt'],
+                                           std_rew_scaling=curiosity_kwargs['std_rew_scaling']
+                                           )
             elif curiosity_kwargs['curiosity_alg'] == 'disagreement':
                 self.curiosity_model = Disagreement(image_shape=image_shape,
                                                     action_size=output_size,
@@ -63,7 +65,9 @@ class AtariLstmModel(torch.nn.Module):
                                                     prediction_beta=curiosity_kwargs['prediction_beta'],
                                                     obs_stats=self.obs_stats,
                                                     device=curiosity_kwargs['device'],
-                                                    forward_loss_wt=curiosity_kwargs['forward_loss_wt'])
+                                                    forward_loss_wt=curiosity_kwargs['forward_loss_wt'],
+                                                    std_rew_scaling=curiosity_kwargs['std_rew_scaling']
+                                                    )
             elif curiosity_kwargs['curiosity_alg'] == 'ndigo':
                 self.curiosity_model = NDIGO(image_shape=image_shape,
                                              action_size=output_size,
@@ -72,6 +76,7 @@ class AtariLstmModel(torch.nn.Module):
                                              feature_encoding=curiosity_kwargs['feature_encoding'],
                                              batch_norm=curiosity_kwargs['batch_norm'],
                                              num_predictors=curiosity_kwargs['num_predictors'],
+                                             std_rew_scaling=curiosity_kwargs['std_rew_scaling'],
                                              device=curiosity_kwargs['device'],
                                              )
             elif curiosity_kwargs['curiosity_alg'] == 'rnd':
@@ -79,7 +84,9 @@ class AtariLstmModel(torch.nn.Module):
                                            prediction_beta=curiosity_kwargs['prediction_beta'],
                                            drop_probability=curiosity_kwargs['drop_probability'],
                                            gamma=curiosity_kwargs['gamma'],
+                                           std_rew_scaling=curiosity_kwargs['std_rew_scaling'],
                                            device=curiosity_kwargs['device'])
+                                           
             elif curiosity_kwargs['curiosity_alg'] == 'rand':
                 self.curiosity_model = RandReward(image_shape=image_shape,
                                            device=curiosity_kwargs['device'])
@@ -87,6 +94,7 @@ class AtariLstmModel(torch.nn.Module):
             # TODO MARIUS: Initialize Kohonen.
             elif curiosity_kwargs['curiosity_alg'] == 'kohonen':
                 self.curiosity_model = Kohonen(image_shape=image_shape,
+                                        std_rew_scaling=curiosity_kwargs['std_rew_scaling'],
                                            device=curiosity_kwargs['device'])
 
             # TODO MARIUS: Initialize ART

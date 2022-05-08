@@ -49,6 +49,7 @@ class NDIGO(torch.nn.Module):
             batch_norm=False,
             obs_stats=None,
             num_predictors=10,
+            std_rew_scaling=1.0,
             device='cpu',
             ):
         """Instantiate neural net module according to inputs."""
@@ -61,6 +62,8 @@ class NDIGO(torch.nn.Module):
         self.feature_encoding = feature_encoding
         self.obs_stats = obs_stats
         self.num_predictors = num_predictors
+        self.std_rew_scaling = std_rew_scaling
+        
         if self.obs_stats is not None:
             self.obs_mean, self.obs_std = self.obs_stats
         self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
@@ -214,7 +217,7 @@ class NDIGO(torch.nn.Module):
 
         # r_int = nn.functional.relu(r_int)
 
-        return r_int
+        return r_int * self.std_rew_scaling
 
 
     def compute_loss(self, observations, prev_actions, actions, valid):

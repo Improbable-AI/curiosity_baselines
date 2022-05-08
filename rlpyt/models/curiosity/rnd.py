@@ -22,12 +22,14 @@ class RND(nn.Module):
             prediction_beta=1.0,
             drop_probability=1.0,
             gamma=0.99,
+            std_rew_scaling=1.0,
             device='cpu'
             ):
         super(RND, self).__init__()
 
         self.prediction_beta = prediction_beta
         self.drop_probability = drop_probability
+        self.std_rew_scaling = std_rew_scaling
         self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
 
         c, h, w = 1, image_shape[1], image_shape[2] # assuming grayscale inputs
@@ -200,7 +202,7 @@ class RND(nn.Module):
         rewards /= torch.sqrt(rew_var)
 
         rewards *= done
-        return self.prediction_beta * rewards
+        return self.prediction_beta * rewards * self.std_rew_scaling
 
     def compute_loss(self, observations, valid):
         phi, predicted_phi, T, B = self.forward(observations, done=None)
