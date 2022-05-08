@@ -121,6 +121,8 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-rho', default=0.2, type=float, choices=[Range(0.0, 1.0)], help='Vigilance for making new classes in ART')
         parser.add_argument('-alpha', default=0.1, type=float, choices=[Range(0.0, float('inf'))], help='Large-weight regularizer')
         parser.add_argument('-beta', default=0.01, type=float, choices=[Range(0.0, float('inf'))], help='Learning rate for learning in ART')
+        parser.add_argument('-std_rew_scaling', default=1.0, type=float, choices=[Range(0.0, float('inf'))], help='Scaling of reward std for reward normalization in ART')
+
 
     # switch argument (only used in launch.py in __main__)
     parser.add_argument('-launch_tmux', default='yes', type=str, help='')

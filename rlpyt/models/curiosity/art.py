@@ -42,6 +42,7 @@ class ART(nn.Module):
                  beta=0.01,
                  art_input_dim=16,
                 gamma=0.99,
+                std_rew_scaling=1.0,
                  device='cpu'
                  ):
 
