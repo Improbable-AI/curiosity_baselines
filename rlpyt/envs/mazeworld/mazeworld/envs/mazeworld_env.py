@@ -325,7 +325,7 @@ class OrdealEnv(pycolab_env.PyColabEnv):
         self.crop_kansas = cropping.ScrollingCropper(
             rows=8, cols=15, to_track='P', scroll_margins=(2, 3))
         self.objects = ['S', 'D']
-        self.state_layer_chars = list(ordeal.COLOURS.keys()) 
+        self.state_layer_chars = ['#', '%', '~', '@', 'w', 'P'] + self.objects
 
         super(OrdealEnv, self).__init__(
             max_iterations=max_iterations,

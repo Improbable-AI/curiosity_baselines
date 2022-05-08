@@ -273,12 +273,17 @@ class PyColabEnv(gym.Env):
     def _update_for_game_step(self, observations, reward):
         """Update internal state with data from an environment interaction."""
         # disentangled one hot state
+        board_size = observations[0].shape
 
         if self.obs_type == 'mask':
             self._state = []
             for char in self.state_layer_chars:
                 if char != ' ':
-                    mask = observations.layers[char].astype(float)
+                    if char in observations.layers.keys():
+                        mask = observations.layers[char].astype(float)
+                    else:
+                        mask = np.zeros(board_size).astype(float)
+
                     if char in self.objects and 1. in mask:
                         self.visitation_frequency[char] += 1
                     self._state.append(mask)
