@@ -265,45 +265,6 @@ class PlayerSprite(prefab_sprites.MazeWalker):
     # We always save our position to support the teleporting just above.
     the_plot['last_position'] = self.position
 
-# class OrdealEnv(pycolab_env.PyColabEnv):
-#     def __init__(self,
-#                  obs_type = 'mask',
-#                  default_reward = 0.0,
-#                  max_iterations = 500):
-#       self.crop_kansas = cropping.ScrollingCropper(
-#           rows=8, cols=15, to_track='P', scroll_margins=(2, 3))
-
-#       super(OrdealEnv, self).__init__(
-#             max_iterations=max_iterations,
-#             obs_type=obs_type,
-#             default_reward=default_reward,
-#             action_space=spaces.Discrete(4 + 1) # left, right, up, down, no action
-#             )
-
-
-#     def make_game(self):
-#       return storytelling.Story(
-#           chapters=dict(castle=self.make_castle, cavern=self.make_cavern, kansas=self.make_kansas),
-#           croppers=dict(castle=None, cavern=None, kansas=self.crop_kansas),
-#           first_chapter='kansas')
-
-#     def make_castle(self):
-#       return ascii_art.ascii_art_to_game(
-#           GAME_ART_CASTLE, what_lies_beneath=' ',
-#           sprites=dict(P=PlayerSprite, D=DragonduckSprite),
-#           update_schedule=['P', 'D'], z_order=['D', 'P'])
-
-#     def make_cavern():
-#       return ascii_art.ascii_art_to_game(
-#           GAME_ART_CAVERN, what_lies_beneath=' ',
-#           sprites=dict(P=PlayerSprite), drapes=dict(S=SwordDrape),
-#           update_schedule=['P', 'S'])
-
-#     def make_kansas():
-#       return ascii_art.ascii_art_to_game(
-#           GAME_ART_KANSAS, what_lies_beneath='~', sprites=dict(P=PlayerSprite))
-
-
 
 def main(argv=()):
   del argv  # Unused.
