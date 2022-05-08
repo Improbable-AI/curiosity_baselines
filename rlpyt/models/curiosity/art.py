@@ -31,15 +31,15 @@ class ART(nn.Module):
                  art_input_dim=16,
                  gamma=0.99,
                  std_rew_scaling=1.0,
+                 headless=False,
                  device='cpu'
                  ):
 
         super(ART, self).__init__()
 
         # assuming grayscale inputs
-        c, h, w = 1, image_shape[1], image_shape[2]
-        self.feature_size = 512
-        self.conv_feature_size = 7*7*64
+        c, h, w = image_shape
+        self.feature_size = h*w
         self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
 
         self.rew_rms = RunningMeanStd()
@@ -48,17 +48,22 @@ class ART(nn.Module):
 
         # TODO(marius): Make into parameters defined externally
         # TODO(odin): Fix to whatever is actual
-        self.encoded_input_dim = art_input_dim
-        self.encoding_batch_norm = True
+
+        self.headless = headless
 
         with torch.no_grad():
-            self.feature_encoder = ARTHead(
-                image_shape=(1, h, w),
-                output_size=self.encoded_input_dim
-            )
+            if headless:
+                self.feature_encoder = nn.Flatten()
+                art_input_dim = h*w
+            else:
+                self.feature_encoder = ARTHead(
+                    image_shape=(1, h, w),
+                    output_size=art_input_dim
+                )
 
+        self.encoded_input_dim = art_input_dim
         self.fuzzy_art = OnlineFuzzyART(
-            rho=rho, alpha=alpha, beta=beta, num_features=art_input_dim)
+            rho=rho, alpha=alpha, beta=beta, num_features=self.encoded_input_dim)
 
         self.seen_classes = defaultdict(lambda: 0)
 

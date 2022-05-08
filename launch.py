@@ -194,6 +194,7 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['rho'] = args.rho
         model_args['curiosity_kwargs']['alpha'] = args.alpha
         model_args['curiosity_kwargs']['beta'] = args.beta
+        model_args['curiosity_kwargs']['headless'] = args.headless
         model_args['curiosity_kwargs']['device'] = args.sample_mode
 
     if args.env in _MUJOCO_ENVS:
