@@ -280,6 +280,8 @@ def start_experiment(args):
             )
         # Megahacky, but w/e
         model_args['curiosity_kwargs']['frame_stacking'] = False
+        if args.feature_encoding != 'idf_maze':
+            raise ValueError(f"feature encoding set to '{args.feature_encoding}' but environment is maze ('deepmind'), so needs to be 'idf_maze'!")
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make
         env_args = dict(
