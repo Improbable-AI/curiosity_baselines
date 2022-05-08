@@ -104,9 +104,16 @@ def make_game():
   crop_kansas = cropping.ScrollingCropper(
       rows=8, cols=15, to_track='P', scroll_margins=(2, 3))
 
+  crop_castle = cropping.ScrollingCropper(
+      rows=8, cols=8, to_track='P', scroll_margins=(2, 3))
+
+  crop_cavern = cropping.ScrollingCropper(
+      rows=8, cols=8, to_track='P', scroll_margins=(2, 3))
+
+
   return storytelling.Story(
       chapters=dict(castle=make_castle, cavern=make_cavern, kansas=make_kansas),
-      croppers=dict(castle=None, cavern=None, kansas=crop_kansas),
+      croppers=dict(castle=crop_castle, cavern=crop_cavern, kansas=crop_kansas),
       first_chapter='kansas')
 
 
