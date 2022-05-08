@@ -187,6 +187,7 @@ def start_experiment(args):
     # TODO MARIUS: Read input arguments from launch for ART
     elif args.curiosity_alg == 'art':
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['rho'] = args.rho
         model_args['curiosity_kwargs']['alpha'] = args.alpha
         model_args['curiosity_kwargs']['beta'] = args.beta

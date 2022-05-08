@@ -58,7 +58,7 @@ class ART(nn.Module):
         self.encoding_batch_norm = True
 
         self.feature_encoder = nn.Sequential(
-            BurdaHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm),
+            MazeHead((1, h, w), output_size=self.encoded_input_dim, batch_norm=self.encoding_batch_norm),
             ScalingSigmoid(scaling=0.5)
         )
 

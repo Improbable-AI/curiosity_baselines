@@ -116,7 +116,8 @@ def get_args(args_in=sys.argv[1:]):
 
     # TODO MARIUS: Define input arguments from launch for ART
     elif curiosity_alg == 'art':
-        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none', 'idf_maze'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-rho', default=0.2, type=float, choices=[Range(0.0, 1.0)], help='Vigilance for making new classes in ART')
         parser.add_argument('-alpha', default=0.1, type=float, choices=[Range(0.0, float('inf'))], help='Large-weight regularizer')
         parser.add_argument('-beta', default=0.01, type=float, choices=[Range(0.0, float('inf'))], help='Learning rate for learning in ART')

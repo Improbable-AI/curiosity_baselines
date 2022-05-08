@@ -432,3 +432,4 @@ class PyColabEnv(gym.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+

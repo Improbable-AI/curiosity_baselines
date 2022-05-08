@@ -126,7 +126,7 @@ setup(
     author_email="odin.sev@gmail.com",
     description="SOFM module for RL project",
     long_description="",
-    ext_modules=[CMakeExtension("cmake_example")],
+    ext_modules=[CMakeExtension("sofm")],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,
     extras_require={"test": ["pytest>=6.0"]},
