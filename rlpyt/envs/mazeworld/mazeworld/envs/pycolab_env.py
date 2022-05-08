@@ -38,6 +38,7 @@ class PycolabTrajInfo(TrajInfo):
         self.visit_freq_f = 0
         self.visit_freq_g = 0
         self.visit_freq_h = 0
+        self.visit_freq_i = 0
         self.first_visit_a = 500
         self.first_visit_b = 500
         self.first_visit_c = 500
@@ -46,6 +47,7 @@ class PycolabTrajInfo(TrajInfo):
         self.first_visit_f = 500
         self.first_visit_g = 500
         self.first_visit_h = 500
+        self.first_visit_i = 500
 
     def step(self, observation, action, reward_ext, done, agent_info, env_info):
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
@@ -74,16 +76,20 @@ class PycolabTrajInfo(TrajInfo):
                 self.visit_freq_e = visitation_frequency[4]
             if len(visitation_frequency) >= 6:
                 if first_visit_time[5] == 500 and visitation_frequency[5] == 1:
-                    self.first_visit_e = self.Length
-                self.visit_freq_e = visitation_frequency[5]
+                    self.first_visit_f = self.Length
+                self.visit_freq_f = visitation_frequency[5]
             if len(visitation_frequency) >= 7:
                 if first_visit_time[6] == 500 and visitation_frequency[6] == 1:
-                    self.first_visit_e = self.Length
-                self.visit_freq_e = visitation_frequency[6]
+                    self.first_visit_g = self.Length
+                self.visit_freq_g = visitation_frequency[6]
             if len(visitation_frequency) >= 8:
                 if first_visit_time[7] == 500 and visitation_frequency[7] == 1:
-                    self.first_visit_e = self.Length
-                self.visit_freq_e = visitation_frequency[7]
+                    self.first_visit_h = self.Length
+                self.visit_freq_h = visitation_frequency[7]
+            if len(visitation_frequency) >= 9:
+                if first_visit_time[8] == 500 and visitation_frequency[8] == 1:
+                    self.first_visit_i = self.Length
+                self.visit_freq_i = visitation_frequency[8]
 
         super().step(observation, action, reward_ext, done, agent_info, env_info)
 
