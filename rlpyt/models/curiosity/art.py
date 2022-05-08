@@ -129,12 +129,15 @@ class ART(nn.Module):
         if self.device == torch.device('cuda:0'):
             rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float().cuda()
             done = torch.from_numpy(np.array(done)).float().cuda()
+            rewards = torch.from_numpy(rewards_cpu).float().cuda() 
         else:
             rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float()
             done = torch.from_numpy(np.array(done)).float()
-
-        rewards = torch.from_numpy(rewards_cpu * done)
+            rewards = torch.from_numpy(rewards_cpu).float()
+    
         rewards /= torch.sqrt(rew_var)
+
+        rewards *= done
 
         return rewards * self.std_rew_scaling
 
