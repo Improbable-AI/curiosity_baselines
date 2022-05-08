@@ -56,6 +56,7 @@ class ART(nn.Module):
 
         self.rew_rms = RunningMeanStd()
         self.rew_rff = RewardForwardFilter(gamma)
+        self.std_rew_scaling = std_rew_scaling
 
         # TODO(marius): Make into parameters defined externally
         self.encoded_input_dim = art_input_dim  # TODO(odin): Fix to whatever is actual
@@ -133,7 +134,7 @@ class ART(nn.Module):
             done = torch.from_numpy(np.array(done)).float()
 
         rewards = torch.from_numpy(rewards_cpu)
-        rewards /= torch.sqrt(rew_var)
+        rewards /= (torch.sqrt(rew_var) * self.std_rew_scaling)
 
         rewards *= done
 
