@@ -41,6 +41,7 @@ class ART(nn.Module):
                  alpha=0.1,
                  beta=0.01,
                  art_input_dim=16,
+                gamma=0.99,
                  device='cpu'
                  ):
 
@@ -52,6 +53,8 @@ class ART(nn.Module):
         self.conv_feature_size = 7*7*64
         self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
 
+        self.rew_rms = RunningMeanStd()
+        self.rew_rff = RewardForwardFilter(gamma)
 
         # TODO(marius): Make into parameters defined externally
         self.encoded_input_dim = art_input_dim  # TODO(odin): Fix to whatever is actual
@@ -88,9 +91,7 @@ class ART(nn.Module):
         obs_map = obs_feature_mapped.detach().cpu().numpy()
         # self.fuzzy_art.fit(obs_map)
         # predictions = torch.LongTensor(self.fuzzy_art.predict(obs_map))
-        predictions = torch.LongTensor(
-            self.fuzzy_art.run_online(obs_map, max_epochs=20)
-        )
+        predictions = self.fuzzy_art.run_online(obs_map, max_epochs=20)
         self.update_seen_classes(predictions)
         rewards = self.compute_rewards(predictions)
 
@@ -99,25 +100,43 @@ class ART(nn.Module):
         #     self.update_seen_classes(predictions)
         #     rewards[idx] = self.compute_reward(predictions)
 
-        ret = rewards.view(T, B)
+        ret = rewards.reshape(T, B)
 
         return ret, T, B
         # return predicted_phi, T, B
 
     def update_seen_classes(self, predictions):
         for prediction in predictions:
-            self.seen_classes[prediction.item()] += 1
+            self.seen_classes[prediction] += 1
 
     def compute_rewards(self, predictions):
-        num_seen = torch.tensor([self.seen_classes[prediction.item()] for prediction in predictions])
-        return 1.0 / torch.sqrt(num_seen.float())
+        num_seen = np.array([self.seen_classes[prediction] for prediction in predictions], dtype=float)
+        return 1.0 / np.sqrt(num_seen)
 
     def compute_bonus(self, next_observation, done):
+        rewards_cpu, T, B = self.forward(next_observation, done)
+        done = torch.abs(done-1).cpu().data.numpy()
+        total_rew_per_env = list()
+        for i in range(T):
+            update = self.rew_rff.update(rewards_cpu[i], done=done[i])
+            total_rew_per_env.append(update)
+        total_rew_per_env = np.array(total_rew_per_env)
+        mean_length = np.mean(np.sum(np.swapaxes(done, 0, 1), axis=1))
 
-        # with torch.no_grad():
-        #     predicted_phi, T, B = self.forward(next_observation, done)
-        #     rewards = predicted_phi.detach().sum(-1)/self.feature_size
-        return self.forward(next_observation, done)[0]
+        self.rew_rms.update_from_moments(np.mean(total_rew_per_env), np.var(total_rew_per_env), mean_length)
+        if self.device == torch.device('cuda:0'):
+            rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float().cuda()
+            done = torch.from_numpy(np.array(done)).float().cuda()
+        else:
+            rew_var = torch.from_numpy(np.array(self.rew_rms.var)).float()
+            done = torch.from_numpy(np.array(done)).float()
+
+        rewards = torch.from_numpy(rewards_cpu)
+        rewards /= torch.sqrt(rew_var)
+
+        rewards *= done
+
+        return rewards
 
     def compute_loss(self, observations, valid):
         # # TODO(marius): Verify observations shape
