@@ -151,6 +151,9 @@ def start_experiment(args):
 
     # ----------------------------------------------------- POLICY ----------------------------------------------------- #
     model_args = dict(curiosity_kwargs=dict(curiosity_alg=args.curiosity_alg))
+
+    model_args['curiosity_kwargs']['std_rew_scaling'] = args.std_rew_scaling
+
     if args.curiosity_alg =='icm':
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
         model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
@@ -173,6 +176,7 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
         model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
         model_args['curiosity_kwargs']['drop_probability'] = args.drop_probability
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['gamma'] = args.discount
         model_args['curiosity_kwargs']['device'] = args.sample_mode
     elif args.curiosity_alg == 'rand':
@@ -187,9 +191,11 @@ def start_experiment(args):
     # TODO MARIUS: Read input arguments from launch for ART
     elif args.curiosity_alg == 'art':
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['rho'] = args.rho
         model_args['curiosity_kwargs']['alpha'] = args.alpha
         model_args['curiosity_kwargs']['beta'] = args.beta
+        model_args['curiosity_kwargs']['headless'] = args.headless
         model_args['curiosity_kwargs']['device'] = args.sample_mode
 
     if args.env in _MUJOCO_ENVS:
@@ -247,6 +253,7 @@ def start_experiment(args):
                 )
 
     # ----------------------------------------------------- SAMPLER ----------------------------------------------------- #
+    model_args['curiosity_kwargs']['maze_environment'] = False
 
     # environment setup
     traj_info_cl = TrajInfo # environment specific - potentially overriden below
@@ -273,6 +280,11 @@ def start_experiment(args):
             obs_type=args.obs_type,
             max_steps_per_episode=args.max_episode_steps
             )
+        # Megahacky, but w/e
+        model_args['curiosity_kwargs']['frame_stacking'] = False
+        model_args['curiosity_kwargs']['maze_environment'] = True
+        if args.feature_encoding != 'idf_maze':
+            raise ValueError(f"feature encoding set to '{args.feature_encoding}' but environment is maze ('deepmind'), so needs to be 'idf_maze'!")
     elif args.env in _MUJOCO_ENVS:
         env_cl = gym_make
         env_args = dict(
@@ -296,6 +308,8 @@ def start_experiment(args):
             record_dir=args.log_dir,
             horizon=args.max_episode_steps,
             )
+        # Megahacky, but w/e
+        model_args['curiosity_kwargs']['frame_stacking'] = True
 
     if args.sample_mode == 'gpu':
         if args.lstm:

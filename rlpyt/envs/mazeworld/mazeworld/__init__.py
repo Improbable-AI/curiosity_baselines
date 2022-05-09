@@ -13,7 +13,8 @@ from .envs import (MazeWorld,
                     DeepmindMazeWorld_8room,
                     DeepmindMazeWorld_8room_v1,
                     DeepmindMazeWorld_5room_moveable,
-                    DeepmindMazeWorld_5room_moveable_v1)
+                    DeepmindMazeWorld_5room_moveable_v1,
+                    OrdealEnv)
 
 def register(id, entry_point, max_episode_steps, kwargs):
     env_specs = gym.envs.registry.env_specs
@@ -84,4 +85,8 @@ register(
     max_episode_steps=500,
     kwargs={'level': 0, 'max_iterations': 500})
 
-
+register(
+    id='DeepmindOrdealEnv-v0',
+    entry_point='mazeworld.envs:OrdealEnv',
+    max_episode_steps=500,
+    kwargs={'max_iterations': 500})

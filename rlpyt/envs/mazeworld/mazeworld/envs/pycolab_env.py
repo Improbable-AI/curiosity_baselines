@@ -38,6 +38,7 @@ class PycolabTrajInfo(TrajInfo):
         self.visit_freq_f = 0
         self.visit_freq_g = 0
         self.visit_freq_h = 0
+        self.visit_freq_i = 0
         self.first_visit_a = 500
         self.first_visit_b = 500
         self.first_visit_c = 500
@@ -46,6 +47,7 @@ class PycolabTrajInfo(TrajInfo):
         self.first_visit_f = 500
         self.first_visit_g = 500
         self.first_visit_h = 500
+        self.first_visit_i = 500
 
     def step(self, observation, action, reward_ext, done, agent_info, env_info):
         visitation_frequency = getattr(env_info, 'visitation_frequency', None)
@@ -74,16 +76,20 @@ class PycolabTrajInfo(TrajInfo):
                 self.visit_freq_e = visitation_frequency[4]
             if len(visitation_frequency) >= 6:
                 if first_visit_time[5] == 500 and visitation_frequency[5] == 1:
-                    self.first_visit_e = self.Length
-                self.visit_freq_e = visitation_frequency[5]
+                    self.first_visit_f = self.Length
+                self.visit_freq_f = visitation_frequency[5]
             if len(visitation_frequency) >= 7:
                 if first_visit_time[6] == 500 and visitation_frequency[6] == 1:
-                    self.first_visit_e = self.Length
-                self.visit_freq_e = visitation_frequency[6]
+                    self.first_visit_g = self.Length
+                self.visit_freq_g = visitation_frequency[6]
             if len(visitation_frequency) >= 8:
                 if first_visit_time[7] == 500 and visitation_frequency[7] == 1:
-                    self.first_visit_e = self.Length
-                self.visit_freq_e = visitation_frequency[7]
+                    self.first_visit_h = self.Length
+                self.visit_freq_h = visitation_frequency[7]
+            if len(visitation_frequency) >= 9:
+                if first_visit_time[8] == 500 and visitation_frequency[8] == 1:
+                    self.first_visit_i = self.Length
+                self.visit_freq_i = visitation_frequency[8]
 
         super().step(observation, action, reward_ext, done, agent_info, env_info)
 
@@ -267,12 +273,17 @@ class PyColabEnv(gym.Env):
     def _update_for_game_step(self, observations, reward):
         """Update internal state with data from an environment interaction."""
         # disentangled one hot state
+        board_size = observations[0].shape
 
         if self.obs_type == 'mask':
             self._state = []
             for char in self.state_layer_chars:
                 if char != ' ':
-                    mask = observations.layers[char].astype(float)
+                    if char in observations.layers.keys():
+                        mask = observations.layers[char].astype(float)
+                    else:
+                        mask = np.zeros(board_size).astype(float)
+
                     if char in self.objects and 1. in mask:
                         self.visitation_frequency[char] += 1
                     self._state.append(mask)
@@ -361,7 +372,7 @@ class PyColabEnv(gym.Env):
             self._empty_cropped_board = np.zeros_like(self._last_cropped_observations.board)
 
         self._update_for_game_step(observations, reward)
-        info = self.current_game.the_plot.info
+        info = self.current_game.the_plot.info if hasattr(self.current_game.the_plot, 'info') else {}
 
         # Add custom metrics
         info['visitation_frequency'] = self.visitation_frequency
@@ -432,3 +443,4 @@ class PyColabEnv(gym.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+

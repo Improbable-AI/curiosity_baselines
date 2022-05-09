@@ -37,7 +37,9 @@ def get_args(args_in=sys.argv[1:]):
     parser.add_argument('-eval_max_steps', default=int(51e3), type=int, help='Max number of timesteps run during an evaluation cycle (from one evaluation process).')
     parser.add_argument('-eval_max_traj', default=50, type=int, help='Max number of trajectories collected during an evaluation cycle (from all evaluation processes).')
     parser.add_argument('-timestep_limit', default=20, type=int, help='Max number of timesteps per trajectory')
-    
+
+    parser.add_argument('-std_rew_scaling', default=1.0, type=float, choices=[Range(0.0, float('inf'))], help='Scaling of reward std for reward normalization in ART')
+
     # logging args
     parser.add_argument('-log_interval', default=int(1e4), type=int, help='Number of environment steps between logging events.')
     parser.add_argument('-record_freq', default=0, type=int, help='Interval between video recorded episodes (in episodes). 0 means dont record.')
@@ -104,22 +106,28 @@ def get_args(args_in=sys.argv[1:]):
         parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
         parser.add_argument('-num_predictors', default=10, type=int, help='How many forward models to train.')
     elif curiosity_alg == 'rnd':
-        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with RND.')
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none', 'idf_maze'], help='Which feature encoding method to use with RND.')
         parser.add_argument('-prediction_beta', default=1.0, type=float, help='Scalar multiplier applied to the prediction error to generate the intrinsic reward. Environment dependent.')
         parser.add_argument('-drop_probability', default=1.0, type=float, help='Decimal percent of experience to drop when training the predictor model.')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
+
     elif curiosity_alg == 'rand':
         parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
 
     # TODO MARIUS: Define input arguments from launch for Kohonen
     elif curiosity_alg == 'kohonen':
-        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none', 'idf_maze'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
 
     # TODO MARIUS: Define input arguments from launch for ART
     elif curiosity_alg == 'art':
-        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none'], help='Which feature encoding method to use with your policy.')
-        parser.add_argument('-rho', default=0.95, type=float, choices=[Range(0.0, 1.0)], help='Vigilance for making new classes in ART')
-        parser.add_argument('-alpha', default=0.5, type=float, choices=[Range(0.0, float('inf'))], help='Large-weight regularizer')
+        parser.add_argument('-feature_encoding', default='none', type=str, choices=['none', 'idf_maze'], help='Which feature encoding method to use with your policy.')
+        parser.add_argument('-batch_norm', action='store_true', help='Whether or not to use batch norm in the feature encoder.')
+        parser.add_argument('-rho', default=0.2, type=float, choices=[Range(0.0, 1.0)], help='Vigilance for making new classes in ART')
+        parser.add_argument('-alpha', default=0.1, type=float, choices=[Range(0.0, float('inf'))], help='Large-weight regularizer')
         parser.add_argument('-beta', default=0.01, type=float, choices=[Range(0.0, float('inf'))], help='Learning rate for learning in ART')
+        parser.add_argument('-headless', action='store_true', help='Whether to use a head for ART or the raw features')
+
 
     # switch argument (only used in launch.py in __main__)
     parser.add_argument('-launch_tmux', default='yes', type=str, help='')

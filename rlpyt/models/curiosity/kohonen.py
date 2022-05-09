@@ -128,6 +128,7 @@ class Kohonen(nn.Module):
 
     def __init__(self,
                  image_shape,
+                 std_rew_scaling=1.0,
                  device='cpu'
                  ):
 
@@ -137,6 +138,7 @@ class Kohonen(nn.Module):
         c, h, w = 1, image_shape[1], image_shape[2]
         self.feature_size = 512
         self.conv_feature_size = 7*7*64
+        self.std_rew_scaling = std_rew_scaling
         self.device = torch.device('cuda:0' if device == 'gpu' else 'cpu')
 
 
@@ -182,7 +184,7 @@ class Kohonen(nn.Module):
         # with torch.no_grad():
         #     predicted_phi, T, B = self.forward(next_observation, done)
         #     rewards = predicted_phi.detach().sum(-1)/self.feature_size
-        return self.forward(next_observation, done)[0]
+        return self.forward(next_observation, done)[0] * self.std_rew_scaling
 
     def compute_loss(self, observations, valid):
         # TODO(marius): Verify observations shape
