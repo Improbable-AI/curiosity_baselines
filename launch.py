@@ -176,6 +176,7 @@ def start_experiment(args):
         model_args['curiosity_kwargs']['feature_encoding'] = args.feature_encoding
         model_args['curiosity_kwargs']['prediction_beta'] = args.prediction_beta
         model_args['curiosity_kwargs']['drop_probability'] = args.drop_probability
+        model_args['curiosity_kwargs']['batch_norm'] = args.batch_norm
         model_args['curiosity_kwargs']['gamma'] = args.discount
         model_args['curiosity_kwargs']['device'] = args.sample_mode
     elif args.curiosity_alg == 'rand':
@@ -252,6 +253,7 @@ def start_experiment(args):
                 )
 
     # ----------------------------------------------------- SAMPLER ----------------------------------------------------- #
+    model_args['curiosity_kwargs']['maze_environment'] = False
 
     # environment setup
     traj_info_cl = TrajInfo # environment specific - potentially overriden below
@@ -280,6 +282,7 @@ def start_experiment(args):
             )
         # Megahacky, but w/e
         model_args['curiosity_kwargs']['frame_stacking'] = False
+        model_args['curiosity_kwargs']['maze_environment'] = True
         if args.feature_encoding != 'idf_maze':
             raise ValueError(f"feature encoding set to '{args.feature_encoding}' but environment is maze ('deepmind'), so needs to be 'idf_maze'!")
     elif args.env in _MUJOCO_ENVS:
