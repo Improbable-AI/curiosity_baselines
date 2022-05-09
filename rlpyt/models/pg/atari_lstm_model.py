@@ -85,6 +85,8 @@ class AtariLstmModel(torch.nn.Module):
                                            drop_probability=curiosity_kwargs['drop_probability'],
                                            gamma=curiosity_kwargs['gamma'],
                                            std_rew_scaling=curiosity_kwargs['std_rew_scaling'],
+                                           frame_stacking=curiosity_kwargs['frame_stacking'],
+                                           maze_environment=curiosity_kwargs['maze_environment'],
                                            device=curiosity_kwargs['device'])
                                            
             elif curiosity_kwargs['curiosity_alg'] == 'rand':
