@@ -100,7 +100,7 @@ def plot_sns(y_val):
 def plot_several():
     y_vals = ['EpExtrinsicReward/Average']
     for y_str in y_vals:
-        plt.figure(figsize=(12, 12))
+        plt.figure(figsize=(12, 6))
         plot_sns(y_str)
         plt.show()
 
