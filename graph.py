@@ -71,10 +71,11 @@ def preprocess(dirnames, smoothing=100, max_its=400_000):
     dfs = {}
     for dirname in dirnames:
         agent_type = get_category(dirname)
-        print(f"{agent_type}: {dirname}")
+        df = pd.read_csv(f'results/ppo_DeepmindOrdealEnv-v0/{dirname}/progress.csv')
+        print(f"{agent_type}: {dirname}, len: {(len(df)*125)//1000}k iterations")
         if agent_type is None:
             continue
-        df = pd.read_csv(f'results/ppo_DeepmindOrdealEnv-v0/{dirname}/progress.csv')
+        # df = pd.read_csv(f'results/ppo_DeepmindOrdealEnv-v0/{dirname}/progress.csv')
         df = df.rolling(smoothing).mean()
         df :pd.DataFrame = df.assign(agent_type=agent_type)
         dfs[dirname] = df.where(df['Diagnostics/Iteration'] < max_its)
@@ -98,11 +99,15 @@ def plot_sns(y_val):
 # iterations = df['Diagnostics/Iteration']
 
 def plot_several():
-    y_vals = ['EpExtrinsicReward/Average']
+    y_vals = ['EpExtrinsicReward/Average', ]
+    # y_vals = ['intrinsic_rewards/Average', 'intrinsic_rewards/Std']
     for y_str in y_vals:
         plt.figure(figsize=(12, 6))
         plot_sns(y_str)
-        plt.show()
+        plt.title("THIS IS TEMPORARY")
+        plt.tight_layout()
+        plt.savefig("plots/" + ".".join(y_str.split(r'/')) + '.pdf')
+        # plt.show()
 
 def main():
     plot_several()
