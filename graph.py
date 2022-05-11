@@ -5,6 +5,25 @@ import seaborn as sns
 
 import os
 
+def get_category(dirname):
+    if 'arthl_7' in dirname or 'arthl_' in dirname:  # or 'arthl_' in dirname:
+        return 'ART-HL'
+    elif 'art_' in dirname:
+        try:
+            if int(dirname[-1]) > 5:
+                return "ART"
+        except ValueError:
+            pass
+    elif dirname in (f'icm_{i}' for i in (1, 2, 3)):
+        return 'ICM'
+    elif dirname in (f'rnd_{i}' for i in (1, 2, 3, 6, 7)):
+        return 'RND'
+    else:
+        return None
+
+
+    # return s.rolling(smoothing).mean()
+
 
 def plot_in_graph(dirs):
     values = ['EpExtrinsicReward/Average', 'intrinsic_rewards/Std', 'art_num_classes/Max']
@@ -35,10 +54,9 @@ def plot_in_graph(dirs):
     # axes[0].set_yscale('log')
     # axes[1].set_ylim((0.00001, 0.01))
 
-def main():
+
+def plot_matplotlib():
     sns.set_theme(style="darkgrid")
-    # dirs = ('art', 'art_0', 'arthl_0', 'arthl_1', 'disagreement_0', 'icm_0', 'none_0')
-    # dirs = [f'art_{i}' for i in (6, 7, 8)] + ['arthl_6', 'rnd_6']
     all_dirs = sorted(os.listdir("results/ppo_DeepmindOrdealEnv-v0/"))
     filters = [
         lambda d: 'art' in d,
@@ -49,6 +67,46 @@ def main():
     for f in filters:
         plot_in_graph(filter(f, all_dirs))
 
+def preprocess(dirnames, smoothing=100, max_its=400_000):
+    dfs = {}
+    for dirname in dirnames:
+        agent_type = get_category(dirname)
+        print(f"{agent_type}: {dirname}")
+        if agent_type is None:
+            continue
+        df = pd.read_csv(f'results/ppo_DeepmindOrdealEnv-v0/{dirname}/progress.csv')
+        df = df.rolling(smoothing).mean()
+        df :pd.DataFrame = df.assign(agent_type=agent_type)
+        dfs[dirname] = df.where(df['Diagnostics/Iteration'] < max_its)
+
+    longest_df = max(map(len, dfs.values()))
+
+    full_df = pd.concat(list(dfs.values()), ignore_index=True)
+
+    return full_df
+
+def plot_sns(y_val):
+    sns.set_theme(style="darkgrid")
+    all_dirs = sorted(os.listdir("results/ppo_DeepmindOrdealEnv-v0/"))
+    df = preprocess(all_dirs)
+    sns.lineplot(
+        data=df, x='Diagnostics/Iteration', y=y_val,
+        ci='sd', hue='agent_type'
+    )
+
+# values = ['EpExtrinsicReward/Average', 'intrinsic_rewards/Std', 'art_num_classes/Max']
+# iterations = df['Diagnostics/Iteration']
+
+def plot_several():
+    y_vals = ['EpExtrinsicReward/Average']
+    for y_str in y_vals:
+        plt.figure(figsize=(12, 12))
+        plot_sns(y_str)
+        plt.show()
+
+def main():
+    plot_several()
+    # plot_matplotlib()
 
 if __name__ == '__main__':
     main()
